@@ -27,5 +27,4 @@ order: 4
  ![微信二维码](/assets/2026-09-29-wx.jpg)
 > 本网站文章仅为一般性法律信息分享，不构成正式法律意见。
 
-> Add Markdown syntax content to file `_tabs/about.md`{: .filepath } and it will show up on this page.
 {: .prompt-tip }
