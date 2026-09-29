@@ -2,6 +2,8 @@
 # the default layout is 'page'
 icon: fas fa-info-circle
 order: 4
+---
+
 ## 王志满 律师
  
 王志满律师现执业于北京市康达（南昌）律师事务所，2023年正式执业，专注于合同纠纷、
@@ -24,3 +26,6 @@ order: 4
 - 预约咨询：请发邮件或扫描下方微信二维码
  ![微信二维码](/assets/2026-09-29-wx.jpg)
 > 本网站文章仅为一般性法律信息分享，不构成正式法律意见。
+
+> Add Markdown syntax content to file `_tabs/about.md`{: .filepath } and it will show up on this page.
+{: .prompt-tip }
