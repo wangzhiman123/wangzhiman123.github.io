@@ -10,10 +10,6 @@ platforms:
     icon: "fa-brands fa-qq"
     link: "https://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=URL&title=TITLE"
  
-  - type: Douban
-    icon: "fab fa-douban"
-    link: "https://www.douban.com/share/service?href=URL&name=TITLE"
- 
   - type: Email
     icon: "fas fa-envelope"
     link: "mailto:1320233415@qq.com?subject=TITLE&body=URL"
@@ -23,6 +19,10 @@ platforms:
   # - type: Linkedin
   #   icon: "fab fa-linkedin"
   #   link: "https://www.linkedin.com/feed/?shareActive=true&shareUrl=URL"
+  #
+  # - type: Douban
+  #   icon: "fab fa-douban"
+  #   link: "https://www.douban.com/share/service?href=URL&name=TITLE"
   #
   # - type: Weibo
   #   icon: "fab fa-weibo"
