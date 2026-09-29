@@ -16,7 +16,7 @@ platforms:
  
   - type: Email
     icon: "fas fa-envelope"
-    link: "mailto:?subject=TITLE&body=URL"
+    link: "mailto:1320233415@qq.com?subject=TITLE&body=URL"
 
   # Uncomment below if you need to.
   #
