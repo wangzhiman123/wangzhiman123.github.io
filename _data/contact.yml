@@ -3,8 +3,9 @@
 - type: github
   icon: "fab fa-github"
 
-- type: twitter
-  icon: "fa-brands fa-x-twitter"
+- type: zhihu
+  icon: "fa-brands fa-zhihu"
+  url: https://www.zhihu.com/people/pxpiloveu
 
 - type: bilibili
   icon: "fa-brands fa-bilibili"
