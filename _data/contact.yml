@@ -6,6 +6,10 @@
 - type: twitter
   icon: "fa-brands fa-x-twitter"
 
+- type: bilibili
+  icon: "fa-brands fa-bilibili"
+  url: https://space.bilibili.com/35768392
+
 - type: email
   icon: "fas fa-envelope"
   noblank: true # open link in current tab
