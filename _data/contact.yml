@@ -15,9 +15,9 @@
   icon: "fa-brands fa-weixin"
   url: https://mp.weixin.qq.com/s/60l8EQT2kyGSKww-yNw06A
 
-- type: email
-  icon: "fas fa-envelope"
-  noblank: true # open link in current tab
+#- type: email
+#  icon: "fas fa-envelope"
+#  noblank: true # open link in current tab
 
 - type: rss
   icon: "fas fa-rss"
