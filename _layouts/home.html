@@ -46,8 +46,14 @@ layout: default
   {% endfor %}
 {% endif %}
 
+{% assign total_chars = 0 %}
+{% for post in site.posts %}
+  {% assign chars = post.content | strip_html | strip_newlines | remove: " " | split: "" | size %}
+  {% assign total_chars = total_chars | plus: chars %}
+{% endfor %}
 <div class="text-center text-muted mt-3 mb-0">
   <i class="fas fa-book-open"></i> 本站已发布 <strong>{{ site.posts | size }}</strong> 篇文章
+  <i class="fas fa-pen-nib" style="margin-left: 1rem;"></i> 累计创作 <strong>{{ total_chars | divided_by: 10000.0 | round: 1 }}</strong> 万字
 </div>
 
 <div id="post-list" class="flex-grow-1 px-xl-1">
