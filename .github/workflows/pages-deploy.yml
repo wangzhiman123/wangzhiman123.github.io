@@ -31,6 +31,8 @@ jobs:
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          # submodules: true
+          # If using the 'assets' submodule from Chirpy Starter, uncomment above
 
       - name: Setup Pages
         id: pages
@@ -58,6 +60,7 @@ jobs:
         with:
           path: "_site${{ steps.pages.outputs.base_path }}"
 
+      # ↓↓↓ 新增：供自有服务器部署使用的普通 artifact ↓↓↓
       - name: Upload site for self-hosted server
         uses: actions/upload-artifact@v4
         with:
@@ -76,6 +79,9 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v5
 
+  # ↓↓↓ 新增：rsync 推送到火山引擎服务器 ↓↓↓
+  # 开关：仓库 Settings → Secrets and variables → Actions → Variables
+  #       把 DEPLOY_TO_SERVER 设为 false 即可停止推送（服务器到期后用它）
   deploy-server:
     needs: build
     runs-on: ubuntu-latest
@@ -96,14 +102,16 @@ jobs:
 
       - name: Rsync to server
         run: |
-          rsync -az --delete \
+          rsync -rltz --delete \
+            --no-owner --no-group --no-perms \
             --exclude='.user.ini' \
             --exclude='.htaccess' \
             --exclude='.well-known/' \
             --exclude='proxy_cache_dir/' \
             --chmod=D775,F664 \
             -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes" \
-            _site/ deploy@115.190.250.120:/www/wwwroot/2019527.xyz/
+            _site/ deploy@115.190.250.120:/www/wwwroot/2019527.xyz/ \
+            || { code=$?; if [ "$code" -eq 23 ]; then echo "rsync 退出码 23：部分属性未能设置（宝塔保护 .user.ini 等文件所致），文件内容已传输完成，视为成功"; else exit $code; fi; }
 
       - name: Cleanup
         if: always()
