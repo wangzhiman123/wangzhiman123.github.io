@@ -48,16 +48,21 @@ layout: default
 
 {% assign total_chars = 0 %}
 {% assign total_imgs = 0 %}
+{% assign total_vids = 0 %}
 {% for post in site.posts %}
   {% assign chars = post.content | strip_html | strip_newlines | remove: " " | split: "" | size %}
   {% assign total_chars = total_chars | plus: chars %}
   {% assign imgs = post.content | split: "<img" | size | minus: 1 %}
   {% assign total_imgs = total_imgs | plus: imgs %}
+  {% assign vids = post.content | split: "<iframe" | size | minus: 1 %}
+  {% assign local_vids = post.content | split: "<video" | size | minus: 1 %}
+  {% assign total_vids = total_vids | plus: vids | plus: local_vids %}
 {% endfor %}
 <div class="text-center text-muted mt-3 mb-0">
   <i class="fas fa-book-open"></i> 本站已发布 <strong>{{ site.posts | size }}</strong> 篇文章
   <i class="fas fa-pen-nib" style="margin-left: 1rem;"></i> 累计创作 <strong>{{ total_chars | divided_by: 10000.0 | round: 1 }}</strong> 万字
   <i class="fas fa-images" style="margin-left: 1rem;"></i> 文章配图 <strong>{{ total_imgs }}</strong> 张
+  <i class="fas fa-film" style="margin-left: 1rem;"></i> 视频节目 <strong>{{ total_vids }}</strong> 个
 </div>
 
 <div id="post-list" class="flex-grow-1 px-xl-1">
