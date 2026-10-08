@@ -27,11 +27,25 @@ jobs:
           JEKYLL_ENV: production
 
       - name: Setup SSH key
+        env:
+          KEY: ${{ secrets.VPS_SSH_KEY }}
+          HOST: ${{ secrets.VPS_HOST }}
         run: |
+          if [ -z "$HOST" ]; then
+            echo "::error::Secret「VPS_HOST」未配置或名字不对——请到 Settings → Secrets and variables → Actions 添加（值=服务器IP）"
+            exit 1
+          fi
+          if [ -z "$KEY" ]; then
+            echo "::error::Secret「VPS_SSH_KEY」未配置或名字不对"
+            exit 1
+          fi
+          echo "检测通过：HOST=$HOST | KEY长度=${#KEY} 字符 | 首行=$(echo "$KEY" | head -1)"
           mkdir -p ~/.ssh
-          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          printf '%s\n' "$KEY" > ~/.ssh/deploy_key
+          sed -i 's/\r$//' ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+          echo "known_hosts 已写入 $(wc -l < ~/.ssh/known_hosts) 行"
 
       - name: Rsync to VPS
         run: |
