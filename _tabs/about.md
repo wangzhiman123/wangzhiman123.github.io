@@ -32,7 +32,7 @@ order: 4
 ### 品牌矩阵
 
 - 个人网站：[王志满律师网 www.2019527.xyz](https://2019527.xyz)
-- 微信公众号：[王志满律师](https://mp.weixin.qq.com/s/60l8EQT2kyGSKww-yNw06A)
+- 微信公众号：[王志满律师,公众号ID:www2019527xyz](https://mp.weixin.qq.com/s/60l8EQT2kyGSKww-yNw06A)
 - 小红书：[王志满律师，小红书号：3838565289](https://xhslink.cn/o/4cNvEm7Bclh)
 - 知乎：[王志满律师](https://www.zhihu.com/people/pxpiloveu)
 - 哔哩哔哩：[王志满律师](https://space.bilibili.com/35768392)
