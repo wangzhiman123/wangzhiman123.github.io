@@ -1,0 +1,82 @@
+<!--
+  ============================================================
+  阅读量统计 · 不蒜子（Busuanzi）国内加速版
+  ------------------------------------------------------------
+  用途：覆盖 Chirpy 主题自带的 _includes/pageviews/goatcounter.html
+  原因：官方版本直接请求 https://xxx.goatcounter.com（境外服务器），
+        国内加载慢、经常超时，文章标题下会一直显示转圈图标。
+  配套：1) _config.yml 需设置
+            analytics.goatcounter.id: busuanzi   ← 非空占位值
+            pageviews.provider:       goatcounter
+        2) 同时覆盖 _includes/analytics/goatcounter.html 为空文件，
+           否则 Chirpy 仍会在 <head> 里加载 gc.zgo.at/count.js
+  ============================================================
+-->
+<script>
+(function () {
+  "use strict";
+
+  // 不蒜子脚本地址（协议相对写法，http / https 站点都能加载）
+  var BSZ_SRC = "//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js";
+  var TIMEOUT = 10000; // 10 秒还没拿到数据就兜底，避免一直转圈
+  var MAX_TRY = 40;    // 轮询查找 #pageviews 的最大次数（约 10 秒）
+
+  var done = false;
+
+  // 兜底：脚本加载失败或超时时，至少显示一个数字，不留空白
+  function fallback() {
+    var el = document.getElementById("busuanzi_value_page_pv");
+    if (el && !el.textContent.replace(/\s/g, "")) {
+      el.textContent = "1";
+    }
+  }
+
+  function setup(el) {
+    if (done) return true;
+    done = true;
+
+    // 清掉 Chirpy 自带的转圈图标
+    el.textContent = "0";
+
+    // 把 Chirpy 的元素改造成不蒜子认识的结构：
+    //   <span id="busuanzi_container_page_pv">
+    //     <em id="busuanzi_value_page_pv">…</em> 次阅读
+    //   </span>
+    el.id = "busuanzi_value_page_pv";
+    if (el.parentElement && !el.parentElement.id) {
+      el.parentElement.id = "busuanzi_container_page_pv";
+    }
+
+    var s = document.createElement("script");
+    s.async = true;
+    s.src = BSZ_SRC;
+    s.onerror = fallback;
+    document.head.appendChild(s);
+
+    setTimeout(fallback, TIMEOUT);
+    return true;
+  }
+
+  function tryInit() {
+    var el = document.getElementById("pageviews");
+    return el ? setup(el) : false;
+  }
+
+  function poll() {
+    var n = 0;
+    var t = setInterval(function () {
+      if (tryInit() || ++n >= MAX_TRY) clearInterval(t);
+    }, 250);
+  }
+
+  // 本文件是在 <head> 里加载的，此时页面正文还没渲染，
+  // 所以要等 DOM 就绪后再去找 #pageviews 元素。
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", function () {
+      if (!tryInit()) poll();
+    });
+  } else if (!tryInit()) {
+    poll();
+  }
+})();
+</script>
