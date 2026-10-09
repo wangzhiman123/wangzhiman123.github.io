@@ -1,82 +1,164 @@
 <!--
   ============================================================
-  阅读量统计 · 不蒜子（Busuanzi）国内加速版
+  阅读量统计 · 不蒜子（Busuanzi）直连版 v2
   ------------------------------------------------------------
   用途：覆盖 Chirpy 主题自带的 _includes/pageviews/goatcounter.html
-  原因：官方版本直接请求 https://xxx.goatcounter.com（境外服务器），
-        国内加载慢、经常超时，文章标题下会一直显示转圈图标。
-  配套：1) _config.yml 需设置
-            analytics.goatcounter.id: busuanzi   ← 非空占位值
-            pageviews.provider:       goatcounter
-        2) 同时覆盖 _includes/analytics/goatcounter.html 为空文件，
-           否则 Chirpy 仍会在 <head> 里加载 gc.zgo.at/count.js
+
+  v2 相比 v1 的核心改动：
+    不再加载 busuanzi.pure.mini.js，改为本脚本直接调用不蒜子
+    JSONP 接口。带来的好处——
+      · 外部请求由 2 次（脚本 + 接口）降为 1 次，更快
+      · 超时、重试、兜底、千分位全部本地可控
+      · 无论网络如何，9 秒后必定显示数字，绝不会一直转圈
+
+  两个关键点（不要删）：
+    1) s.referrerPolicy = "no-referrer-when-downgrade"
+       现代浏览器默认跨域只发送域名、不带路径。不显式设置的话
+       不蒜子收到的 Referer 只有 https://你的域名/ ，会导致
+       全站所有文章共用同一个浏览量。
+    2) 数据未返回前不改动 #pageviews 的内容
+       Chirpy 原生的转圈图标 <i class="fa-spinner"> 保留作为加载态，
+       拿到数字后再整体替换。
+
+  配套配置（_config.yml）：
+      analytics.goatcounter.id: busuanzi      ← 非空占位值即可
+      pageviews.provider:       goatcounter
+  同时需覆盖 _includes/analytics/goatcounter.html 为空文件，
+  否则 Chirpy 仍会在 <head> 加载境外脚本 gc.zgo.at/count.js。
   ============================================================
 -->
 <script>
 (function () {
   "use strict";
 
-  // 不蒜子脚本地址（协议相对写法，http / https 站点都能加载）
-  var BSZ_SRC = "//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js";
-  var TIMEOUT = 10000; // 10 秒还没拿到数据就兜底，避免一直转圈
-  var MAX_TRY = 40;    // 轮询查找 #pageviews 的最大次数（约 10 秒）
+  var API = "https://busuanzi.ibruce.info/busuanzi";
+  var REQ_TIMEOUT = 6000;   // 接口超时：6 秒没回来就兜底
+  var HARD_TIMEOUT = 9000;  // 硬兜底：到点必须有数字，绝不留转圈
+  var POLL_MAX = 50;        // 查找 #pageviews 的最大轮询次数（约 10 秒）
 
-  var done = false;
+  var finished = false;  // 是否已经写入过数字
+  var pending = null;    // 已取到值、但页面元素还没渲染出来时先存在这
+  var el = null;
 
-  // 兜底：脚本加载失败或超时时，至少显示一个数字，不留空白
-  function fallback() {
-    var el = document.getElementById("busuanzi_value_page_pv");
-    if (el && !el.textContent.replace(/\s/g, "")) {
-      el.textContent = "1";
+  function fmt(n) {
+    try {
+      return Number(n).toLocaleString("en-US");
+    } catch (e) {
+      return String(n);
     }
   }
 
-  function setup(el) {
-    if (done) return true;
-    done = true;
-
-    // 清掉 Chirpy 自带的转圈图标
-    el.textContent = "0";
-
-    // 把 Chirpy 的元素改造成不蒜子认识的结构：
-    //   <span id="busuanzi_container_page_pv">
-    //     <em id="busuanzi_value_page_pv">…</em> 次阅读
-    //   </span>
-    el.id = "busuanzi_value_page_pv";
-    if (el.parentElement && !el.parentElement.id) {
-      el.parentElement.id = "busuanzi_container_page_pv";
+  function find() {
+    if (!el) {
+      el = document.getElementById("pageviews");
     }
+    return el;
+  }
 
+  function render(v) {
+    if (finished || v === null || v === undefined) return;
+    var e = find();
+    if (!e) {
+      pending = v; // 元素还没出现，先存着
+      return;
+    }
+    finished = true;
+    e.textContent = fmt(v);
+  }
+
+  // 直接调用不蒜子 JSONP 接口（不等 DOM 就绪，越早发请求越快出数）
+  function fetchCount() {
+    var cbName = "BusuanziCallback_" + Math.floor(Math.random() * 1099511627776);
     var s = document.createElement("script");
+    var timer = null;
+
+    function cleanup() {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      try {
+        delete window[cbName];
+      } catch (e) {
+        window[cbName] = undefined;
+      }
+      if (s.parentNode) {
+        s.parentNode.removeChild(s);
+      }
+    }
+
+    window[cbName] = function (data) {
+      cleanup();
+      var v = data && typeof data.page_pv === "number" ? data.page_pv : null;
+      render(v !== null ? v : 1);
+    };
+
     s.async = true;
-    s.src = BSZ_SRC;
-    s.onerror = fallback;
-    document.head.appendChild(s);
+    // 关键：让浏览器把完整 URL 作为 Referer 发出去，
+    // 否则不蒜子只能看到域名，所有文章会共用一个浏览量
+    s.referrerPolicy = "no-referrer-when-downgrade";
+    s.onerror = function () {
+      cleanup();
+      render(1); // 脚本被拦截/加载失败时的兜底
+    };
+    s.src = API + "?jsonpCallback=" + cbName;
 
-    setTimeout(fallback, TIMEOUT);
-    return true;
+    timer = setTimeout(function () {
+      cleanup();
+      render(1);
+    }, REQ_TIMEOUT);
+
+    (document.head || document.documentElement).appendChild(s);
   }
 
-  function tryInit() {
-    var el = document.getElementById("pageviews");
-    return el ? setup(el) : false;
-  }
-
+  // 元素迟迟不出现时反复尝试
   function poll() {
     var n = 0;
     var t = setInterval(function () {
-      if (tryInit() || ++n >= MAX_TRY) clearInterval(t);
-    }, 250);
+      if (finished) {
+        clearInterval(t);
+        return;
+      }
+      if (pending !== null) {
+        render(pending);
+      }
+      if (finished) {
+        clearInterval(t);
+        return;
+      }
+      if (++n >= POLL_MAX) {
+        clearInterval(t);
+        render(1);
+      }
+    }, 200);
   }
 
-  // 本文件是在 <head> 里加载的，此时页面正文还没渲染，
-  // 所以要等 DOM 就绪后再去找 #pageviews 元素。
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", function () {
-      if (!tryInit()) poll();
-    });
-  } else if (!tryInit()) {
-    poll();
+  function init() {
+    if (!find()) {
+      poll();
+      return;
+    }
+    if (pending !== null) {
+      render(pending);
+    }
   }
+
+  fetchCount(); // 立刻发请求，不等 DOM
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+
+  // 硬兜底：到点仍无数字就直接填 1，永远不会停在转圈状态
+  setTimeout(function () {
+    if (finished) return;
+    var e = find();
+    if (e) {
+      finished = true;
+      e.textContent = "1";
+    }
+  }, HARD_TIMEOUT);
 })();
 </script>
