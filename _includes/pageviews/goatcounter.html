@@ -1,31 +1,30 @@
 {%- comment -%}
 ============================================================
- 阅读量统计 · 统一数据源版 v6
+ 阅读量统计 · 统一数据源版 v7
  ------------------------------------------------------------
  用途：覆盖 Chirpy 主题自带的 _includes/pageviews/goatcounter.html
       （该文件被主题注入在 <head> 中，早于 <body> 里的 #pageviews 元素，
-        所以下面的脚本必须等待 DOM 就绪后再填充，不能用即时的 getElementById）
+        所以下面的脚本必须等 DOM 就绪后再填充）
 
- 为什么这样改（原版的问题）：
-   1. 原版只在文章页向「不蒜子」实时取数，首页卡片读的却是
-      _data/views.json 快照 → 两个数据源不同，数值必然对不上
-      （会出现卡片 10、文章页 13 这种情况）。
-   2. 原版请求失败/超时时会硬填一个假的「1」，元素找不到时还会
-      一直转圈 → 这就是「显示异常」的来源。
+ ！！本文件里绝对不能出现 // 行注释 —— 这是 v6 失效的原因！！
+ ------------------------------------------------------------
+ _config.yml 开启了 compress_html，生产构建会把整份 HTML 的换行
+ 全部压掉（线上页面实测 0 个换行）。一旦代码里出现 // 行注释，
+ 它会把「本行之后」的所有代码一路注释到脚本结尾：
+     (function () { "use strict"; // 注释...  var raw = 12; ... 全部变注释
+ 结果 IIFE 变成空函数，数字填不进去，文章页就永远转圈。
 
- 现在的做法：
-   1. 数值来源：_data/views.json（GitHub Actions 定时抓取真实访问量，
-      构建时静态渲染）。与首页卡片共用同一份数据，两处数值永远一致。
-   2. 显示方式：构建时把数字直接内联到下面的脚本里，页面就绪后填进
-      Chirpy 的 #pageviews（替换掉转圈图标）。显示过程不发任何网络请求，
-      所以永远不会转圈、也不会出现假数字。
-   3. 计数方式：本页仍会异步触发一次「不蒜子」接口（约 1.9KB），
-      仅用于把这次真实访问计入统计，返回值不参与显示；失败也无所谓。
-
- 配套说明：
-   - 计数接口每被调用一次就会让该页 +1，因此定时脚本用
+ 所以本文件的铁律（Chirpy 主题自带的内联脚本也是这么写的）：
+   ① 注释一律用 /* */ 块注释，禁用 //
+   ② 每条语句都以 ; 结尾，不依赖 JavaScript 的自动分号补全
+   ③ 判断分支一律带花括号，压缩掉空白后语义不变
+ ------------------------------------------------------------
+ 数值来源：_data/views.json（构建时静态渲染）
+     与首页卡片共用同一份数据，两处数值永远一致；
+     显示过程不发任何网络请求，所以永远不会转圈、也不会出现假数字。
+ 计数方式：仍异步触发一次「不蒜子」接口（仅统计用，返回值不参与显示）。
+     该接口每被调用一次就会让该页 +1，因此定时脚本用
      _data/pv_state.json 做了「轮询补偿」，详见 scripts/update_views.py。
-   - _includes/analytics/goatcounter.html 保持为空，用于屏蔽境外统计脚本。
 ============================================================
 {%- endcomment -%}
 {%- if page.layout == 'post' -%}
@@ -34,9 +33,8 @@
     (function () {
       "use strict";
 
-      // 构建时静态渲染出来的真实浏览量（与首页卡片同源）
+      /* 构建时静态渲染出来的真实浏览量（与首页卡片同源） */
       var raw = {{ pv }};
-
       var text = String(raw);
       try {
         text = Number(raw).toLocaleString("en-US");
@@ -44,48 +42,45 @@
         /* 老浏览器忽略 */
       }
 
-      // ---- 1) 把浏览量填进 Chirpy 的 #pageviews（替换转圈图标）----
-      var filled = false;
+      /* 把浏览量填进 Chirpy 的 #pageviews，替换掉转圈图标 */
       function fill() {
-        if (filled) return true;
         var el = document.getElementById("pageviews");
-        if (!el) return false;
+        if (!el) {
+          return false;
+        }
         el.textContent = text;
-        filled = true;
         return true;
       }
 
       if (!fill()) {
-        // 该脚本位于 <head>，此时 #pageviews 还没解析出来
-        if (document.readyState === "loading") {
-          document.addEventListener("DOMContentLoaded", fill);
-        }
+        /* 本脚本在 <head> 中，此时 #pageviews 还没被解析出来，需要等 DOM 就绪 */
+        document.addEventListener("DOMContentLoaded", function () {
+          fill();
+        });
         var n = 0;
         var timer = setInterval(function () {
-          if (fill() || ++n > 60) clearInterval(timer);
+          n = n + 1;
+          if (fill() || n >= 100) {
+            clearInterval(timer);
+          }
         }, 100);
       }
 
-      // ---- 2) 仅用于统计：异步触发一次不蒜子计数（返回的数值不使用）----
+      /* 仅用于统计：异步触发一次不蒜子计数，返回值不参与显示 */
       try {
-        var cb = "Bsz_" + Math.random().toString(36).slice(2, 10);
+        var cb = "Bsz" + Math.random().toString(36).slice(2, 11);
         window[cb] = function () {
           try {
             delete window[cb];
-          } catch (e) {
+          } catch (e2) {
             window[cb] = undefined;
           }
         };
         var s = document.createElement("script");
         s.src = "https://busuanzi.ibruce.info/busuanzi?jsonpCallback=" + cb;
         s.async = true;
-        // 必须带上完整路径作为 Referer，否则所有文章会共用同一个计数
-        try {
-          s.referrerPolicy = "no-referrer-when-downgrade";
-        } catch (e) {
-          /* 老浏览器忽略 */
-        }
-        s.onerror = function () {};
+        s.referrerPolicy = "no-referrer-when-downgrade";
+        s.onerror = function () { };
         (document.head || document.documentElement).appendChild(s);
       } catch (e) {
         /* 统计失败不影响显示 */
