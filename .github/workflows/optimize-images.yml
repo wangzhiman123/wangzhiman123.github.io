@@ -1,0 +1,301 @@
+name: Optimize Images (one-time)
+
+# 一次性博客图片优化:删除孤儿图片 + 压缩为 WebP + 自动修正文章引用
+# 使用方法:进入本仓库 Actions 页面,选择左侧 "Optimize Images (one-time)",
+#          点击右侧 "Run workflow" 按钮,选择 main 分支后运行。
+# 运行完成后可删除本文件。
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Pillow
+        run: python -m pip install --quiet --disable-pip-version-check Pillow
+
+      - name: Run image optimization
+        run: |
+          python - <<'PYEOF'
+          #!/usr/bin/env python3
+          """
+          博客图片一次性优化脚本(可在 GitHub Actions 中运行)
+
+          执行三件事:
+            1. 删除未被任何文章引用的孤儿图片
+            2. 将 PNG/JPG 转换为 WebP(仅在体积明显变小时替换)
+            3. 按磁盘实际文件修正文章中的图片引用(含 front matter 的 image 字段)
+
+          脚本是幂等的:重复运行不会造成额外破坏。
+          """
+          import io
+          import os
+          import re
+          import glob
+          import sys
+
+          from PIL import Image
+
+          IMG_DIR = "assets/post"
+          QUALITY = 85        # WebP 有损质量
+          METHOD = 6          # 0-6,越大越慢越小
+          MIN_SAVING = 0.08   # 至少省 8% 才替换
+
+          REF_RE = re.compile(r"/assets/post/([^)\"' \n]+)")
+          SRC_FILES = ["_posts/*.md", "_tabs/*.md", "*.md", "*.html"]
+
+
+          def log(msg=""):
+              print(msg, flush=True)
+
+
+          def collect_refs():
+              """收集文章中对 assets/post 下图片的引用(相对路径)"""
+              refs = set()
+              for pattern in SRC_FILES:
+                  for f in glob.glob(pattern):
+                      try:
+                          text = open(f, encoding="utf-8").read()
+                      except (OSError, UnicodeDecodeError):
+                          continue
+                      for m in REF_RE.findall(text):
+                          refs.add(m.strip())
+              return refs
+
+
+          def list_images():
+              """列出 assets/post 下所有文件(相对路径)"""
+              out = set()
+              for root, _, files in os.walk(IMG_DIR):
+                  for name in files:
+                      if name == ".gitkeep":
+                          continue
+                      rel = os.path.relpath(os.path.join(root, name), IMG_DIR)
+                      out.add(rel.replace("\\", "/"))
+              return out
+
+
+          def step1_remove_orphans():
+              refs = collect_refs()
+              images = list_images()
+              orphans = sorted(x for x in images if x not in refs)
+
+              freed = 0
+              removed = 0
+              for rel in orphans:
+                  path = os.path.join(IMG_DIR, rel)
+                  try:
+                      size = os.path.getsize(path)
+                      os.remove(path)
+                      freed += size
+                      removed += 1
+                  except OSError as e:
+                      log(f"  [警告] 删除失败 {rel}: {e}")
+
+              log(f"[步骤1] 孤儿图片清理")
+              log(f"  文章引用数: {len(refs)}")
+              log(f"  磁盘图片数: {len(images)}")
+              log(f"  删除孤儿:   {removed} 个,释放 {freed / 1024 / 1024:.1f} MB")
+              log()
+              return removed
+
+
+          def prepare_image(im, path):
+              """按源格式与色彩模式,转成适合写 WebP 的模式"""
+              if path.lower().endswith((".jpg", ".jpeg")):
+                  return im.convert("RGB")
+              if im.mode == "P":
+                  return im.convert("RGBA") if "transparency" in im.info else im.convert("RGB")
+              if im.mode == "LA":
+                  return im.convert("RGBA")
+              if im.mode in ("RGBA", "RGB"):
+                  return im
+              return im.convert("RGB")
+
+
+          def step2_compress():
+              targets = []
+              for ext in ("png", "PNG", "jpg", "JPG", "jpeg", "JPEG"):
+                  targets.extend(glob.glob(os.path.join(IMG_DIR, "**", f"*.{ext}"), recursive=True))
+              targets = sorted(set(targets))
+
+              converted = 0
+              skipped = 0
+              failed = 0
+              old_total = 0
+              new_total = 0
+
+              for path in targets:
+                  old_size = os.path.getsize(path)
+                  try:
+                      with Image.open(path) as im:
+                          if getattr(im, "n_frames", 1) > 1:
+                              skipped += 1
+                              continue
+                          im.load()
+                          im2 = prepare_image(im, path)
+                          buf = io.BytesIO()
+                          im2.save(buf, format="WEBP", quality=QUALITY, method=METHOD)
+                          data = buf.getvalue()
+                  except Exception as e:                      # noqa: BLE001
+                      failed += 1
+                      log(f"  [警告] 转换失败 {os.path.basename(path)}: {e}")
+                      continue
+
+                  if len(data) >= old_size * (1 - MIN_SAVING):
+                      skipped += 1
+                      continue
+
+                  newpath = os.path.splitext(path)[0] + ".webp"
+                  with open(newpath, "wb") as f:
+                      f.write(data)
+                  os.remove(path)
+                  converted += 1
+                  old_total += old_size
+                  new_total += len(data)
+
+              log(f"[步骤2] 图片压缩为 WebP")
+              log(f"  扫描 PNG/JPG: {len(targets)}")
+              log(f"  已转换:       {converted}")
+              log(f"  跳过(收益不足或多帧): {skipped}")
+              log(f"  失败:         {failed}")
+              if converted:
+                  log(f"  体积: {old_total / 1024 / 1024:.1f} MB -> {new_total / 1024 / 1024:.1f} MB "
+                      f"(节省 {100 * (1 - new_total / old_total):.0f}%)")
+              log()
+              return converted
+
+
+          def step3_fix_refs():
+              """按磁盘实际文件修正引用:引用不存在时,用同目录同主文件名替换"""
+              index = {}
+              for rel in list_images():
+                  index[os.path.splitext(rel)[0]] = rel
+
+              fixed = 0
+              changed = 0
+              unresolved = []
+
+              for pattern in SRC_FILES:
+                  for post in sorted(glob.glob(pattern)):
+                      try:
+                          text = open(post, encoding="utf-8").read()
+                      except (OSError, UnicodeDecodeError):
+                          continue
+
+                      counter = {"n": 0}
+
+                      def repl(m):
+                          ref = m.group(1).strip()
+                          if os.path.exists(os.path.join(IMG_DIR, ref)):
+                              return m.group(0)
+                          actual = index.get(os.path.splitext(ref)[0])
+                          if actual:
+                              counter["n"] += 1
+                              return "/assets/post/" + actual
+                          unresolved.append((post, ref))
+                          return m.group(0)
+
+                      new_text = REF_RE.sub(repl, text)
+                      if new_text != text:
+                          open(post, "w", encoding="utf-8", newline="\n").write(new_text)
+                          changed += 1
+                          fixed += counter["n"]
+
+              log(f"[步骤3] 修正文章图片引用")
+              log(f"  修改文件数: {changed}")
+              log(f"  修正引用数: {fixed}")
+              log(f"  无法解析:   {len(unresolved)}")
+              for p, r in unresolved[:10]:
+                  log(f"    - {os.path.basename(p)}: {r}")
+              log()
+              return fixed
+
+
+          def verify():
+              refs = collect_refs()
+              images = list_images()
+              missing = sorted(r for r in refs if r not in images)
+              unused = sorted(x for x in images if x not in refs)
+              log("[校验] 引用与文件一致性")
+              log(f"  文章引用: {len(refs)}")
+              log(f"  磁盘文件: {len(images)}")
+              log(f"  坏图:     {len(missing)}")
+              log(f"  残留:     {len(unused)}")
+              if missing:
+                  for m in missing[:10]:
+                      log(f"    [坏图] {m}")
+              if unused:
+                  for u in unused[:10]:
+                      log(f"    [残留] {u}")
+              if not missing and not unused:
+                  log("  结果: 通过 —— 无坏图、无残留")
+              log()
+              return len(missing)
+
+
+          def main():
+              if not os.path.isdir(IMG_DIR):
+                  log(f"错误: 找不到目录 {IMG_DIR},请在仓库根目录运行")
+                  sys.exit(1)
+
+              log("=" * 56)
+              log("博客图片优化开始")
+              log("=" * 56)
+              log()
+
+              step1_remove_orphans()
+              step2_compress()
+              step3_fix_refs()
+              broken = verify()
+
+              if broken:
+                  log(f"存在 {broken} 处坏图引用,请检查后再提交。")
+                  sys.exit(1)
+              log("全部完成。")
+
+
+          if __name__ == "__main__":
+              main()
+          PYEOF
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "没有需要提交的改动"
+          else
+            git commit -m "perf: 清理孤儿图片并压缩为 WebP,大幅减小仓库体积"
+            git push
+            echo "已提交并推送完成"
+          fi
+
+      - name: Trigger site rebuild
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -sS -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/pages-deploy.yml/dispatches" \
+            -d '{"ref":"${{ github.event.repository.default_branch }}"}'
+          echo "已请求触发站点重新构建"
