@@ -84,6 +84,17 @@ layout: default
   </span>
 </div>
 
+<style>
+  /* 文章卡片上的浏览量：与同行的日期/分类等 meta 信息保持一致的视觉风格 */
+  #post-list .pv-card {
+    white-space: nowrap;
+    line-height: 1.5;
+  }
+  #post-list .pv-card .fa-eye {
+    opacity: 0.7;
+  }
+</style>
+
 <div id="post-list" class="flex-grow-1 px-xl-1">
   {% for post in posts %}
     <article class="card-wrapper card">
@@ -164,16 +175,15 @@ layout: default
               {% endif %}
 
               {%- comment -%}
-                浏览量：数据来自 GitHub Actions 定时抓取的 _data/views.json，
-                构建时静态渲染，不发起任何前端请求，永远不会加载失败。
-                key 规则：post.url 去掉所有斜杠（与 update-views.yml 保持一致）
+                浏览量：与文章页共用同一份数据源 _data/views.json
+                （由 GitHub Actions 定时抓取真实访问量，构建时静态渲染）。
+                两处共用一份数据 → 卡片与文章页的数值永远一致；
+                也不发起任何前端请求 → 不会加载失败、不会一直转圈。
+                key 规则：文章 url 路径，例如 /posts/post-046/
               {%- endcomment -%}
-              {% assign pv_key = post.url | remove: '/' %}
-              {% assign pv = nil %}
-              {% if site.data.views %}{% assign pv = site.data.views[pv_key] %}{% endif %}
-              <div class="pv-card ms-1">
+              <div class="pv-card ms-1" title="浏览量">
                 <i class="far fa-eye fa-fw me-1"></i>
-                <span class="pv-num">{% if pv %}{{ pv }}{% else %}--{% endif %}</span>
+                <span class="pv-num">{{ site.data.views[post.url] | default: 0 }}</span>
               </div>
             </div>
             <!-- .post-meta -->

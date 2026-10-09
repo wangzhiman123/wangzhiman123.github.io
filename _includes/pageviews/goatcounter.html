@@ -1,154 +1,95 @@
-<!--
-  ============================================================
-  阅读量统计 · 不蒜子版 v5（详情页实时计数）
-  ------------------------------------------------------------
-  用途：覆盖 Chirpy 主题自带的 _includes/pageviews/goatcounter.html
+{%- comment -%}
+============================================================
+ 阅读量统计 · 统一数据源版 v6
+ ------------------------------------------------------------
+ 用途：覆盖 Chirpy 主题自带的 _includes/pageviews/goatcounter.html
+      （该文件被主题注入在 <head> 中，早于 <body> 里的 #pageviews 元素，
+        所以下面的脚本必须等待 DOM 就绪后再填充，不能用即时的 getElementById）
 
-  为什么又换回不蒜子：
-    Vercount 的 cn 节点接口正常但不返回 CORS 头，浏览器 fetch
-    会被跨域策略拦截；全球节点有 CORS 但接口返回 500。
-    不蒜子使用 JSONP（script 标签加载），**不受 CORS 限制**，
-    且服务器在国内，实测 1.2 秒返回，已确认能取到真实数据。
+ 为什么这样改（原版的问题）：
+   1. 原版只在文章页向「不蒜子」实时取数，首页卡片读的却是
+      _data/views.json 快照 → 两个数据源不同，数值必然对不上
+      （会出现卡片 10、文章页 13 这种情况）。
+   2. 原版请求失败/超时时会硬填一个假的「1」，元素找不到时还会
+      一直转圈 → 这就是「显示异常」的来源。
 
-  工作方式：
-    1. 动态插入 script 标签，请求不蒜子 JSONP 接口
-    2. 强制 referrerPolicy = no-referrer-when-downgrade
-       （必须！否则浏览器只发域名不发路径，所有文章会共用一个数）
-    3. 拿到 page_pv 后写入 #pageviews，并做千分位格式化
-    4. 三层兜底：请求失败 / 6 秒超时 / 9 秒硬兜底 —— 绝不停在转圈
+ 现在的做法：
+   1. 数值来源：_data/views.json（GitHub Actions 定时抓取真实访问量，
+      构建时静态渲染）。与首页卡片共用同一份数据，两处数值永远一致。
+   2. 显示方式：构建时把数字直接内联到下面的脚本里，页面就绪后填进
+      Chirpy 的 #pageviews（替换掉转圈图标）。显示过程不发任何网络请求，
+      所以永远不会转圈、也不会出现假数字。
+   3. 计数方式：本页仍会异步触发一次「不蒜子」接口（约 1.9KB），
+      仅用于把这次真实访问计入统计，返回值不参与显示；失败也无所谓。
 
-  配套配置（_config.yml，保持不变）：
-      analytics.goatcounter.id: busuanzi      ← 非空占位值即可
-      pageviews.provider:       goatcounter
-  同时保留 _includes/analytics/goatcounter.html 空文件，
-  屏蔽境外脚本 gc.zgo.at/count.js。
+ 配套说明：
+   - 计数接口每被调用一次就会让该页 +1，因此定时脚本用
+     _data/pv_state.json 做了「轮询补偿」，详见 scripts/update_views.py。
+   - _includes/analytics/goatcounter.html 保持为空，用于屏蔽境外统计脚本。
+============================================================
+{%- endcomment -%}
+{%- if page.layout == 'post' -%}
+  {%- assign pv = site.data.views[page.url] | default: 0 -%}
+  <script>
+    (function () {
+      "use strict";
 
-  注：首页卡片的浏览量由 GitHub Actions 定时写入 _data/views.json，
-      构建时静态渲染，与详情页共用不蒜子同一套数据。
-  ============================================================
--->
-<script>
-(function () {
-  "use strict";
+      // 构建时静态渲染出来的真实浏览量（与首页卡片同源）
+      var raw = {{ pv }};
 
-  var API = "https://busuanzi.ibruce.info/busuanzi?jsonpCallback=";
-  var REQ_TIMEOUT = 6000;  // 单次请求超时
-  var HARD_TIMEOUT = 9000; // 硬兜底：到点必须有数字
-  var POLL_MAX = 50;       // 元素未渲染时的最大轮询次数（约 10 秒）
-
-  var finished = false;
-  var pending = null;
-  var el = null;
-
-  function fmt(n) {
-    try {
-      return Number(n).toLocaleString("en-US");
-    } catch (e) {
-      return String(n);
-    }
-  }
-
-  function find() {
-    if (!el) {
-      el = document.getElementById("pageviews");
-    }
-    return el;
-  }
-
-  function render(v) {
-    if (finished || v === null || v === undefined) return;
-    var e = find();
-    if (!e) {
-      pending = v; // 元素还没出现，先存着
-      return;
-    }
-    finished = true;
-    e.textContent = fmt(v);
-  }
-
-  function load() {
-    var cb = "BszCallback_" + Math.random().toString(36).slice(2, 10);
-    var done = false;
-
-    window[cb] = function (d) {
-      if (done) return;
-      done = true;
+      var text = String(raw);
       try {
-        delete window[cb];
+        text = Number(raw).toLocaleString("en-US");
       } catch (e) {
-        window[cb] = undefined;
+        /* 老浏览器忽略 */
       }
-      var v = d && typeof d.page_pv === "number" ? d.page_pv : null;
-      render(v === null ? 1 : v);
-    };
 
-    var s = document.createElement("script");
-    s.src = API + cb;
-    s.async = true;
-    // 关键：保证跨域请求带上完整 URL 作为 Referer，否则每篇文章会共用一个计数
-    try {
-      s.referrerPolicy = "no-referrer-when-downgrade";
-    } catch (e) {
-      /* 老浏览器忽略 */
-    }
-    s.onerror = function () {
-      if (done) return;
-      done = true;
-      render(1);
-    };
-
-    (document.head || document.documentElement).appendChild(s);
-
-    setTimeout(function () {
-      if (done) return;
-      done = true;
-      render(1);
-    }, REQ_TIMEOUT);
-  }
-
-  function poll() {
-    var n = 0;
-    var t = setInterval(function () {
-      if (finished) {
-        clearInterval(t);
-        return;
+      // ---- 1) 把浏览量填进 Chirpy 的 #pageviews（替换转圈图标）----
+      var filled = false;
+      function fill() {
+        if (filled) return true;
+        var el = document.getElementById("pageviews");
+        if (!el) return false;
+        el.textContent = text;
+        filled = true;
+        return true;
       }
-      if (pending !== null) render(pending);
-      if (finished) {
-        clearInterval(t);
-        return;
+
+      if (!fill()) {
+        // 该脚本位于 <head>，此时 #pageviews 还没解析出来
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", fill);
+        }
+        var n = 0;
+        var timer = setInterval(function () {
+          if (fill() || ++n > 60) clearInterval(timer);
+        }, 100);
       }
-      if (++n >= POLL_MAX) {
-        clearInterval(t);
-        render(1);
+
+      // ---- 2) 仅用于统计：异步触发一次不蒜子计数（返回的数值不使用）----
+      try {
+        var cb = "Bsz_" + Math.random().toString(36).slice(2, 10);
+        window[cb] = function () {
+          try {
+            delete window[cb];
+          } catch (e) {
+            window[cb] = undefined;
+          }
+        };
+        var s = document.createElement("script");
+        s.src = "https://busuanzi.ibruce.info/busuanzi?jsonpCallback=" + cb;
+        s.async = true;
+        // 必须带上完整路径作为 Referer，否则所有文章会共用同一个计数
+        try {
+          s.referrerPolicy = "no-referrer-when-downgrade";
+        } catch (e) {
+          /* 老浏览器忽略 */
+        }
+        s.onerror = function () {};
+        (document.head || document.documentElement).appendChild(s);
+      } catch (e) {
+        /* 统计失败不影响显示 */
       }
-    }, 200);
-  }
-
-  function init() {
-    if (!find()) {
-      poll();
-      return;
-    }
-    if (pending !== null) render(pending);
-  }
-
-  load();
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init);
-  } else {
-    init();
-  }
-
-  // 硬兜底：到点仍无数字就直接填 1，永远不会停在转圈状态
-  setTimeout(function () {
-    if (finished) return;
-    var e = find();
-    if (e) {
-      finished = true;
-      e.textContent = "1";
-    }
-  }, HARD_TIMEOUT);
-})();
-</script>
+    })();
+  </script>
+{%- endif -%}

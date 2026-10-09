@@ -1,18 +1,17 @@
 # ============================================================
-# 定时抓取文章浏览量 -> 写入 _data/views.json
+# 抓取文章浏览量 -> 写入 _data/views.json
 # ------------------------------------------------------------
-# 首页卡片的浏览量在「构建时」从这个 json 静态渲染，
-# 因此卡片不发起任何前端请求，永远不会加载失败。
+# 首页卡片和文章页都读这一份数据（构建时静态渲染），
+# 因此两处的浏览量永远一致，也不会出现加载失败/转圈等异常。
 #
 # 配套文件：scripts/update_views.py（必须与本文件一起上传）
 #
-# 运行方式：
-#   1) 上传 scripts/update_views.py 和本文件到仓库对应目录
-#   2) 首次请手动运行一次生成数据：
-#      Actions -> Update Post Views -> Run workflow
-#   3) 之后每周一自动更新一次
+# 运行时机：
+#   1) 每天 03:00（北京时间）自动刷新一次
+#   2) 手动：Actions -> Update Post Views -> Run workflow
+#   3) 文章有增删改时自动刷新（push 到 _posts/ 目录）
 #
-# 注意：仓库 Settings -> Actions -> Workflow permissions
+# 注意：仓库 Settings -> Actions -> General -> Workflow permissions
 #       需为 Read and write，否则提交环节会 403
 # ============================================================
 
@@ -20,11 +19,21 @@ name: Update Post Views
 
 on:
   schedule:
-    - cron: '0 3 * * 1'
+    # 每天 19:00 UTC = 次日 03:00 北京时间
+    - cron: '0 19 * * *'
   workflow_dispatch:
+  push:
+    paths:
+      - '_posts/**'
+      - 'scripts/update_views.py'
 
 permissions:
   contents: write
+
+# 避免两次运行并发写同一份数据
+concurrency:
+  group: update-views
+  cancel-in-progress: false
 
 jobs:
   update:
@@ -47,7 +56,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add _data/views.json
+          git add _data/views.json _data/pv_state.json
           if git diff --cached --quiet; then
             echo "浏览量无变化，跳过提交"
           else

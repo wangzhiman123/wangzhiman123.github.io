@@ -221,11 +221,16 @@ exclude:
   - "*.gemspec"
   - docs
   - tools
+  - scripts
   - README.md
   - LICENSE
   - purgecss.js
   - "*.config.js"
   - "package*.json"
+  # 部署脚本（不需要发布到网站上）
+  - deploy.ps1
+  - deploy.bat
+  - DEPLOY.md
 
 jekyll-archives:
   enabled: [categories, tags]
