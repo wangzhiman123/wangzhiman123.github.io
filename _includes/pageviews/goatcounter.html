@@ -1,41 +1,43 @@
 <!--
   ============================================================
-  阅读量统计 · Vercount 版 v4
+  阅读量统计 · 不蒜子版 v5（详情页实时计数）
   ------------------------------------------------------------
   用途：覆盖 Chirpy 主题自带的 _includes/pageviews/goatcounter.html
 
-  为什么从「不蒜子」换成 Vercount：
-    不蒜子只按 Referer 统计当前页面，无法在首页列表查询每篇
-    文章的计数；Vercount 是不蒜子的开源兼容替代（自动同步不蒜子
-    数据），支持按 URL 参数查询任意页面，首页卡片和文章详情页
-    因此能共用同一套数据。
+  为什么又换回不蒜子：
+    Vercount 的 cn 节点接口正常但不返回 CORS 头，浏览器 fetch
+    会被跨域策略拦截；全球节点有 CORS 但接口返回 500。
+    不蒜子使用 JSONP（script 标签加载），**不受 CORS 限制**，
+    且服务器在国内，实测 1.2 秒返回，已确认能取到真实数据。
 
   工作方式：
-    1. 页面打开后立即 POST https://cn.vercount.one/api/v2/log
-       （记录一次访问，同时返回最新计数）
-    2. cn 节点失败自动切换 vercount.one 全球节点
-    3. 三层兜底：接口 6 秒超时 / 请求失败 / 9 秒硬兜底 ——
-       无论网络如何，最多 9 秒必定显示数字，绝不会一直转圈
-    4. 数据未返回前保留 Chirpy 原生转圈图标作为加载态
+    1. 动态插入 script 标签，请求不蒜子 JSONP 接口
+    2. 强制 referrerPolicy = no-referrer-when-downgrade
+       （必须！否则浏览器只发域名不发路径，所有文章会共用一个数）
+    3. 拿到 page_pv 后写入 #pageviews，并做千分位格式化
+    4. 三层兜底：请求失败 / 6 秒超时 / 9 秒硬兜底 —— 绝不停在转圈
 
   配套配置（_config.yml，保持不变）：
       analytics.goatcounter.id: busuanzi      ← 非空占位值即可
       pageviews.provider:       goatcounter
   同时保留 _includes/analytics/goatcounter.html 空文件，
   屏蔽境外脚本 gc.zgo.at/count.js。
+
+  注：首页卡片的浏览量由 GitHub Actions 定时写入 _data/views.json，
+      构建时静态渲染，与详情页共用不蒜子同一套数据。
   ============================================================
 -->
 <script>
 (function () {
   "use strict";
 
-  var HOSTS = ["https://cn.vercount.one", "https://vercount.one"];
-  var REQ_TIMEOUT = 6000;   // 单次请求超时
-  var HARD_TIMEOUT = 9000;  // 硬兜底：到点必须有数字，绝不留转圈
-  var POLL_MAX = 50;        // 查找 #pageviews 的最大轮询次数（约 10 秒）
+  var API = "https://busuanzi.ibruce.info/busuanzi?jsonpCallback=";
+  var REQ_TIMEOUT = 6000;  // 单次请求超时
+  var HARD_TIMEOUT = 9000; // 硬兜底：到点必须有数字
+  var POLL_MAX = 50;       // 元素未渲染时的最大轮询次数（约 10 秒）
 
-  var finished = false;  // 是否已经写入过数字
-  var pending = null;    // 已取到值、但页面元素还没渲染出来时先存在这
+  var finished = false;
+  var pending = null;
   var el = null;
 
   function fmt(n) {
@@ -64,57 +66,46 @@
     e.textContent = fmt(v);
   }
 
-  // 向指定节点 POST 一次访问记录
-  function post(host, onOk, onFail) {
-    var timer = null;
-    var ctrl = null;
-    try {
-      ctrl = new AbortController();
-    } catch (e) {
-      ctrl = null; // 老浏览器不支持就放弃超时中断，靠硬兜底
-    }
+  function load() {
+    var cb = "BszCallback_" + Math.random().toString(36).slice(2, 10);
+    var done = false;
 
-    fetch(host + "/api/v2/log", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: location.href }),
-      signal: ctrl ? ctrl.signal : undefined
-    })
-      .then(function (r) {
-        if (!r.ok) throw new Error("http " + r.status);
-        return r.json();
-      })
-      .then(function (d) {
-        if (timer) clearTimeout(timer);
-        var v = d && d.data && typeof d.data.page_pv === "number" ? d.data.page_pv : null;
-        onOk(v !== null ? v : 1);
-      })
-      .catch(function () {
-        if (timer) clearTimeout(timer);
-        onFail();
-      });
-
-    if (ctrl) {
-      timer = setTimeout(function () {
-        ctrl.abort();
-      }, REQ_TIMEOUT);
-    }
-  }
-
-  // 依次尝试各节点，全部失败则兜底显示 1
-  function fetchCount() {
-    (function tryHost(i) {
-      if (i >= HOSTS.length) {
-        render(1);
-        return;
+    window[cb] = function (d) {
+      if (done) return;
+      done = true;
+      try {
+        delete window[cb];
+      } catch (e) {
+        window[cb] = undefined;
       }
-      post(HOSTS[i], render, function () {
-        tryHost(i + 1);
-      });
-    })(0);
+      var v = d && typeof d.page_pv === "number" ? d.page_pv : null;
+      render(v === null ? 1 : v);
+    };
+
+    var s = document.createElement("script");
+    s.src = API + cb;
+    s.async = true;
+    // 关键：保证跨域请求带上完整 URL 作为 Referer，否则每篇文章会共用一个计数
+    try {
+      s.referrerPolicy = "no-referrer-when-downgrade";
+    } catch (e) {
+      /* 老浏览器忽略 */
+    }
+    s.onerror = function () {
+      if (done) return;
+      done = true;
+      render(1);
+    };
+
+    (document.head || document.documentElement).appendChild(s);
+
+    setTimeout(function () {
+      if (done) return;
+      done = true;
+      render(1);
+    }, REQ_TIMEOUT);
   }
 
-  // 元素迟迟不出现时反复尝试
   function poll() {
     var n = 0;
     var t = setInterval(function () {
@@ -122,9 +113,7 @@
         clearInterval(t);
         return;
       }
-      if (pending !== null) {
-        render(pending);
-      }
+      if (pending !== null) render(pending);
       if (finished) {
         clearInterval(t);
         return;
@@ -141,12 +130,10 @@
       poll();
       return;
     }
-    if (pending !== null) {
-      render(pending);
-    }
+    if (pending !== null) render(pending);
   }
 
-  fetchCount(); // 立刻发请求，不等 DOM
+  load();
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init);
