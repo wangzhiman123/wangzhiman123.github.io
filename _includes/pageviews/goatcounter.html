@@ -1,38 +1,36 @@
 <!--
   ============================================================
-  阅读量统计 · 不蒜子（Busuanzi）直连版 v2
+  阅读量统计 · Vercount 版 v4
   ------------------------------------------------------------
   用途：覆盖 Chirpy 主题自带的 _includes/pageviews/goatcounter.html
 
-  v2 相比 v1 的核心改动：
-    不再加载 busuanzi.pure.mini.js，改为本脚本直接调用不蒜子
-    JSONP 接口。带来的好处——
-      · 外部请求由 2 次（脚本 + 接口）降为 1 次，更快
-      · 超时、重试、兜底、千分位全部本地可控
-      · 无论网络如何，9 秒后必定显示数字，绝不会一直转圈
+  为什么从「不蒜子」换成 Vercount：
+    不蒜子只按 Referer 统计当前页面，无法在首页列表查询每篇
+    文章的计数；Vercount 是不蒜子的开源兼容替代（自动同步不蒜子
+    数据），支持按 URL 参数查询任意页面，首页卡片和文章详情页
+    因此能共用同一套数据。
 
-  两个关键点（不要删）：
-    1) s.referrerPolicy = "no-referrer-when-downgrade"
-       现代浏览器默认跨域只发送域名、不带路径。不显式设置的话
-       不蒜子收到的 Referer 只有 https://你的域名/ ，会导致
-       全站所有文章共用同一个浏览量。
-    2) 数据未返回前不改动 #pageviews 的内容
-       Chirpy 原生的转圈图标 <i class="fa-spinner"> 保留作为加载态，
-       拿到数字后再整体替换。
+  工作方式：
+    1. 页面打开后立即 POST https://cn.vercount.one/api/v2/log
+       （记录一次访问，同时返回最新计数）
+    2. cn 节点失败自动切换 vercount.one 全球节点
+    3. 三层兜底：接口 6 秒超时 / 请求失败 / 9 秒硬兜底 ——
+       无论网络如何，最多 9 秒必定显示数字，绝不会一直转圈
+    4. 数据未返回前保留 Chirpy 原生转圈图标作为加载态
 
-  配套配置（_config.yml）：
+  配套配置（_config.yml，保持不变）：
       analytics.goatcounter.id: busuanzi      ← 非空占位值即可
       pageviews.provider:       goatcounter
-  同时需覆盖 _includes/analytics/goatcounter.html 为空文件，
-  否则 Chirpy 仍会在 <head> 加载境外脚本 gc.zgo.at/count.js。
+  同时保留 _includes/analytics/goatcounter.html 空文件，
+  屏蔽境外脚本 gc.zgo.at/count.js。
   ============================================================
 -->
 <script>
 (function () {
   "use strict";
 
-  var API = "https://busuanzi.ibruce.info/busuanzi";
-  var REQ_TIMEOUT = 6000;   // 接口超时：6 秒没回来就兜底
+  var HOSTS = ["https://cn.vercount.one", "https://vercount.one"];
+  var REQ_TIMEOUT = 6000;   // 单次请求超时
   var HARD_TIMEOUT = 9000;  // 硬兜底：到点必须有数字，绝不留转圈
   var POLL_MAX = 50;        // 查找 #pageviews 的最大轮询次数（约 10 秒）
 
@@ -66,49 +64,54 @@
     e.textContent = fmt(v);
   }
 
-  // 直接调用不蒜子 JSONP 接口（不等 DOM 就绪，越早发请求越快出数）
-  function fetchCount() {
-    var cbName = "BusuanziCallback_" + Math.floor(Math.random() * 1099511627776);
-    var s = document.createElement("script");
+  // 向指定节点 POST 一次访问记录
+  function post(host, onOk, onFail) {
     var timer = null;
-
-    function cleanup() {
-      if (timer) {
-        clearTimeout(timer);
-        timer = null;
-      }
-      try {
-        delete window[cbName];
-      } catch (e) {
-        window[cbName] = undefined;
-      }
-      if (s.parentNode) {
-        s.parentNode.removeChild(s);
-      }
+    var ctrl = null;
+    try {
+      ctrl = new AbortController();
+    } catch (e) {
+      ctrl = null; // 老浏览器不支持就放弃超时中断，靠硬兜底
     }
 
-    window[cbName] = function (data) {
-      cleanup();
-      var v = data && typeof data.page_pv === "number" ? data.page_pv : null;
-      render(v !== null ? v : 1);
-    };
+    fetch(host + "/api/v2/log", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: location.href }),
+      signal: ctrl ? ctrl.signal : undefined
+    })
+      .then(function (r) {
+        if (!r.ok) throw new Error("http " + r.status);
+        return r.json();
+      })
+      .then(function (d) {
+        if (timer) clearTimeout(timer);
+        var v = d && d.data && typeof d.data.page_pv === "number" ? d.data.page_pv : null;
+        onOk(v !== null ? v : 1);
+      })
+      .catch(function () {
+        if (timer) clearTimeout(timer);
+        onFail();
+      });
 
-    s.async = true;
-    // 关键：让浏览器把完整 URL 作为 Referer 发出去，
-    // 否则不蒜子只能看到域名，所有文章会共用一个浏览量
-    s.referrerPolicy = "no-referrer-when-downgrade";
-    s.onerror = function () {
-      cleanup();
-      render(1); // 脚本被拦截/加载失败时的兜底
-    };
-    s.src = API + "?jsonpCallback=" + cbName;
+    if (ctrl) {
+      timer = setTimeout(function () {
+        ctrl.abort();
+      }, REQ_TIMEOUT);
+    }
+  }
 
-    timer = setTimeout(function () {
-      cleanup();
-      render(1);
-    }, REQ_TIMEOUT);
-
-    (document.head || document.documentElement).appendChild(s);
+  // 依次尝试各节点，全部失败则兜底显示 1
+  function fetchCount() {
+    (function tryHost(i) {
+      if (i >= HOSTS.length) {
+        render(1);
+        return;
+      }
+      post(HOSTS[i], render, function () {
+        tryHost(i + 1);
+      });
+    })(0);
   }
 
   // 元素迟迟不出现时反复尝试
