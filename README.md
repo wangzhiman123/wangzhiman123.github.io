@@ -1,15 +1,14 @@
-# Chirpy Starter
+# Jekyll 博客主题 Chirpy 的官方启动模板
 
 [![Gem Version](https://img.shields.io/gem/v/jekyll-theme-chirpy)][gem]&nbsp;
 [![GitHub license](https://img.shields.io/github/license/cotes2020/chirpy-starter.svg?color=blue)][mit]
 
-A minimal, ready-to-use template for creating a blog with the [**Chirpy**][chirpy] Jekyll theme. Get up and running in minutes with all critical files pre-configured.
+一个简约、现成的模板，用于创建带有 [**Chirpy**][chirpy] Jekyll 主题的博客。几分钟内就能启动，所有关键文件都已预先配置好。
 
-## Why This Starter Exists
+## 前言
 
-When installing Chirpy through [RubyGems.org][gem], Jekyll can only read a subset of theme files (`_data`, `_layouts`, `_includes`, `_sass`, `assets`) and limited `_config.yml` options from the gem. As a result, users cannot enjoy the full out-of-the-box experience that Chirpy offers.
-
-To unlock all features, the following files must be present in your Jekyll site:
+通过 [RubyGems.org][gem]安装Cherpy时,Jekyll只能读取部分主题文件和有限的选项。因此，用户无法享受Cherpy开箱即用的完整体验。 (`_data`, `_layouts`, `_includes`, `_sass`, `assets`)  
+要解锁所有功能，必须在你的 Jekyll 网站上具备以下文件:
 
 ```shell
 .
@@ -19,19 +18,19 @@ To unlock all features, the following files must be present in your Jekyll site:
 └── index.html
 ```
 
-This starter bundles those files from the latest **Chirpy** release along with a [CD][CD] workflow, so you can start writing immediately.
+这个入门工具捆绑了最新**Chirpy** 发行的这些文件和[CD][CD] 工作流程，让你可以立即开始写作。
 
-## Usage
+## 使用
 
-Check out the [theme's docs](https://github.com/cotes2020/jekyll-theme-chirpy/wiki).
+点击查看使用说明（[官方演示教程](https://github.com/cotes2020/jekyll-theme-chirpy/wiki)）。
 
-## Contributing
+## 反馈
 
-This repository is automatically updated with new releases from the theme repository. If you encounter any issues or want to contribute to its improvement, please visit the [theme repository][chirpy] to provide feedback.
+该仓库会自动更新主题仓库的新版本。如果你遇到任何问题或想为改进做出贡献，请访问 [theme repository][chirpy] 提供反馈。
 
-## License
+## 致谢
 
-This work is published under [MIT][mit] License.
+本项目采用 [MIT][mit] 许可协议发布。
 
 [gem]: https://rubygems.org/gems/jekyll-theme-chirpy
 [chirpy]: https://github.com/cotes2020/jekyll-theme-chirpy/
