@@ -7,9 +7,12 @@
 # 配套文件：scripts/update_views.py（必须与本文件一起上传）
 #
 # 运行时机：
-#   1) 每天 03:00（北京时间）自动刷新一次
+#   1) 每 6 小时自动刷新一次（北京时间 03:00 / 09:00 / 15:00 / 21:00）
 #   2) 手动：Actions -> Update Post Views -> Run workflow
 #   3) 文章有增删改时自动刷新（push 到 _posts/ 目录）
+#
+# 提示：GitHub 的定时任务在高峰期可能有几分钟延迟，属正常现象。
+#       若嫌刷新太频繁，把下面的 cron 改回 '0 19 * * *'（每天 03:00 一次）即可。
 #
 # 注意：仓库 Settings -> Actions -> General -> Workflow permissions
 #       需为 Read and write，否则提交环节会 403
@@ -19,8 +22,12 @@ name: Update Post Views
 
 on:
   schedule:
-    # 每天 19:00 UTC = 次日 03:00 北京时间
-    - cron: '0 19 * * *'
+    # 每 6 小时一次。cron 用 UTC，北京时间 = UTC + 8：
+    #   01:00 UTC -> 09:00 北京
+    #   07:00 UTC -> 15:00 北京
+    #   13:00 UTC -> 21:00 北京
+    #   19:00 UTC -> 次日 03:00 北京
+    - cron: '0 1,7,13,19 * * *'
   workflow_dispatch:
   push:
     paths:
