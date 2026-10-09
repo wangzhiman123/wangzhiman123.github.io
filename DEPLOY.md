@@ -133,3 +133,35 @@ try { ... } catch (e) { /* 忽略 */ }
 | `_data/views.json` | 各篇文章的浏览量（页面实际读取这个） |
 | `_data/pv_state.json` | 浏览量查询账本，**不要手动改** |
 | `scripts/update_views.py` | GitHub 定时任务用的抓取脚本 |
+| `scripts/fix_post_links.py` | 把正文里的纯文本网址批量转成 Markdown 链接（见第七节） |
+| `scripts/remove_post_images.py` | 批量去掉文章封面图引用（默认预览，加 `--apply` 才写入） |
+
+## 七、批量把正文里的纯文本网址变成可点击链接
+
+有些文章里的网址是「裸」的（没写成链接），读者点不了。这个脚本可以一次性处理：
+
+```bash
+python scripts/fix_post_links.py                 # 预览：列出每一处改动，不写文件
+python scripts/fix_post_links.py --apply         # 确认后执行（自动备份到仓库外的 backups/）
+python scripts/fix_post_links.py --dirs _posts _tabs   # 连同 _tabs 页面一起处理
+```
+
+**它会改什么**：把 `网址：https://example.com` 变成 `网址：[https://example.com](https://example.com)`。
+链接文字就是原网址本身，不做任何截断或改写。
+
+**它绝不会碰什么**：图片外链、已有的 Markdown/HTML 链接、`<https://…>` 自动链接、
+代码块与行内代码、以及 front matter 字段值。
+
+**几个特意注意的点**：
+
+- 网址后面紧跟中文时（如 `（宝塔面板官网：www.bt.cn）`），只会取到 `www.bt.cn`，
+  不会把后面的中文或标点吞进链接。
+- `https://www.xxx` 里的 `www.` 不会被当成第二个网址重复处理。
+- 源码里带 Markdown 转义符的网址（如 `art\_5078\_331032.html`、`...?a=1\&b=2`）会**跳过并单独列出**。
+  因为转义符会被渲染器还原，直接套链接可能导致打开后地址不对，需要人工确认后再处理。
+- 重复运行**不会**产生重复嵌套（已转换的网址会被识别为「已有链接」而跳过）。
+- 每次 `--apply` 前都会把 `_posts`/`_tabs` 完整备份到**仓库外**的 `backups/posts-links-<时间戳>/`，
+  不会随部署上传；也可以直接用 Git 回滚。
+
+运行结束后会生成一份报告（默认写到仓库外的 `link-fix-report.md`），
+内容包括：被修改的文件、每处改动的前后对比、被跳过的内容及跳过原因，便于抽查复核。
