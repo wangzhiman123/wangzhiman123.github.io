@@ -162,6 +162,12 @@ layout: default
                   <span>{{ site.data.locales[lang].post.pin_prompt }}</span>
                 </div>
               {% endif %}
+
+              <!-- 浏览量（数据来自 Vercount，与文章详情页共用同一套数据） -->
+              <div class="pv-card ms-1" data-pv-path="{{ post.url | relative_url }}">
+                <i class="far fa-eye fa-fw me-1"></i>
+                <span class="pv-num">--</span>
+              </div>
             </div>
             <!-- .post-meta -->
           </div>
@@ -176,3 +182,83 @@ layout: default
 {% if paginator.total_pages > 1 %}
   {% include post-paginator.html %}
 {% endif %}
+
+<!-- 首页卡片浏览量：批量向 Vercount 查询本页所有文章的计数（只读，不增加计数） -->
+<script>
+(function () {
+  "use strict";
+
+  var HOSTS = ["https://cn.vercount.one", "https://vercount.one"];
+  var TIMEOUT = 8000;
+
+  function fmt(n) {
+    try {
+      return Number(n).toLocaleString("en-US");
+    } catch (e) {
+      return String(n);
+    }
+  }
+
+  // 依次尝试各节点查询一篇文章的计数
+  function query(url, onOk, onFail) {
+    (function tryHost(i) {
+      if (i >= HOSTS.length) {
+        onFail();
+        return;
+      }
+      var done = false;
+      var ctrl = null;
+      try {
+        ctrl = new AbortController();
+      } catch (e) {
+        ctrl = null;
+      }
+
+      var timer = setTimeout(function () {
+        if (ctrl) ctrl.abort();
+      }, TIMEOUT);
+
+      fetch(HOSTS[i] + "/api/v1/log?url=" + encodeURIComponent(url) + "&_=" + Date.now(), {
+        signal: ctrl ? ctrl.signal : undefined
+      })
+        .then(function (r) {
+          if (!r.ok) throw new Error("http " + r.status);
+          return r.json();
+        })
+        .then(function (d) {
+          clearTimeout(timer);
+          if (done) return;
+          done = true;
+          onOk(d && typeof d.page_pv === "number" ? d.page_pv : null);
+        })
+        .catch(function () {
+          clearTimeout(timer);
+          if (done) return;
+          done = true;
+          tryHost(i + 1);
+        });
+    })(0);
+  }
+
+  function init() {
+    var slots = document.querySelectorAll(".pv-card[data-pv-path]");
+    if (!slots.length) return;
+
+    Array.prototype.forEach.call(slots, function (el) {
+      var num = el.querySelector(".pv-num");
+      var url = location.origin + el.getAttribute("data-pv-path");
+      query(url, function (v) {
+        if (num) num.textContent = v === null ? "--" : fmt(v);
+      }, function () {
+        if (num) num.textContent = "--";
+      });
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
+</script>
