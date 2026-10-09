@@ -46,9 +46,21 @@
 
     {{ site.data.locales[include.lang].meta | replace: ':PLATFORM', _platform | replace: ':THEME', _theme }}
   </p>
-  <div class="footer-content">
+  <div
+    class="footer-content"
+    style="
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      column-gap: 0.5rem;
+      row-gap: 0.15rem;
+      margin-top: 0.25rem;
+      text-align: center;
+    "
+  >
     <a href="https://beian.miit.gov.cn/" rel="noreferrer" target="_blank">赣ICP备2025074120号-2</a>
-    <span>
+    <span style="display: inline-flex; align-items: center; column-gap: 0.25rem;">
       <img src="/assets/beian.png" width="20" height="20" alt="公安备案图标">
       <a href="https://beian.mps.gov.cn/#/query/webSearch?code=36010802001277" rel="noreferrer" target="_blank">赣公网安备36010802001277号</a>
     </span>
