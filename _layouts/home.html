@@ -58,11 +58,30 @@ layout: default
   {% assign local_vids = post.content | split: "<video" | size | minus: 1 %}
   {% assign total_vids = total_vids | plus: vids | plus: local_vids %}
 {% endfor %}
-<div class="text-center text-muted mt-3 mb-0">
-  <i class="fas fa-book-open"></i> 本站已发布 <strong>{{ site.posts | size }}</strong> 篇文章
-  <i class="fas fa-pen-nib" style="margin-left: 1rem;"></i> 累计创作 <strong>{{ total_chars | divided_by: 10000.0 | round: 1 }}</strong> 万字
-  <i class="fas fa-images" style="margin-left: 1rem;"></i> 文章配图 <strong>{{ total_imgs }}</strong> 张
-  <i class="fas fa-film" style="margin-left: 1rem;"></i> 视频节目 <strong>{{ total_vids }}</strong> 个
+<div
+  class="text-muted mt-3 mb-0"
+  style="
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    column-gap: 1rem;
+    row-gap: 0.25rem;
+    text-align: center;
+  "
+>
+  <span style="display: inline-block; white-space: nowrap;">
+    <i class="fas fa-book-open"></i> 本站已发布 <strong>{{ site.posts | size }}</strong> 篇文章
+  </span>
+  <span style="display: inline-block; white-space: nowrap;">
+    <i class="fas fa-pen-nib"></i> 累计创作 <strong>{{ total_chars | divided_by: 10000.0 | round: 1 }}</strong> 万字
+  </span>
+  <span style="display: inline-block; white-space: nowrap;">
+    <i class="fas fa-images"></i> 文章配图 <strong>{{ total_imgs }}</strong> 张
+  </span>
+  <span style="display: inline-block; white-space: nowrap;">
+    <i class="fas fa-film"></i> 视频节目 <strong>{{ total_vids }}</strong> 个
+  </span>
 </div>
 
 <div id="post-list" class="flex-grow-1 px-xl-1">
