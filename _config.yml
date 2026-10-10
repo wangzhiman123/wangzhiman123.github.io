@@ -120,7 +120,7 @@ actions:
 
 comments:
   # Global switch for the post-comment system. Keeping it empty means disabled.
-  provider: giscus
+  provider: artalk
   # The provider options are as follows:
   disqus:
     shortname: # fill with the Disqus shortname. › https://help.disqus.com/en/articles/1717111-what-s-a-shortname
@@ -139,6 +139,20 @@ comments:
     input_position: bottom
     lang: zh-CN
     reactions_enabled: 1
+  # Artalk options › https://artalk.js.org/guide/frontend/config.html
+  # 自托管评论系统（当前启用）。需先自行部署 Artalk 服务端，部署与配置见 DEPLOY.md 第十节。
+  artalk:
+    # ⚠️ 必填：Artalk 服务端（后端 API）地址。要求公网可访问、使用 https、结尾不带 "/"。
+    #    留空 = 评论功能整体关闭：页面不会渲染评论容器，也不会报错（站点照常构建）。
+    #    例：https://artalk.2019527.xyz
+    server:
+    # 站点名称，用于 Artalk 多站点隔离（对应后台「站点管理」里的名称）。
+    site: 王志满律师
+    # 前端静态资源地址（可选）：留空时自动取「server + /dist」。
+    #    若想改用公共 CDN，可改为：https://cdn.jsdelivr.net/npm/artalk@2/dist
+    assets_url:
+    # 界面语言：auto（跟随浏览器）/ zh-CN / en
+    locale: auto
 
 # Self-hosted static assets, optional › https://github.com/cotes2020/chirpy-static-assets
 assets:
@@ -231,6 +245,8 @@ exclude:
   - deploy.ps1
   - deploy.bat
   - DEPLOY.md
+  # 阿里云 ECS 自主部署工具（见 deploy/README.md，仅服务器使用）
+  - deploy
 
 jekyll-archives:
   enabled: [categories, tags]

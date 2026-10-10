@@ -1,0 +1,95 @@
+{%- comment -%}
+  Artalk 评论组件（自托管）—— 对应 _config.yml 的 comments.provider: artalk
+  官网与文档：https://artalk.js.org/
+
+  加载方式：主题 _includes/comment.html 的「评论切换器」会按
+  `comments/{{ site.comments.provider }}.html` 动态 include 本文件，
+  因此无需改动任何主题文件。
+
+  设计约定（与同目录下的 giscus / utterances / disqus 保持一致）：
+  · 未启用不渲染：仅当 comments.artalk.server 有值时输出内容；
+    未填写时整段（含容器与脚本）都不输出 —— 不残留空容器、不报错。
+  · 资源动态注入：CSS / JS 用 JS 动态写入；不使用静态 <script src>，
+    避免构建期 html-proofer 去校验「尚未部署」的静态资源而误判失败。
+  · 跟随主题明暗：读取 Theme.isDark，并监听主题切换事件（Theme.eventId），
+    机制与主题内置的 giscus / utterances 组件完全一致。
+  · 懒加载：滚动到评论区附近再请求资源，策略与主题 disqus 组件一致。
+
+  ⚠️ 内联脚本禁用 `//` 行注释：_config.yml 开启了 compress_html，正式构建会
+     压掉全部换行，`//` 会把后续代码一并注释掉。一律用 `/* */`，
+     语句以 `;` 结尾，分支加花括号（详见 DEPLOY.md 第五节）。
+{%- endcomment -%}
+
+{%- assign _artalk_server = site.comments.artalk.server | default: '' | strip -%}
+{%- if _artalk_server != '' -%}
+  {%- assign _artalk_assets = site.comments.artalk.assets_url | default: '' | strip -%}
+  {%- if _artalk_assets == '' -%}
+    {%- assign _artalk_assets = _artalk_server | append: '/dist' -%}
+  {%- endif -%}
+<!-- https://artalk.js.org/ -->
+<script>
+  (function () {
+    const server = '{{ _artalk_server }}';
+    const assetsURL = '{{ _artalk_assets }}';
+    const locale = {{ site.comments.artalk.locale | default: 'auto' | jsonify }};
+
+    /* 评论区容器：插到 <footer> 之前，与主题其它评论组件的位置保持一致 */
+    const $container = document.createElement('div');
+    $container.id = 'artalk-comments';
+    $container.className = 'text-center text-muted small py-3';
+    $container.textContent = '评论加载中…';
+    document.querySelector('footer').insertAdjacentElement('beforebegin', $container);
+
+    let artalk;
+
+    function initArtalk() {
+      if (!window.Artalk) {
+        return;
+      }
+      $container.textContent = '';
+      artalk = Artalk.init({
+        el: '#artalk-comments',
+        server: server,
+        site: {{ site.comments.artalk.site | default: site.title | jsonify }},
+        pageKey: {{ page.url | jsonify }},
+        pageTitle: {{ page.title | jsonify }},
+        locale: locale,
+        darkMode: Theme.isDark
+      });
+    }
+
+    function loadArtalk() {
+      const $style = document.createElement('link');
+      $style.rel = 'stylesheet';
+      $style.href = assetsURL + '/Artalk.css';
+      document.head.appendChild($style);
+
+      const $script = document.createElement('script');
+      $script.src = assetsURL + '/Artalk.js';
+      $script.async = true;
+      $script.onload = initArtalk;
+      document.head.appendChild($script);
+    }
+
+    /* 跟随主题的明暗切换（与主题内置评论组件同一套机制） */
+    addEventListener('message', (event) => {
+      if (event.source !== window || !event.data || event.data.id !== Theme.eventId || !artalk) {
+        return;
+      }
+      artalk.setDarkMode(Theme.isDark);
+    });
+
+    /* 懒加载：滚动到评论区附近才开始请求资源 */
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadArtalk();
+          observer.disconnect();
+        }
+      },
+      { threshold: [0] }
+    );
+    observer.observe($container);
+  })();
+</script>
+{%- endif -%}

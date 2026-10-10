@@ -1,0 +1,24 @@
+﻿# ============================================================
+#  config.local.ps1 —— 本机（Windows）一键上传用的配置
+#  用法：把本文件复制成 config.local.ps1，改掉下面 3 项
+#
+#     Copy-Item config.local.ps1.example config.local.ps1
+#     notepad config.local.ps1
+#
+#  ⚠️ config.local.ps1 含服务器地址，不要提交到公开仓库
+# ============================================================
+
+# 服务器公网 IP（阿里云控制台能看到）
+$ServerIp = "1.2.3.4"
+
+# SSH 登录用户名（阿里云 ECS 默认是 root）
+$SshUser  = "root"
+
+# 私钥路径；如果用密码登录，改成空字符串 ""（运行时会提示输入密码）
+$SshKey   = "$env:USERPROFILE\.ssh\id_ed25519"
+
+# 服务器上的源码目录（与 config.env 里的 SRC_DIR 保持一致）
+$SrcDir   = "/opt/site/src"
+
+# 本机仓库根目录（默认就是本文件的上一级，一般不用改）
+$RepoDir  = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path

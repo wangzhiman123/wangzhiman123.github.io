@@ -26,7 +26,16 @@
      -SkipWatch      推送后不等待构建结果
      -Status         只看最近几次部署的状态，不做任何改动
      -SetToken       重新设置 / 更换 GitHub 令牌
-     -Yes            删除文件较多时不再询问（谨慎使用）
+     -Yes            删除较多「非文章」文件时不再询问（谨慎使用）
+     -ResetBaseline  重新记录本地基准（确认本地副本已是最新时才用）
+     -AllowStale     明知线上还有本地没有的更新，仍要覆盖（谨慎，可能丢文章）
+
+  两道安全闸（默认开启，不用做任何设置）：
+     1. 线上 SHA 乐观锁：部署前先比对「本地基准提交」和线上最新提交。
+        只要线上存在本地副本不知道的改动（例如在 GitHub 网页上发过文章），
+        脚本会直接中止并列出冲突文件，绝不用旧副本覆盖线上。
+     2. 删除保护：本次只要涉及任意 .md 文件的删除，一定会列出来要求确认，
+        -Yes 也绕不过；非 .md 文件删除达到 5 个以上时同样会询问。
 
   首次使用需要在 GitHub 生成一个「访问令牌」填一次，之后脚本自动记住。
 ================================================================================
@@ -40,7 +49,9 @@ param(
     [switch] $SkipWatch,
     [switch] $Status,
     [switch] $SetToken,
-    [switch] $Yes
+    [switch] $Yes,
+    [switch] $ResetBaseline,
+    [switch] $AllowStale
 )
 
 $ErrorActionPreference = 'Stop'
@@ -480,6 +491,63 @@ function Get-RemoteSnapshot {
     }
 }
 
+# ----------------------------------------------------------------------------
+# 线上 SHA 乐观锁相关：本地基准 = 「这份本地副本是从哪个提交来的」
+# 基准文件只存在本机（不进仓库、不上传），用来判断本地副本是否已经落后。
+# ----------------------------------------------------------------------------
+function Get-BaselinePath {
+    $safe = $Repo -replace '[^A-Za-z0-9._-]', '-'
+    return Join-Path $TokenDir "baseline-$safe.json"
+}
+
+function Read-Baseline {
+    $f = Get-BaselinePath
+    if (-not (Test-Path -LiteralPath $f)) { return $null }
+    try {
+        $j = Get-Content -LiteralPath $f -Raw -Encoding UTF8 | ConvertFrom-Json
+        if ($null -ne $j -and $j.sha) { return $j }
+    } catch { }
+    return $null
+}
+
+function Write-Baseline {
+    param([Parameter(Mandatory)] [string] $Sha)
+    $f = Get-BaselinePath
+    if (-not (Test-Path -LiteralPath $TokenDir)) {
+        New-Item -ItemType Directory -Path $TokenDir -Force | Out-Null
+    }
+    $obj = [PSCustomObject]@{
+        repo    = $Repo
+        branch  = $Branch
+        sha     = $Sha
+        updated = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
+    }
+    ($obj | ConvertTo-Json) | Set-Content -LiteralPath $f -Encoding UTF8
+}
+
+# 比对两个提交之间有哪些文件被改动过（用于判断「线上有多少本地不知道的改动」）
+function Get-Divergence {
+    param([string] $BaseSha, [string] $HeadSha)
+
+    $res = @{ Ok = $false; AheadBy = 0; Commits = 0; Files = @(); Reason = '' }
+    try {
+        $cmp = Invoke-GitHub -Method GET -Path "/repos/$Repo/compare/$BaseSha...$HeadSha"
+    } catch {
+        $res.Reason = Get-ApiError $_
+        return $res
+    }
+    $res.Ok = $true
+    try { $res.AheadBy = [int]$cmp.ahead_by } catch { $res.AheadBy = 0 }
+    try { $res.Commits = @($cmp.commits).Count } catch { $res.Commits = 0 }
+
+    $names = New-Object System.Collections.ArrayList
+    foreach ($f in @($cmp.files)) {
+        if ($f.filename) { [void]$names.Add([string]$f.filename) }
+    }
+    $res.Files = $names.ToArray()
+    return $res
+}
+
 function Show-Status {
     Head '最近几次部署情况'
     try {
@@ -675,6 +743,92 @@ foreach ($rel in @($remote.Blobs.Keys | Sort-Object)) {
     }
 }
 
+# ---------- 2.5 线上 SHA 乐观锁：本地副本落后就中止 ----------
+# 这两个文件由定时任务自动生成，本地每次部署也会重新生成，
+# 所以「线上比本地新」不算落后，不触发中止。
+$AutoGenFiles = @('_data/views.json', '_data/pv_state.json')
+
+$baseline    = Read-Baseline
+$lockBlocked = $false
+$lockDel     = @()
+$lockChg     = @()
+
+if ($ResetBaseline) {
+    Write-Baseline $remote.CommitSha
+    Ok "已重新记录本地基准：$($remote.CommitSha.Substring(0,7))（线上最新提交）"
+    Warn '仅在确认这份本地副本确实是最新的之后才该这么做。'
+    $baseline = Read-Baseline
+}
+
+if ($null -eq $baseline) {
+    Warn '本机还没有「基准提交」记录，无法证明这份副本是最新的。'
+    if ($deleted.Count -gt 0) {
+        $lockBlocked = $true
+    } else {
+        Say '  本次不会删除任何线上文件，先继续；部署成功后会自动记录基准。'
+    }
+} elseif ($baseline.sha -ne $remote.CommitSha) {
+    $div = Get-Divergence -BaseSha $baseline.sha -HeadSha $remote.CommitSha
+    if (-not $div.Ok) {
+        $lockBlocked = $true
+        Warn "本地基准 $($baseline.sha.Substring(0,7)) 已无法与线上比对：$($div.Reason)"
+    } else {
+        $divSet = @{}
+        foreach ($f in $div.Files) { $divSet[$f] = $true }
+        $lockDel = @($deleted | Where-Object {
+            $divSet.ContainsKey($_) -and ($AutoGenFiles -notcontains $_)
+        })
+        $lockChg = @($changed | Where-Object {
+            $divSet.ContainsKey($_.Path) -and ($AutoGenFiles -notcontains $_.Path)
+        })
+        if ($lockDel.Count -gt 0 -or $lockChg.Count -gt 0) {
+            $lockBlocked = $true
+        } else {
+            Say "  线上有 $($div.Commits) 个新提交，但都只涉及自动生成的浏览量数据，基准已自动跟进。"
+            Write-Baseline $remote.CommitSha
+        }
+    }
+} else {
+    Say "  本地基准 $($baseline.sha.Substring(0,7)) 与线上最新一致，可以安全部署。"
+}
+
+if ($lockBlocked) {
+    if ($AllowStale) {
+        Write-Host ''
+        Warn '已按 -AllowStale 跳过乐观锁：本次会用本地副本覆盖线上内容。'
+    } else {
+        Write-Host ''
+        Fail '已中止：本地副本落后于线上，继续部署会覆盖或删除线上内容。'
+        Write-Host ''
+        if ($lockChg.Count -gt 0) {
+            Say '  线上改过、本次会被本地旧版本覆盖的文件：'
+            foreach ($c in $lockChg) { Write-Host "      $($c.Path)" -ForegroundColor Yellow }
+        }
+        if ($lockDel.Count -gt 0) {
+            Say '  线上新增或改过、本次会被删除的文件：'
+            foreach ($d in $lockDel) { Write-Host "      $d" -ForegroundColor Red }
+        }
+        if ($lockChg.Count -eq 0 -and $lockDel.Count -eq 0) {
+            Say '  本机缺少有效的「基准提交」记录，无法证明这份副本是最新的；'
+            Say '  而本次又要删除线上文件，风险太高，先停下来。'
+        }
+        if ($null -ne $baseline) {
+            Say "  本地基准：$($baseline.sha.Substring(0,7))（记录于 $($baseline.updated)）"
+        }
+        Say "  线上最新：$($remote.CommitSha.Substring(0,7))"
+        Write-Host ''
+        Say '  正确做法：'
+        Say '    ① 到 GitHub 仓库页 → Code → Download ZIP，重新下载线上最新副本并解压；'
+        Say '       （或者在这台电脑上用 git pull 拉取最新）'
+        Say '    ② 把你要改的内容放进这份最新副本，然后运行：  .\deploy.ps1 -ResetBaseline'
+        Say '    ③ 再运行：  .\deploy.ps1'
+        Write-Host ''
+        Say '  如果你确定这份本地副本才是最新的、就是要覆盖线上：'
+        Say '       .\deploy.ps1 -AllowStale'
+        Die '已中止，线上内容保持原样，没有被破坏。'
+    }
+}
+
 $addedCount   = @($changed | Where-Object { $_.Kind -eq '新增' }).Count
 $changedCount = @($changed | Where-Object { $_.Kind -eq '修改' }).Count
 
@@ -705,12 +859,47 @@ if ($DryRun) {
     exit 0
 }
 
-# ---------- 3. 删除过多时二次确认 ----------
-if ($deleted.Count -ge 5 -and -not $Yes) {
+# ---------- 3. 删除确认 ----------
+function Confirm-Deletions {
+    param(
+        [object[]] $Deleted,
+        [switch] $Yes
+    )
+    # 规则一：只要涉及任意 .md 文件（文章 / 页面）的删除，一律确认，-Yes 也绕不过。
+    # 规则二：删除非 .md 文件达到 5 个以上时确认（-Yes 可跳过）。
+    $mdDeletes = @($Deleted | Where-Object { $_ -like '*.md' })
+
+    if ($mdDeletes.Count -gt 0) {
+        Write-Host ''
+        Warn "本次会从线上删除 $($mdDeletes.Count) 个 .md 文件（文章或页面）："
+        foreach ($m in $mdDeletes) { Write-Host "      - $m" -ForegroundColor Red }
+        Write-Host ''
+        Say '  常见误判：这些文章其实是在 GitHub 网页上删掉的，而你手里这份'
+        Say '  本地副本比线上旧，脚本就以为「线上有、本地没有」。'
+        Say '  请先到 GitHub 确认这些文章确实是不需要的。'
+        if ($Yes) { Warn '你用了 -Yes，但删除 .md 文件仍然必须确认。' }
+        $ans = Read-Host '  确认无误请输入 DELETE 并回车继续，其它任意输入取消'
+        if ($ans -ne 'DELETE') {
+            Say '  如果这些文件在线上是最新的，请先同步线上副本，再运行：  .\deploy.ps1 -ResetBaseline'
+            return $false
+        }
+        return $true
+    }
+
+    if ($Deleted.Count -ge 5 -and -not $Yes) {
+        Write-Host ''
+        Warn "这次会从线上删除 $($Deleted.Count) 个文件，数量偏多。"
+        $ans = Read-Host '  确认要删除这些文件吗？输入 y 继续，其它任意键取消'
+        if ($ans -notmatch '^[yY]') { return $false }
+    }
+    return $true
+}
+
+if (-not (Confirm-Deletions -Deleted $deleted -Yes:$Yes)) {
     Write-Host ''
-    Warn "这次会从线上删除 $($deleted.Count) 个文件，数量偏多。"
-    $ans = Read-Host '  确认要删除这些文件吗？输入 y 继续，其它任意键取消'
-    if ($ans -notmatch '^[yY]') { Write-Host ''; Say '已取消，没有做任何改动。'; exit 0 }
+    Say '已取消，没有做任何改动。'
+    Write-Host ''
+    exit 0
 }
 
 # ---------- 4. 组装并推送提交 ----------
@@ -771,6 +960,14 @@ while ($attempts -lt 3 -and -not $newCommitSha) {
 }
 
 Ok "提交成功：$($newCommitSha.Substring(0,7))  说明：$commitMsg"
+
+# 记录本次提交为新的本地基准（下次部署时用它判断本地副本是否落后）
+try {
+    Write-Baseline $newCommitSha
+    Say "  已记录本地基准：$($newCommitSha.Substring(0,7))"
+} catch {
+    Warn "记录本地基准失败，下次部署会提示基准缺失：$_"
+}
 
 # ---------- 5. 等待构建 ----------
 if ($SkipWatch) {

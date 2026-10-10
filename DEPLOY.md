@@ -67,9 +67,38 @@
 .\deploy.ps1 -SkipWatch       # 推送后不等待构建结果（马上就能关窗口）
 .\deploy.ps1 -Status          # 查看最近几次部署的状态
 .\deploy.ps1 -SetToken        # 换一个令牌（比如旧的过期了）
+.\deploy.ps1 -Yes             # 删除较多「非文章」文件时不再询问（谨慎）
+.\deploy.ps1 -ResetBaseline   # 重新记录本地基准（确认本地副本已是最新时才用）
+.\deploy.ps1 -AllowStale      # 明知线上还有本地没有的更新，仍要覆盖（谨慎，可能丢文章）
 ```
 
 `-DryRun` 特别有用：**改完东西先预览一遍**，确认文件列表没问题再正式部署。
+
+### 两道安全闸（默认开启，不用做任何设置）
+
+**① 线上 SHA 乐观锁 —— 防止旧副本覆盖线上**
+
+脚本会在本机记一个「基准提交」（存在 `C:\Users\<你>\.wangzhiman-deploy\baseline-*.json`，不进仓库、不上传），
+代表「这份本地副本是从哪个提交来的」。每次部署前先比对：
+
+| 比对结果 | 脚本行为 |
+| --- | --- |
+| 本地基准 = 线上最新 | 正常部署 |
+| 线上只有浏览量数据的自动更新 | 正常部署，基准自动跟进（定时任务每 6 小时改一次 `_data/views.json`，不算落后） |
+| 线上有本地副本不知道的改动 | **直接中止**，列出会被覆盖 / 删除的文件，线上保持原样 |
+| 本机没有基准记录，且本次要删除文件 | **中止**，先记录基准再重试 |
+
+中止时按提示操作即可：重新下载线上最新副本 → `.\deploy.ps1 -ResetBaseline` → `.\deploy.ps1`。
+只有在你确认本地才是最新的时候，才用 `.\deploy.ps1 -AllowStale` 强行覆盖。
+
+**② 删除保护 —— 防止文章被悄悄删掉**
+
+只要本次涉及**任意 `.md` 文件**（文章 / 页面）的删除，脚本一定会把文件名列出来，
+要求你手动输入 `DELETE` 才继续，`-Yes` 也绕不过。
+（非 `.md` 文件仍是删除 5 个以上才询问，可用 `-Yes` 跳过。）
+
+> 为什么这么严：本次事故（post-047 被误删）就是因为手里是一份旧副本，
+> 脚本误以为「线上有、本地没有 → 该删」。现在这两道闸能挡住同类问题。
 
 ---
 
@@ -90,7 +119,20 @@
 说明推送到火山引擎服务器那一步被跳过了，`2019527.xyz` 不会更新（只有 GitHub Pages 更新）。去仓库 `Settings → Secrets and variables → Actions → Variables` 里把 `DEPLOY_TO_SERVER` 设为 `true`。
 
 **Q：会把我线上仓库删掉东西吗？**
-不会误删。脚本只删除「你本地确实已经删掉、但线上还存在」的文件；而且一次要删除 5 个以上时，会**先停下来让你确认**。子模块目录 `assets/lib` 也已被明确排除，绝不会被当作垃圾清理。
+不会误删。脚本只删除「你本地确实已经删掉、但线上还存在」的文件，并且有三重保护：
+① 涉及**任意 `.md` 文件**的删除，一定会列出来让你输入 `DELETE` 确认（`-Yes` 绕不过）；
+② 非 `.md` 文件一次删除 5 个以上时也会先问你；
+③ 若检测到线上有本地副本不知道的改动，会**直接中止**（见第三节「线上 SHA 乐观锁」）。
+子模块目录 `assets/lib` 也已被明确排除，绝不会被当作垃圾清理。
+
+**Q：提示「本机还没有基准提交记录」？**
+说明这是升级脚本后的第一次部署（或记录文件被删了）。若本次不删除任何文件，
+脚本会照常部署，并在成功后自动记录基准；若本次要删文件，则会先中止，
+让你确认本地副本是最新的之后运行 `.\deploy.ps1 -ResetBaseline` 再部署。
+
+**Q：提示「已中止：本地副本落后于线上」？**
+见第三节「线上 SHA 乐观锁」。最常见的原因是你在 GitHub 网页端发过 / 改过文章，
+而手里这份本地副本是那之前的。重新下载线上最新副本后再部署即可。
 
 **Q：浏览量显示的数字是怎么来的？**
 卡片和文章页共用同一份 `_data/views.json`，所以两处**永远一致**。这个文件由脚本在部署前刷新，GitHub 上还有一个每 6 小时跑一次的定时任务在更新它（北京时间 03:00 / 09:00 / 15:00 / 21:00）。注意它不是秒级实时的——这是静态博客的固有限制，你此刻的访问要等下一次刷新才会显示出来。
@@ -123,6 +165,10 @@ try { ... } catch (e) { /* 忽略 */ }
 3. `if` / `for` 等分支一律加花括号 `{ }`
 
 > 顺带一提：Chirpy 主题自带的内联脚本也是按这个规则写成单行的，原因就在这。
+>
+> 同样规则也适用于**其它含内联 JS 的自定义组件**，目前有：
+> `_includes/pageviews/goatcounter.html`、`_includes/hot-posts.html`、
+> `_includes/comments/artalk.html`（见第十节）。改这些文件时一律照上面的三条规则写。
 
 ## 六、文件说明
 
@@ -140,6 +186,8 @@ try { ... } catch (e) { /* 忽略 */ }
 | `_includes/hot-posts.html` | 侧栏「热门文章」板块组件（首页 + 文章页共用，见第九节） |
 | `_layouts/home.html` | 首页布局：把 `hot-posts` 挂到 `panel_includes` |
 | `_layouts/post.html` | 文章页布局：主题布局的覆盖版，仅 `panel_includes` 增加 `hot-posts`（见第九节） |
+| `_includes/comments/artalk.html` | 文章页评论组件（Artalk，自托管；见第十节） |
+| `_config.yml` | 站点配置：`comments.provider: artalk` 及各评论 provider 的参数（见第十节） |
 | `tools/preflight.py` | 部署前一键自检：环境准备 → 构建 → 运行 → 结果校验（见第八节） |
 | `tools/preflight.bat` | 双击即可跑自检（Windows） |
 | `tools/preflight.sh` | 同上，macOS / Linux / CI 用 |
@@ -276,3 +324,101 @@ python tools/preflight.py --report out.md  # 顺便导出报告
 
 **升级主题后**：对照新版主题的 `_layouts/post.html` 重新同步本文件，
 只保留 `panel_includes` 那一处差异即可。
+
+---
+
+## 十、评论系统：Artalk（自托管）
+
+文章页底部的评论区由 **Artalk** 提供（`_config.yml` 里 `comments.provider: artalk`）。
+它与之前的 giscus 最大的区别是：**评论界面和数据都跑在你自己的服务器上**，不依赖 GitHub。
+
+### 涉及文件（共 2 个）
+
+| 文件 | 作用 |
+|---|---|
+| `_includes/comments/artalk.html` | 评论组件本体：注入前端资源、初始化、跟随主题、懒加载 |
+| `_config.yml` 的 `comments.artalk` | 服务端地址、站点名等参数 |
+
+> 组件是「即插即用」的：主题自带的 `_includes/comment.html` 是一个通用切换器，
+> 会按 `comments/{{ provider }}.html` 去加载对应文件。所以只要
+> `provider: artalk` 且存在 `_includes/comments/artalk.html`，就自动生效，**无需改动任何主题文件**。
+
+### 1. 服务端地址要求（`comments.artalk.server`）
+
+| 要求 | 说明 |
+|---|---|
+| 公网可访问 | 评论由访客浏览器**直接**向该地址发请求，必须访客也能打开（不能是内网 / localhost） |
+| 使用 `https` | 站点是 https，混用 `http` 会被浏览器拦截；同时 html-proofer 会判「不是 HTTPS 链接」使构建失败 |
+| 结尾**不要**带 `/` | 组件内部会自动拼 `/dist/Artalk.js`，多一个 `/` 会变成 `//dist` |
+| 跨域（CORS） | 若 Artalk 与站点不同域，需把站点域名加入 Artalk `conf.yml` 的 `trusted_domains` |
+
+示例：`server: https://artalk.2019527.xyz`
+
+> 想改用公共 CDN 提供前端资源（而不是由你自己的服务端提供），可另填
+> `comments.artalk.assets_url: https://cdn.jsdelivr.net/npm/artalk@2/dist`。
+
+### 2. 需填写的配置项（`_config.yml`）
+
+```yaml
+comments:
+  provider: artalk        # 当前启用的评论系统
+  artalk:
+    server:               # 必填：Artalk 服务端地址，留空则评论区整体不显示
+    site: 王志满律师       # 站点名，对应 Artalk 后台「站点管理」里的名称
+    assets_url:           # 可选：前端资源地址，留空 = server + /dist
+    locale: auto          # 界面语言：auto / zh-CN / en
+```
+
+**必填只有 `server` 一项。** 留空时评论区**不会渲染**（页面干净、无报错）；填上并部署后刷新即可看到评论框。
+
+### 3. 本地与生产环境的差异
+
+本地预览（`bundle exec jekyll s`，地址 `http://127.0.0.1:4000`）与线上（`https://2019527.xyz`）
+用的是**同一份 `_config.yml`**，所以 `server` 的取值会互相影响：
+
+| 环境 | 建议 | 原因 |
+|---|---|---|
+| 本地开发 | `server: http://localhost:23366`（本机已起 Artalk） | 本地不跑 html-proofer，`http` 无妨；`compress_html` 在 development 环境也不生效 |
+| 生产 | `server: https://你的域名`（必须 https） | 会同时被访客浏览器与 html-proofer 校验 |
+
+若要频繁在本地 / 生产之间切换又不想改文件，可用覆盖文件启动：
+
+```bash
+# 本地：以 _config.yml 为底，再用 _config.dev.yml 覆盖 artalk.server
+bundle exec jekyll s --config _config.yml,_config.dev.yml
+```
+
+（`_config.dev.yml` 仅本地使用、无需上传，内容一行即可：`comments: { artalk: { server: http://localhost:23366 } }`。）
+
+### 4. 启用后的验证步骤
+
+1. 填好 `comments.artalk.server`（必要时再填 `site`）。
+2. 本地双击 `tools/preflight.bat` 跑自检，确认 `PASS`。
+3. 双击 `deploy.bat` 部署，等构建变绿。
+4. 打开任意一篇文章，**滚到页面底部**，应出现评论框（懒加载，滚到附近才请求）。
+5. 按 `F12` 开控制台 → Network，应能看到对 `server` 的请求（`Artalk.js`、`/api/`）返回 `200`。
+6. 若已登录管理员账号，评论框右下角会出现**控制台入口**按钮。
+
+> 排查：评论框一直显示「评论加载中…」→ 多半是 `server` 地址不对、服务端没启动或被 CORS 拦截。
+> 先直接用浏览器打开 `你的 server 地址`，看能不能出现 Artalk 界面。
+
+### 5. 回退方式（恢复成原来的 giscus）
+
+原 giscus 的配置**原样保留**在 `_config.yml` 里，所以回退只需改一行：
+
+1. 打开 `_config.yml`，把 `comments.provider: artalk` 改回 `comments.provider: giscus`；
+2. 重新部署（`deploy.bat`）。
+
+即可立刻恢复为 giscus 评论，**无需改代码、无需删文件**。
+
+其它回退选项：
+
+| 目标 | 操作 |
+|---|---|
+| 临时关闭所有评论 | 把 `provider:` 的值清空（保留键名，值留空） |
+| 彻底移除 Artalk 组件 | **必须先**把 `provider` 改成 giscus（或清空），**再**删除 `_includes/comments/artalk.html` |
+| 整体回滚本次改动 | 用 Git 回滚本次提交 |
+
+> ⚠️ **顺序不能反**：主题切换器是按 `comments/{{ provider }}.html` 去加载文件的。
+> 若 `provider` 还是 `artalk` 却把 `artalk.html` 删了，Jekyll 会因「找不到 include 文件」
+> 直接**构建失败**。所以务必先改 `provider`，再删文件。
