@@ -1,8 +1,29 @@
 ---
 layout: default
 panel_includes:
-  - hot-posts
+  - hot-posts # ⚠️ 自定义项：热门文章面板。Chirpy 升级后如替换本文件，请把这一行加回来
 ---
+
+{%- comment -%}
+  ============================================================
+  ⚠️ 本文件覆盖了 Chirpy 主题的 _layouts/home.html（基于 v7.6.0）
+  ------------------------------------------------------------
+  与主题原版共 3 处差异，均已用 CUSTOM 标记包裹，方便升级时对照：
+    ① front matter 的 panel_includes: hot-posts
+    ② CUSTOM-1：站点统计条（文章数/字数/配图/视频）
+    ③ CUSTOM-2：文章卡片上的浏览量 .pv-card
+  ------------------------------------------------------------
+  【Chirpy 升级时怎么处理本文件】
+    1. 打开 github.com/cotes2020/jekyll-theme-chirpy
+       → 切换到新版本的 tag（如 v7.7.0）
+       → 打开 _layouts/home.html，复制全文
+    2. 用新版本全文整体替换本文件内容
+    3. 再把上面 ①②③ 三处自定义段落重新粘贴回去
+    4. 若新版模板结构有变化（例如 post-meta 区块改名），
+       就把 CUSTOM-2 的 <div class="pv-card"> 插到新版对应的位置
+    5. 改完后按 UPGRADE.md 的「升级后自检清单」逐项确认
+  ============================================================
+{%- endcomment -%}
 
 {% include lang.html %}
 
@@ -48,6 +69,7 @@ panel_includes:
   {% endfor %}
 {% endif %}
 
+<!-- >>> CUSTOM-1 START 站点统计条（Chirpy 升级时整段保留并重新粘贴） -->
 {% assign total_chars = 0 %}
 {% assign total_imgs = 0 %}
 {% assign total_vids = 0 %}
@@ -96,6 +118,7 @@ panel_includes:
     opacity: 0.7;
   }
 </style>
+<!-- <<< CUSTOM-1 END -->
 
 <div id="post-list" class="flex-grow-1 px-xl-1">
   {% for post in posts %}
@@ -176,6 +199,7 @@ panel_includes:
                 </div>
               {% endif %}
 
+              <!-- >>> CUSTOM-2 START 卡片浏览量（Chirpy 升级时整段保留并重新粘贴） -->
               {%- comment -%}
                 浏览量：与文章页共用同一份数据源 _data/views.json
                 （由 GitHub Actions 定时抓取真实访问量，构建时静态渲染）。
@@ -187,6 +211,7 @@ panel_includes:
                 <i class="far fa-eye fa-fw me-1"></i>
                 <span class="pv-num">{{ site.data.views[post.url] | default: 0 }}</span>
               </div>
+              <!-- <<< CUSTOM-2 END -->
             </div>
             <!-- .post-meta -->
           </div>
