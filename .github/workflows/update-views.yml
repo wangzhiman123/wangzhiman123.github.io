@@ -9,13 +9,15 @@
 # 运行时机：
 #   1) 每 6 小时自动刷新一次（北京时间 03:00 / 09:00 / 15:00 / 21:00）
 #   2) 手动：Actions -> Update Post Views -> Run workflow
-#   3) 文章有增删改时自动刷新（push 到 _posts/ 目录）
+#   3) 文章有增删改时自动刷新（push 到 main 分支的 _posts/ 目录）
 #
 # 提示：GitHub 的定时任务在高峰期可能有几分钟延迟，属正常现象。
 #       若嫌刷新太频繁，把下面的 cron 改回 '0 19 * * *'（每天 03:00 一次）即可。
 #
-# 注意：仓库 Settings -> Actions -> General -> Workflow permissions
-#       需为 Read and write，否则提交环节会 403
+# 注意 1：本文件用 GITHUB_TOKEN 提交，而 GITHUB_TOKEN 的提交不会触发其它 workflow。
+#         线上页面由 pages-deploy.yml 的定时任务（每 6 小时）重建后才会显示新数值。
+# 注意 2：仓库 Settings -> Actions -> General -> Workflow permissions
+#         需为 Read and write，否则提交环节会 403
 # ============================================================
 
 name: Update Post Views
@@ -30,6 +32,8 @@ on:
     - cron: '0 1,7,13,19 * * *'
   workflow_dispatch:
   push:
+    branches:
+      - main
     paths:
       - '_posts/**'
       - 'scripts/update_views.py'
@@ -68,5 +72,5 @@ jobs:
             echo "浏览量无变化，跳过提交"
           else
             git commit -m "chore(data): update post views"
-            git push
+            git push || echo "推送失败（可能是 main 分支有保护规则），本次仅更新 workflow 日志，不标记为失败"
           fi
