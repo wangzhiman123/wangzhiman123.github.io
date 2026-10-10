@@ -15,6 +15,24 @@ on:
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
+    inputs:
+      branch:
+        description: >-
+          要构建的分支，默认 main。
+          说明：GitHub「Run workflow」界面右上角本身就有分支下拉框，界面上选的分支即本次运行的 ref；
+          这个参数主要用于 gh workflow run / REST API 触发时显式指定，默认留空即为 main。
+        required: false
+        default: 'main'
+        type: string
+      environment:
+        description: >-
+          部署目标环境名。GitHub Pages 官方固定使用 github-pages（环境里记录了部署历史与线上地址），
+          一般不要改动；仅在你另外配置了自定义环境时才需要切换。
+        required: false
+        default: 'github-pages'
+        type: choice
+        options:
+          - github-pages
 
 permissions:
   contents: read
