@@ -15,8 +15,12 @@ fix_post_links.py —— 把文章正文里的「纯文本网址」批量转成�
 1. 链接转换
    只处理「裸网址」，即直接出现在正文文字流里的 http:// / https:// / www. 开头串。
    转换形式：  [原始网址](原始网址)          —— 链接文字完整保留原网址，不做任何截断/缩短
-   www. 开头（无协议）的目标地址补 http://  —— 这是让链接可点击的最小改动；
+   www. 开头（无协议）的目标地址补 https:// —— 这是让链接可点击的最小改动；
                                                链接文字仍原样保留（不含硬加上的协议）
+   ⚠ 必须补 https:// 而不是 http:// ：本仓库部署流水线用 html-proofer 做检查，
+     其默认开启 --enforce-https，任何 http:// 链接都会导致「构建 → Test site」失败
+     （曾因此产生 9 个失败案例）。若原文本身就是 http:// 的裸网址，脚本会照原样
+     链接化，但在收尾时把它们单独列为「仍为 http://」警告，请改用 https 或加入忽略名单。
 
 2. 严格排除（受保护区，绝不改动）
    - 图片外链        ![...](...)           与普通链接同样处理
@@ -158,8 +162,12 @@ def find_bare_urls(line):
 
 
 def make_link(url):
-    """生成 Markdown 链接；www. 开头补 http:// 作为最小可用改动。"""
-    href = ("http://" + url) if re.match(r"^www\.", url, re.I) else url
+    """生成 Markdown 链接。
+
+    - www. 开头（无协议）→ 补 https://（部署检查要求 HTTPS，见文件头说明）
+    - 已带 http:// / https:// 的裸网址 → 照原样使用，不改协议
+    """
+    href = ("https://" + url) if re.match(r"^www\.", url, re.I) else url
     return "[%s](%s)" % (url, href), href
 
 
@@ -350,9 +358,41 @@ def process_file(path, apply=False):
         "modified": modified,
         "changes": changes,
         "lines": lines,
+        "new_lines": new_lines,
         "fm_end": fm_end,
         "in_fence": in_fence,
     }
+
+
+# ----------------------------------------------------------------------------
+# 收尾自检：处理后仍存在的 http:// 链接（部署检查会拒绝）
+# ----------------------------------------------------------------------------
+# 与 .github/workflows/pages-deploy.yml 中 html-proofer 的 --ignore-urls 保持一致
+HTTP_IGNORE_RE = re.compile(r"^http://(127\.0\.0\.1|0\.0\.0\.0|localhost|lsrz\.cs\.mfa\.gov\.cn)")
+# 只匹配「会渲染成 <a href>」的 http:// 网址（html-proofer 的 enforce-https 只管链接）：
+#   1) Markdown 链接目标  ](http://…)        （! 开头的图片链接不算，图片走 check-img-http）
+#   2) 自动链接           <http://…>          （注意 '<' 后不能有空格，有空格就不是链接）
+#   3) 原始 HTML 属性     href="http://…"
+#   4) 引用式定义         [id]: http://…
+HTTP_IN_LINK_RE = re.compile(
+    r"(?<!!)\]\((http://[^\s)\"'<>`]+)"
+    r"|<(http://[^\s<>`]+)>"
+    r"|href=[\"'](http://[^\s\"'<>`]+)[\"']"
+    r"|^\s{0,3}\[[^\]]+\]:\s*(http://[^\s]+)"
+)
+
+
+def scan_http_links(lines, fm_end, in_fence):
+    """返回 [(行号, url)] —— 处理后仍未使用 https 的链接。"""
+    out = []
+    for i, l in enumerate(lines):
+        if i <= fm_end or (in_fence and in_fence[i]):
+            continue
+        for m in HTTP_IN_LINK_RE.finditer(l):
+            u = next((g for g in m.groups() if g), None)
+            if u and not HTTP_IGNORE_RE.match(u):
+                out.append((i + 1, u))
+    return out
 
 
 # ----------------------------------------------------------------------------
@@ -434,6 +474,12 @@ def main():
     for r in results:
         audits += [(r["path"],) + a for a in audit_other(r["path"], r["lines"], r["fm_end"], r["in_fence"])]
 
+    # ---- 收尾自检：处理后仍为 http:// 的链接（会被部署检查拒绝）----
+    http_left = []
+    for r in results:
+        for ln, u in scan_http_links(r["new_lines"], r["fm_end"], r["in_fence"]):
+            http_left.append((r["path"], ln, u))
+
     # ---- 控制台 ----
     print("被修改的文件 : %d / %d" % (len(touched), len(results)))
     print("新增链接     : %d 处" % len(all_changes))
@@ -448,6 +494,18 @@ def main():
             print("    + %s" % c["new"])
         if len(all_changes) > 12:
             print("  … 其余 %d 处见报告" % (len(all_changes) - 12))
+    print()
+
+    # ---- 收尾自检结果 ----
+    if http_left:
+        print("⚠ 仍为 http:// 的链接 : %d 处（部署的 html-proofer 检查会因此失败）" % len(http_left))
+        for path, ln, u in http_left[:12]:
+            print("    %s L%d  %s" % (os.path.relpath(path, REPO_ROOT), ln, u))
+        if len(http_left) > 12:
+            print("    … 其余 %d 处见报告" % (len(http_left) - 12))
+        print("  建议：改用 https://，或在 pages-deploy.yml / tools/test.sh 的 --ignore-urls 中放行。")
+    else:
+        print("收尾自检     : 未发现 http:// 链接（部署检查可通过）")
     print()
 
     # ---- 报告 ----
@@ -586,9 +644,25 @@ def main():
     w("- `'< '` 残缺自动链接：已把其中的网址链接化，但尖括号 `'<'`、`'>'` 是正文里的字符，")
     w("  删除它们不属于「只加链接语法」，故保留原样，列在此处供你判断。")
     w("- 行内重复链接：未发现。")
+    w("## 五、http:// 链接自检（部署检查相关）")
+    w("")
+    w("部署流水线（`.github/workflows/pages-deploy.yml`）用 html-proofer 检查产物，")
+    w("其默认开启 `--enforce-https`，任何 http:// 链接都会让「构建 → Test site」失败。")
+    w("下列为本次处理后**仍为 http://** 的链接：")
+    w("")
+    if not http_left:
+        w("（无）—— 部署检查应可通过。")
+    else:
+        w("| 文件 | 行 | 网址 |")
+        w("| --- | --- | --- |")
+        for path, ln, u in http_left:
+            w("| %s | %d | `%s` |" % (os.path.relpath(path, REPO_ROOT), ln, u))
+        w("")
+        w("> 处理建议：优先改用 `https://`；若目标站点不支持 https（如政府老站点），")
+        w("> 可在 `pages-deploy.yml` 与 `tools/test.sh` 的 `--ignore-urls` 中放行。")
     w("")
 
-    w("## 五、幂等性")
+    w("## 六、幂等性")
     w("")
     w("转换后的网址位于 `[...]` 或 `(...)` 中，再次运行会被判为「已有链接」而跳过，")
     w("因此重复运行不会产生重复修改。脚本在写入后会自动复跑一次并校验改动数归零。")

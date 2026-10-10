@@ -83,6 +83,8 @@
 
 **Q：构建失败的红色提示？**
 脚本会给你一个链接，点开能看到 GitHub 的详细日志。最常见的原因是文章里某段 Markdown / YAML 格式写错了。
+若日志里出现 `HTML-Proofer ... 失败案例`、`不是HTTPS链接`，说明文章里有 `http://` 链接——
+先双击 `tools/preflight.bat` 跑一遍自检定位（见第八节），再改成 `https://` 即可。
 
 **Q：提示 `DEPLOY_TO_SERVER` 变量不是 true？**
 说明推送到火山引擎服务器那一步被跳过了，`2019527.xyz` 不会更新（只有 GitHub Pages 更新）。去仓库 `Settings → Secrets and variables → Actions → Variables` 里把 `DEPLOY_TO_SERVER` 设为 `true`。
@@ -135,6 +137,9 @@ try { ... } catch (e) { /* 忽略 */ }
 | `scripts/update_views.py` | GitHub 定时任务用的抓取脚本 |
 | `scripts/fix_post_links.py` | 把正文里的纯文本网址批量转成 Markdown 链接（见第七节） |
 | `scripts/remove_post_images.py` | 批量去掉文章封面图引用（默认预览，加 `--apply` 才写入） |
+| `tools/preflight.py` | 部署前一键自检：环境准备 → 构建 → 运行 → 结果校验（见第八节） |
+| `tools/preflight.bat` | 双击即可跑自检（Windows） |
+| `tools/preflight.sh` | 同上，macOS / Linux / CI 用 |
 
 ## 七、批量把正文里的纯文本网址变成可点击链接
 
@@ -165,3 +170,60 @@ python scripts/fix_post_links.py --dirs _posts _tabs   # 连同 _tabs 页面一�
 
 运行结束后会生成一份报告（默认写到仓库外的 `link-fix-report.md`），
 内容包括：被修改的文件、每处改动的前后对比、被跳过的内容及跳过原因，便于抽查复核。
+
+> **⚠️ 重要：脚本给裸域名补的是 `https://`，不是 `http://`。**
+> 原因见第八节——部署流水线用 html-proofer 检查，**任何 `http://` 链接都会让构建失败**。
+> 脚本跑完会额外做一次「`http://` 链接自检」，若仍有残留会单独列出并给出处理建议。
+
+---
+
+## 八、部署前一键自检（`preflight`）
+
+### 为什么需要它
+
+GitHub 上的构建流程（`.github/workflows/pages-deploy.yml`）里有一个「Test site」步骤：
+
+```
+bundle exec htmlproofer _site --disable-external --ignore-urls "..."
+```
+
+`html-proofer` 默认开启 `--enforce-https`：**只要产物 HTML 里出现 `http://` 链接，
+就会报「不是HTTPS链接」并让整个构建失败**，网站也就不会更新。
+
+> 2026-10-09 就因为这个原因失败过一次：`HTML-Proofer 发现了 9 个失败案例!`
+> 起因是链接化脚本给裸域名补了 `http://`。现在脚本已改为补 `https://`。
+
+### 怎么用
+
+**最简单**：双击 `tools/preflight.bat`（或在本目录执行 `python tools/preflight.py`）。
+
+它会依次完成四步，全程自动、无需任何手动干预：
+
+| 步骤 | 做什么 |
+|---|---|
+| 1 环境准备 | 检测 python / ruby / bundler / jekyll 是否就绪 |
+| 2 构建 | 电脑上有 Ruby 就真正跑 `jekyll build`；没有就自动改用「源码等价模式」 |
+| 3 运行 | 按与 html-proofer **完全相同**的规则扫描 `http://` 链接 |
+| 4 结果校验 | 汇总，给出 `PASS` / `FAIL`，并给出修复建议 |
+
+```bash
+python tools/preflight.py                  # 自动（有 Ruby 就构建）
+python tools/preflight.py --no-build       # 最快：只查链接规则
+python tools/preflight.py --site _site     # 检查已构建好的产物目录
+python tools/preflight.py --report out.md  # 顺便导出报告
+```
+
+> 说明：`html-proofer` 只能检查**构建产物**，所以本机没装 Ruby 时，
+> 自检会退回到「源码等价模式」——它应用的是同一条规则（禁 `http://` 链接），
+> 只是没有真正渲染 HTML，足以拦住上面那类报错。
+
+### 遇到 `FAIL` 怎么办
+
+1. 优先把链接改成 `https://`；
+2. 若目标站点确实不支持 https（例如个别政府老站点），把它加进忽略名单——
+   需要同时改两处，保持一致：
+   - `.github/workflows/pages-deploy.yml` 里的 `--ignore-urls`
+   - `tools/test.sh` 里的 `--ignore-urls`
+
+当前忽略名单（除本机地址外）：
+`http://lsrz.cs.mfa.gov.cn` —— 领事服务中心登录页，实测仅支持 http（https 返回 400）。

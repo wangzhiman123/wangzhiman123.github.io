@@ -61,9 +61,11 @@ main() {
     -d "$SITE_DIR$_baseurl" -c "$_config"
 
   # test
+  # 说明：html-proofer 默认 --enforce-https，会拒绝任何 http:// 链接；
+  #       下列 ignore-urls 中除本机地址外，lsrz.cs.mfa.gov.cn 为仅支持 http 的政府站点。
   bundle exec htmlproofer "$SITE_DIR" \
     --disable-external \
-    --ignore-urls "/^http:\/\/127.0.0.1/,/^http:\/\/0.0.0.0/,/^http:\/\/localhost/"
+    --ignore-urls "/^http:\/\/127.0.0.1/,/^http:\/\/0.0.0.0/,/^http:\/\/localhost/,/^http:\/\/lsrz\.cs\.mfa\.gov\.cn/"
 }
 
 while (($#)); do
