@@ -30,3 +30,7 @@ assets/js/dist
 *~
 .DS_Store
 Thumbs.db
+
+# Python 缓存（自动生成，不要上传）
+__pycache__/
+*.pyc
