@@ -1,0 +1,78 @@
+{%- comment -%}
+  热门文章面板（首页右侧栏，位置在「热门标签」板块的正下方）
+
+  · 数据源：_data/views.json —— 与文章卡片、文章页共用同一份浏览量数据，
+    因此三处显示的数值永远一致（构建时静态渲染，前端零请求、不会转圈）。
+  · 排序：按浏览量从高到低，取前 N 篇（默认 5，可用 include.max 覆盖）。
+  · 每项：文章标题（可点击，跳转文章页）+ 浏览量 + 发布日期。
+  · 样式：沿用主题 panel 板块的 section / panel-heading / list-unstyled 结构，
+    与「热门标签」「更新列表」视觉一致。
+
+  实现要点：Liquid 无法直接按外部哈希值排序，这里以「(常数 − 浏览量)::文章下标」
+  作为排序键——键等宽（7~8 位数字），字符串升序即浏览量降序。
+{%- endcomment -%}
+
+{%- assign MAX_HOT = include.max | default: 5 -%}
+{%- assign _panel_title = site.data.locales[include.lang].panel.hot_posts | default: '热门文章' -%}
+
+{%- assign _keys = '' | split: '' -%}
+{%- for post in site.posts -%}
+  {%- if post.hidden != true -%}
+    {%- assign _v = site.data.views[post.url] | default: 0 -%}
+    {%- assign _inv = 99999999 | minus: _v -%}
+    {%- capture _item -%}{{ _inv }}::{{ forloop.index0 }}{%- endcapture -%}
+    {%- assign _keys = _keys | push: _item -%}
+  {%- endif -%}
+{%- endfor -%}
+{%- assign _keys = _keys | sort -%}
+
+{%- if _keys.size > 0 -%}
+  <section id="hot-posts" class="hot-posts">
+    <h2 class="panel-heading">{{ _panel_title }}</h2>
+    <ul class="content list-unstyled ps-0 pb-1 ms-1 mt-2 mb-0">
+      {%- for _key in _keys limit: MAX_HOT -%}
+        {%- assign _idx = _key | split: '::' | last | plus: 0 -%}
+        {%- assign _post = site.posts[_idx] -%}
+        {%- if _post -%}
+          {%- assign _pv = site.data.views[_post.url] | default: 0 -%}
+          <li class="hot-post lh-lg">
+            <a
+              class="hot-post-title text-truncate d-block"
+              href="{{ _post.url | relative_url }}"
+              title="{{ _post.title | escape }}"
+            >
+              {{- _post.title -}}
+            </a>
+            <div class="hot-post-meta text-muted">
+              <i class="far fa-eye fa-fw" aria-hidden="true"></i>
+              <span class="hot-post-views">{{ _pv }}</span>
+              <span class="hot-post-sep mx-1">·</span>
+              <i class="far fa-calendar fa-fw" aria-hidden="true"></i>
+              <span class="hot-post-date">{{ _post.date | date: '%Y-%m-%d' }}</span>
+            </div>
+          </li>
+        {%- endif -%}
+      {%- endfor -%}
+    </ul>
+  </section>
+  <!-- #hot-posts -->
+{%- endif -%}
+
+<style>
+  /* 热门文章面板：与同栏其它板块保持一致，仅补充标题截断与浏览量/日期行样式 */
+  #hot-posts .hot-post-title {
+    color: inherit;
+  }
+  #hot-posts .hot-post-meta {
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    opacity: 0.85;
+  }
+  #hot-posts .hot-post-meta .fa-eye,
+  #hot-posts .hot-post-meta .fa-calendar {
+    opacity: 0.8;
+  }
+  #hot-posts .hot-post + .hot-post {
+    margin-top: 0.35rem;
+  }
+</style>

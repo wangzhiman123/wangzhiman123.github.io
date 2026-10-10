@@ -137,6 +137,9 @@ try { ... } catch (e) { /* 忽略 */ }
 | `scripts/update_views.py` | GitHub 定时任务用的抓取脚本 |
 | `scripts/fix_post_links.py` | 把正文里的纯文本网址批量转成 Markdown 链接（见第七节） |
 | `scripts/remove_post_images.py` | 批量去掉文章封面图引用（默认预览，加 `--apply` 才写入） |
+| `_includes/hot-posts.html` | 侧栏「热门文章」板块组件（首页 + 文章页共用，见第九节） |
+| `_layouts/home.html` | 首页布局：把 `hot-posts` 挂到 `panel_includes` |
+| `_layouts/post.html` | 文章页布局：主题布局的覆盖版，仅 `panel_includes` 增加 `hot-posts`（见第九节） |
 | `tools/preflight.py` | 部署前一键自检：环境准备 → 构建 → 运行 → 结果校验（见第八节） |
 | `tools/preflight.bat` | 双击即可跑自检（Windows） |
 | `tools/preflight.sh` | 同上，macOS / Linux / CI 用 |
@@ -227,3 +230,49 @@ python tools/preflight.py --report out.md  # 顺便导出报告
 
 当前忽略名单（除本机地址外）：
 `http://lsrz.cs.mfa.gov.cn` —— 领事服务中心登录页，实测仅支持 http（https 返回 400）。
+
+## 九、侧栏「热门文章」板块（首页 + 文章页共用）
+
+右侧栏「热门标签」下方有一个「热门文章」板块，按浏览量从高到低展示前 5 篇。
+
+### 涉及文件（共 3 个）
+
+| 文件 | 作用 |
+|---|---|
+| `_includes/hot-posts.html` | **板块本体**：数据、排序、渲染、样式全在这一个文件里 |
+| `_layouts/home.html` | 首页：`panel_includes: [hot-posts]` |
+| `_layouts/post.html` | 文章页：主题布局的覆盖版，`panel_includes: [hot-posts, toc]` |
+
+### 数据与样式（全部复用，无独立变体）
+
+- **数据源**：`_data/views.json` —— 与首页文章卡片、文章页浏览量**同一份数据**，
+  三处数值永远一致；构建时静态渲染，前端零请求、不会转圈。
+- **排序**：按浏览量降序取前 5（Liquid 里用「常数 − 浏览量」作为排序键）。
+- **样式**：沿用主题 `panel-heading` / `list-unstyled`，与「最近更新」「热门标签」一致。
+- 文章页与首页**用的是同一个 include、同一套样式**，没有另建变体。
+
+### 渲染位置由谁决定
+
+主题 `_layouts/default.html` 会依次渲染「最近更新 → 热门标签」，再按
+**当前页面所用布局**的 `panel_includes` 顺序渲染其余板块：
+
+| 页面 | panel_includes | 侧栏最终顺序 |
+|---|---|---|
+| 首页 | `[hot-posts]` | 最近更新 → 热门标签 → **热门文章** |
+| 文章页 | `[hot-posts, toc]` | 最近更新 → 热门标签 → **热门文章** → 目录 |
+
+> 想让「热门文章」排在目录**之后**，把 `_layouts/post.html` 里的
+> `panel_includes` 改成 `[toc, hot-posts]` 即可。
+
+### ⚠️ 关于 `_layouts/post.html`（主题升级时请注意）
+
+这个文件是**主题 `jekyll-theme-chirpy` v7.6.0 的 `_layouts/post.html` 副本**，
+与主题原版**只有一处不同**：`panel_includes` 由 `[toc]` 改成了 `[hot-posts, toc]`。
+其余内容（`layout: default`、`tail_includes`、`script_includes`、正文结构）与主题原版逐字一致。
+
+之所以要整份复制，是因为 Jekyll 的布局覆盖只能「整文件替换」，无法只改其中一行；
+而 `layout: default` 这一项必须保留——`default.html` 靠 `layout.layout == 'default'`
+判断是否对正文做图片包裹 / 代码复制按钮 / 标题锚点等处理，改掉会让文章正文样式出错。
+
+**升级主题后**：对照新版主题的 `_layouts/post.html` 重新同步本文件，
+只保留 `panel_includes` 那一处差异即可。
