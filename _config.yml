@@ -165,7 +165,7 @@ assets:
 pwa:
   enabled: true # The option for PWA feature (installable)
   cache:
-    enabled: true # The option for PWA offline cache
+    enabled: true # PWA离线缓存开关， 改 false：发完文章访客立刻看到最新版，但离线则无法访问
     # Paths defined here will be excluded from the PWA cache.
     # Usually its value is the `baseurl` of another website that
     # shares the same domain name as the current website.
