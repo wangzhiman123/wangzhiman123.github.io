@@ -71,6 +71,11 @@ analytics:
     domain: # fill in your Matomo domain
   cloudflare:
     id: e08d28ff568f4c1fa22f7f56ed3df1e3
+  # 百度统计（Baidu Tongji）—— 站点流量分析，仅用于后台看报表，不参与页面上"浏览量数字"的显示。
+  # id 非空时，Chirpy 会自动在 <head> 中加载 _includes/analytics/baidu.html。
+  # 留空（写成 id: ）即可整段停用，无需删任何文件。
+  baidu:
+    id: "be5a9b478abeb230cf93787a0539da2f"
   fathom:
     id: # fill in your Fathom Site ID
 
