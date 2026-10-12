@@ -1,8 +1,0 @@
-/* 自托管网页字体：Lato（正文/标题）+ Source Sans Pro（备用）
-   原来从 fonts.googleapis.com 加载（国内不可访问），现改为本地文件 */
-@font-face{font-family:'Lato';font-style:normal;font-weight:300;font-display:swap;src:url('lato-latin-300-normal.woff2') format('woff2');}
-@font-face{font-family:'Lato';font-style:normal;font-weight:400;font-display:swap;src:url('lato-latin-400-normal.woff2') format('woff2');}
-@font-face{font-family:'Source Sans Pro';font-style:normal;font-weight:400;font-display:swap;src:url('source-sans-pro-latin-400-normal.woff2') format('woff2');}
-@font-face{font-family:'Source Sans Pro';font-style:normal;font-weight:600;font-display:swap;src:url('source-sans-pro-latin-600-normal.woff2') format('woff2');}
-@font-face{font-family:'Source Sans Pro';font-style:normal;font-weight:700;font-display:swap;src:url('source-sans-pro-latin-700-normal.woff2') format('woff2');}
-@font-face{font-family:'Source Sans Pro';font-style:normal;font-weight:900;font-display:swap;src:url('source-sans-pro-latin-900-normal.woff2') format('woff2');}
