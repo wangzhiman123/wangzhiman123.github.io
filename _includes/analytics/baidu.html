@@ -1,0 +1,46 @@
+{%- comment -%}
+============================================================
+ 百度统计（Baidu Tongji）· 站点流量分析组件 v1
+ ------------------------------------------------------------
+ 作用：在页面中加载百度统计的 hm.js，把访客访问行为上报到百度统计后台，
+      用于在 https://tongji.baidu.com 查看全站流量报表
+      （浏览量 PV、访客数 UV、来源渠道、地域、设备、入口页等）。
+
+ ！！它【不负责】页面上"浏览量数字"的显示 ！！
+   页面上文章卡片 / 文章页 / 热门文章里显示的数字，来自
+   _data/views.json（构建时静态渲染），与百度统计是两条互不相干的链路。
+   百度统计没有"读取单篇文章浏览量"的前端接口，不能用来做前台显示。
+
+ 开关：_config.yml → analytics.baidu.id
+   · 填了（非空）→ Chirpy 主题会在 <head> 中自动加载本文件；
+   · 留空         → 整段不输出，页面上不会出现任何百度统计代码。
+   加载机制见主题 _includes/head.html 里的：
+     {% raw %}{% for analytics in site.analytics %} ... {% include analytics/{{ platform }}.html %} ... {% endfor %}{% endraw %}
+   —— 所以只要 analytics.baidu.id 非空，本文件就会被自动引用，
+      **不需要**再手动去 head / footer 里加 <script>。
+
+ ⚠️ 铁律（与 _includes/pageviews/goatcounter.html 相同）：
+   本文件里的内联 JS 绝对不能出现 `//` 行注释。
+   因为 _config.yml 开启了 compress_html，正式构建会把整份 HTML 的换行压掉，
+   一旦有 `//`，它会把"本行之后"的所有代码一路注释到脚本结尾，脚本直接失效。
+   所以：① 注释一律用 /* */ 块注释；② 语句以 ; 结尾；③ 分支都带花括号。
+   （URL 字符串里的 "https://" 不算注释，安全。）
+============================================================
+{%- endcomment -%}
+{%- assign _baidu_id = site.analytics.baidu.id | default: '' | strip -%}
+{%- if _baidu_id != '' -%}
+<script>
+  var _hmt = _hmt || [];
+  (function () {
+    var hm = document.createElement("script");
+    hm.src = "https://hm.baidu.com/hm.js?{{ _baidu_id }}";
+    hm.async = true; /* 异步加载，不阻塞页面渲染 */
+    var s = document.getElementsByTagName("script")[0];
+    if (s && s.parentNode) {
+      s.parentNode.insertBefore(hm, s);
+    } else {
+      (document.head || document.documentElement).appendChild(hm);
+    }
+  })();
+</script>
+{%- endif -%}
