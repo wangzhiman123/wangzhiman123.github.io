@@ -1,0 +1,52 @@
+# ============================================================
+# 自托管（self-host）模式下的资源路径
+# ------------------------------------------------------------
+# 本文件覆盖 Chirpy 主题内置的 _data/origin/basic.yml
+# （在 _config.yml 里把 assets.self_host.enabled 设为 true 后生效）
+#
+# 资源本体放在仓库的 assets/self-host/ 下，全部由自己的域名加载，
+# 不再依赖 cdn.jsdelivr.net（国内经常连不上，会导致图标不显示）。
+#
+# 说明：mermaid（流程图）与 mathjax（数学公式）体积过大（几个 MB），
+# 且本站文章未使用，故仍保留镜像地址；将来若要用到，可下载后改为本地路径。
+# ============================================================
+
+# fonts
+
+webfonts: /assets/self-host/fonts/main.css
+
+# Libraries
+
+toc:
+  css: /assets/self-host/tocbot/tocbot.min.css
+  js: /assets/self-host/tocbot/tocbot.min.js
+
+fontawesome:
+  css: /assets/self-host/fontawesome-free/css/all.min.css
+
+search:
+  js: /assets/self-host/simple-jekyll-search/simple-jekyll-search.min.js
+
+mermaid:
+  js: https://gcore.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js
+
+dayjs:
+  js:
+    common: /assets/self-host/dayjs/dayjs.min.js
+    locale: /assets/self-host/dayjs/locale/:LOCALE.js
+    relativeTime: /assets/self-host/dayjs/plugin/relativeTime.js
+    localizedFormat: /assets/self-host/dayjs/plugin/localizedFormat.js
+
+glightbox:
+  css: /assets/self-host/glightbox/glightbox.min.css
+  js: /assets/self-host/glightbox/glightbox.min.js
+
+lazy-polyfill:
+  css: /assets/self-host/loading-attribute-polyfill/loading-attribute-polyfill.min.css
+  js: /assets/self-host/loading-attribute-polyfill/loading-attribute-polyfill.umd.min.js
+
+clipboard:
+  js: /assets/self-host/clipboard/clipboard.min.js
+
+mathjax:
+  js: https://gcore.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js
