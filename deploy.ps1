@@ -57,6 +57,11 @@
    -ResetBaseline  重新记录本地基准（确认本地副本已是最新时才用）
    -AllowStale     明知线上还有本地没有的更新，仍要覆盖（谨慎，可能丢文章）
 
+   以下参数用于「拉取」方向（线上 → 本地，把网站上的最新代码同步回本机）：
+   -Pull           拉取线上最新代码到本地（只写本地，不改线上）
+   -Force          配合 -Pull：冲突文件一律用线上版本覆盖，不再逐个询问（谨慎）
+   -NoBackup       配合 -Pull：拉取前不备份被覆盖的文件（默认是备份的）
+
 两道安全闸（默认开启，不用做任何设置）：
    1. 线上 SHA 乐观锁：部署前先比对「本地基准提交」和线上最新提交。
       只要线上存在本地副本不知道的改动（例如在 GitHub 网页上发过文章），
@@ -99,6 +104,17 @@ param(
     # 所以这里保留成"按需开启"，默认行为不变。
     [switch] $SkipWatch,
     # 提交完成后不等 GitHub 构建、不检查网站，直接结束（不想干等就用它）。
+    [switch] $Pull,
+    # 【本参数的作用】把线上（GitHub）的最新代码"拉取"回本地电脑 —— 方向与部署相反。
+    # 部署 = 本地 → 线上；拉取 = 线上 → 本地。用于"网站上才是最新的，我想同步到本地"这种场景。
+    # 【安全设计】拉取前会自动备份将被覆盖的文件；
+    # 若某个文件"本地改过、线上也改过"，会停下来问你，不会静默覆盖你的改动。
+    # 直接运行 deploy.bat 不带此参数时，行为完全不变（仍是正常的部署方向）。
+    [switch] $Force,
+    # 【仅配合 -Pull 使用】自动覆盖"本地改过、线上也改过"的文件，不再逐个询问。
+    # ⚠️ 你的本地改动会被线上版本覆盖（有备份可恢复）。请谨慎使用。
+    [switch] $NoBackup,
+    # 【仅配合 -Pull 使用】拉取前不备份被覆盖的文件。项目目录更干净，但覆盖后无法找回旧版本。
     [switch] $Status,
     # 只看最近几次部署的状态，不做任何改动（查问题时很方便）。
     [switch] $SetToken,
@@ -143,6 +159,13 @@ $TokenDir  = Join-Path $env:USERPROFILE '.wangzhiman-deploy'
 # 【为什么放在这里？】这是相对隐蔽、只属于您个人的位置，不会随项目一起被同步走。
 $TokenFile = Join-Path $TokenDir 'token.dat'
 # 令牌具体存成哪个文件。
+
+$BackupRoot = Join-Path $TokenDir 'backup'
+# 「拉取」（-Pull）功能备份文件时用的根目录。
+# 【为什么放在项目目录外面？】这是关键 —— 如果放在项目里，
+# 备份文件会被当成"新增文件"一起上传到网站，闹出笑话（而且可能覆盖线上同名文件）。
+# 放在用户文件夹下（和令牌同处），既不会上传，又是只属于你本机的位置。
+# 每次拉取会在它下面建一个带时间戳的子文件夹，形如 backup\20261014-001530\。
 
 $Root = if ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
 # 确定项目根目录。
@@ -1312,6 +1335,353 @@ function Test-LiveSite {
     # 明确说清楚这点，能避免您白紧张一场。
 }
 
+# ============================================================================
+#                           拉取功能（-Pull）
+# ----------------------------------------------------------------------------
+# 【这个功能解决什么问题？】
+#   平时 deploy 是"本地 → 线上"（把本地改动推上去）。
+#   但有时反过来：你在 GitHub 网页上直接改了东西（例如手机上改了 _config.yml、
+#   在线发了文章），这时"线上才是最新的"，本地那份反而旧了。
+#   本功能就是"线上 → 本地"，把线上最新代码同步回你这台电脑。
+#
+# 【为什么不能简单粗暴地"全部覆盖"？】
+#   因为本地可能也有你没来得及推上去的改动。如果不管不顾地覆盖，
+#   那些改动就悄无声息地没了。所以本功能做了两件事：
+#     ① 覆盖前先备份（默认开启，除非加 -NoBackup）；
+#     ② 如果某个文件"本地改过、线上也改过"，就停下来问你，
+#        让你决定是保留本地、还是用线上覆盖。
+#
+# 【判断"谁更新"的依据是什么？】
+#   靠本机保存的「基准提交」（baseline）—— 它记录了"这份本地副本当初是从线上哪个
+#   版本拷来的"。拿它和线上最新一对比，就能列出"线上新增/修改/删除"了哪些文件，
+#   也就能区分出"本地是否也动过同一个文件"。
+# ============================================================================
+
+function Get-BlobShaAtCommit {
+    # 小工具：查出"某个提交里、某个文件"的内容编号。
+    # 【用途】拉取时判断"本地这个文件是否偏离了基准版本"（即本地是否改过）。
+    # 【为什么定义在 Invoke-Pull 前面？】因为 Invoke-Pull 会用到它。
+    # PowerShell 是"从上往下"执行定义的，被调用的函数要先定义好，
+    # 否则运行到那一行会报"找不到命令"。
+    param([string] $Commit, [string] $Path)
+    try {
+        $tree = Invoke-GitHub -Method GET -Path "/repos/$Repo/git/trees/$Commit`?recursive=1"
+        # 取那个提交的完整文件清单，然后在里面找目标文件。
+        # 【注意】地址里的 `? 里的反引号是转义符，表示"这就是个普通问号字符"，
+        # 否则 PowerShell 可能把它当成别的意思。
+        foreach ($e in $tree.tree) {
+            if ($e.type -eq 'blob' -and $e.path -eq $Path) { return $e.sha }
+        }
+    } catch { }
+    return $null
+}
+
+function Invoke-Pull {
+    # 把线上仓库的最新文件同步到本地。整个过程只"读线上 + 写本地"，不改动线上。
+
+    $remote = Get-RemoteSnapshot
+    # 先拿线上快照：有哪些文件、各自的内容编号、当前提交号。
+    Ok "线上仓库共 $($remote.Blobs.Count) 个文件（最新提交 $($remote.CommitSha.Substring(0,7))）"
+
+    # ---------- 1. 扫描本地文件 ----------
+    $localMap = @{}
+    foreach ($f in (Get-LocalFiles -Dir $Root)) { $localMap[$f.Rel] = $f.Full }
+    Say "  本地共 $($localMap.Count) 个文件"
+
+    # ---------- 2. 判断本地基准，决定"差异从哪算起" ----------
+    $baseline = Read-Baseline
+    $baseSha  = $null
+    if ($null -ne $baseline) { $baseSha = $baseline.sha }
+
+    if ($null -eq $baseSha) {
+        # 没有基准（第一次用本脚本、或基准文件丢了）：只能做"全量对比"。
+        Warn '本机没有「基准提交」记录，无法知道线上"改了什么"，将改为逐个文件对比。'
+        Say  '  （结果依然准确，只是提示会笼统一些：凡内容不同的都按"待更新"处理）'
+    } elseif ($baseSha -eq $remote.CommitSha) {
+        Ok "本地基准与线上最新一致（$($baseSha.Substring(0,7))），本地应该已经是最新的。"
+        # 基准相同不代表每个文件都相同（本地可能改过还没推），所以下面仍然要逐个比对。
+    } else {
+        # 有基准、且和线上不同：能精确算出"线上比本地多了哪些改动"。
+        $div = Get-Divergence -BaseSha $baseSha -HeadSha $remote.CommitSha
+        if ($div.Ok) {
+            Say "  线上比本地基准新 $($div.AheadBy) 个提交，涉及 $($div.Files.Count) 个文件。"
+        } else {
+            Warn "  基准与线上无法比对（$($div.Reason)），改为逐个文件对比。"
+        }
+    }
+
+    # ---------- 3. 逐个文件比对，分类 ----------
+    $toUpdate = New-Object System.Collections.ArrayList   # 线上有内容、本地需要更新（含本地没有的）
+    $toDelete = New-Object System.Collections.ArrayList   # 线上已删、本地还留着的
+    $conflict = New-Object System.Collections.ArrayList   # 两边都改过，需要问用户
+    $localOnly = New-Object System.Collections.ArrayList  # 只有本地改过（线上没动）→ 应原样保留
+    $same     = 0                                          # 两边内容完全相同
+
+    # 先遍历"线上有的文件"
+    foreach ($rel in @($remote.Blobs.Keys | Sort-Object)) {
+        $blob = $remote.Blobs[$rel]
+        if (Test-ExcludedPath $rel) { continue }
+        # 排除清单里的（例如 assets/lib 第三方代码）不参与，和部署逻辑保持一致。
+
+        if (-not $localMap.ContainsKey($rel)) {
+            # 本地没有 → 线上的新文件，需要下载。
+            [void]$toUpdate.Add(@{ Rel = $rel; Sha = $blob.Sha; Mode = $blob.Mode; Why = '新增' })
+            continue
+        }
+
+        # 本地有 → 比对内容指纹（不用真的下载内容，比指纹即可，快且准）。
+        $bytes = [IO.File]::ReadAllBytes($localMap[$rel])
+        if ((Get-GitBlobSha $bytes) -eq $blob.Sha) {
+            $same++
+            continue
+            # 指纹一样 = 内容完全一致，无需处理。
+        }
+
+        # 内容不同。这时要区分"是本地改的、还是线上改的、还是两边都改了"。
+        # 【判定原理】基准版本 = 本地和线上的"共同祖先"。
+        #   · 本地当前内容 == 基准内容  → 本地没动过 → 差异纯粹来自线上 → 直接更新。
+        #   · 本地当前内容 != 基准内容  → 本地动过 → 再看线上是否也动过：
+        #        线上动过  → 冲突（两边都改，要问用户）
+        #        线上没动过 → 只是你自己的本地改动，保留即可。
+        $remoteChanged = $false
+        $baseShaLocal  = $null
+        if ($null -ne $baseSha) {
+            if ($baseSha -eq $remote.CommitSha) {
+                # 【重要】基准就是线上最新 → 说明"线上从基准以来什么都没改"。
+                # 此时差异必然全部来自本地，绝不可能是冲突。
+                # 【为什么单独处理这一支？】因为基准和线上相同时，
+                # 拿基准和线上做"版本比对"会得到"0 个提交、0 个变更文件"，
+                # 那种结果无法用来判断"线上是否改过"——线上本来就等于基准，当然没改过。
+                $remoteChanged = $false
+            } else {
+                # 基准和线上不同 → 查清楚这中间线上改了哪些文件。
+                $div = Get-Divergence -BaseSha $baseSha -HeadSha $remote.CommitSha
+                if ($div.Ok) {
+                    $remoteChanged = ($div.Files -contains $rel)
+                    # 线上那次改动里没提到这个文件 → 说明差异是本地改的，线上没动过。
+                } else {
+                    # 【查不到比对结果时的保守处理】无法确认线上是否改过。
+                    # 宁可判定为"线上可能改过"（走下面的冲突判定），
+                    # 也不要贸然覆盖，避免丢掉线上的改动。
+                    $remoteChanged = $true
+                }
+            }
+            # 不论哪一支，都取来"基准版本里这个文件的内容指纹"，用于判断本地是否偏离了基准。
+            try {
+                $shaAtBase = Get-BlobShaAtCommit -Commit $baseSha -Path $rel
+                if ($shaAtBase) { $baseShaLocal = $shaAtBase }
+            } catch { }
+        } else {
+            # 【没有基准记录时】无从判断谁改的，采取保守策略：按"需要更新"处理，
+            # 但不直接当冲突（否则第一次使用、或基准丢失时会一片问号）。
+            # 判断依据退化成一个更朴素的规则：本地内容 != 线上内容 → 需要更新。
+            $remoteChanged = $true
+        }
+
+        if (-not $remoteChanged) {
+            # 线上没动过，差异来自本地 → 这是你自己的本地改动，当然要保留，跳过。
+            [void]$localOnly.Add($rel)
+            continue
+        }
+
+        # 走到这里：线上动过这个文件（或无法确定）。
+        if ($null -ne $baseShaLocal -and (Get-GitBlobSha $bytes) -eq $baseShaLocal) {
+            # 本地内容 == 基准内容 → 本地没改过，纯粹是线上变新了，直接更新即可。
+            [void]$toUpdate.Add(@{ Rel = $rel; Sha = $blob.Sha; Mode = $blob.Mode; Why = '线上更新' })
+        } elseif ($null -eq $baseSha) {
+            # 没有基准、无法判断本地是否改过 → 归入"待更新"，
+            # 让它在下面统一受"备份 + 用户可见"的保护，而不是静默覆盖。
+            [void]$toUpdate.Add(@{ Rel = $rel; Sha = $blob.Sha; Mode = $blob.Mode; Why = '内容不同' })
+        } else {
+            # 本地内容 != 基准内容 → 本地也改过，且线上也改过 → 冲突！
+            [void]$conflict.Add(@{ Rel = $rel; Sha = $blob.Sha; Mode = $blob.Mode })
+        }
+    }
+
+    # 再遍历"本地有、线上没有的"文件 → 线上已删除
+    foreach ($rel in @($localMap.Keys | Sort-Object)) {
+        if ($remote.Blobs.ContainsKey($rel)) { continue }
+        if (Test-ExcludedPath $rel) { continue }
+        [void]$toDelete.Add($rel)
+        # 【注意】这里只是"记下来"。到底删不删，下面会征求你的同意。
+    }
+
+    # ---------- 4. 汇报差异 ----------
+    Write-Host ''
+    Say "  对比结果：待更新 $($toUpdate.Count) 个，冲突 $($conflict.Count) 个，"
+    Say "            线上已删除 $($toDelete.Count) 个"
+    Say "            两边完全相同 $same 个，仅本地改过（会原样保留）$($localOnly.Count) 个"
+
+    if ($toUpdate.Count -eq 0 -and $conflict.Count -eq 0 -and $toDelete.Count -eq 0) {
+        if ($localOnly.Count -gt 0) {
+            Ok '线上没有新内容需要拉取（本地已是最新）。'
+            Say ''
+            Say "  以下是「只有本地改过、线上没动」的文件，拉取不会碰它们，你的改动安全保留："
+            foreach ($l in $localOnly) { Write-Host "    ✓ 保留本地  $l" -ForegroundColor Green }
+            # 【这个提示很重要】否则你会疑惑"我明明改了文件，怎么显示无需拉取"。
+            # 明确列出来，你就知道这些改动会被原样留着，等你以后部署时推上去。
+        } else {
+            Ok '本地已经和线上完全一致，无需拉取。'
+        }
+        # 顺手把基准对齐（如果还没对齐），这样下次就能精确比对。
+        if ($baseSha -ne $remote.CommitSha) {
+            Write-Baseline $remote.CommitSha
+            Say "  已顺手把本地基准更新为 $($remote.CommitSha.Substring(0,7))。"
+        }
+        return
+    }
+
+    foreach ($u in $toUpdate) {
+        Write-Host ("    ↑ 更新      {0}  ({1})" -f $u.Rel, $u.Why) -ForegroundColor Green
+    }
+    foreach ($c in $conflict) {
+        Write-Host ("    ! 冲突      {0}  （本地和线上都改过）" -f $c.Rel) -ForegroundColor Yellow
+    }
+    foreach ($d in $toDelete) {
+        Write-Host ("    ? 线上已删  {0}" -f $d) -ForegroundColor DarkYellow
+    }
+
+    # ---------- 5. 处理冲突：问用户 ----------
+    $keepLocal = @{}
+    if ($conflict.Count -gt 0) {
+        Write-Host ''
+        Head '冲突处理'
+        if ($Force) {
+            Warn '已按 -Force 处理：冲突文件一律采用线上版本（你的本地改动会被覆盖，可从备份找回）。'
+            foreach ($c in $conflict) { $keepLocal[$c.Rel] = $false }
+        } else {
+            Say '下列文件本地和线上都改过，请逐个选择：'
+            Say '  输入  L  = 保留本地版本（放弃线上这版）'
+            Say '  输入  R  = 采用线上版本（覆盖本地，会先备份）'
+            Say '  直接回车 = 采用线上版本（默认）'
+            foreach ($c in $conflict) {
+                Write-Host ''
+                Write-Host "    ◆ $($c.Rel)" -ForegroundColor Yellow
+                $ans = Read-Host '      请选择 [L=保留本地 / R=用线上 / 回车=用线上]'
+                $keepLocal[$c.Rel] = ($ans -match '^[Ll]')
+                # 只有明确输入 L 才保留本地，其余一律用线上（对新手更安全：默认不做覆盖）
+                if ($keepLocal[$c.Rel]) {
+                    Say "      → 保留本地版本，线上这版将被忽略。"
+                } else {
+                    Say "      → 采用线上版本（本地这份会先备份）。"
+                }
+            }
+            # 如果本地版本被保留，就把它从"待更新"里剔除（不覆盖它）。
+            $toUpdate = @($toUpdate | Where-Object { -not $keepLocal.ContainsKey($_.Rel) -or -not $keepLocal[$_.Rel] })
+        }
+    }
+
+    # ---------- 6. 备份（默认开启） ----------
+    $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+    $backupDir = Join-Path $BackupRoot $stamp
+    $backedUp = 0
+    # 【重要】备份目录放在项目之外（见文件开头的 $BackupRoot 说明），
+    # 否则备份文件本身会被下次部署当成"新增文件"上传到网站。
+
+    if (-not $NoBackup) {
+        Head '备份将被覆盖的文件'
+        foreach ($u in $toUpdate) {
+            if ($localMap.ContainsKey($u.Rel)) {
+                # 本地已有的、即将被覆盖的文件才需要备份（本地没有的属于"纯新增"，无需备份）。
+                $src = $localMap[$u.Rel]
+                $dst = Join-Path $backupDir $u.Rel
+                $dstDir = Split-Path -Parent $dst
+                if (-not (Test-Path -LiteralPath $dstDir)) { $null = New-Item -ItemType Directory -Path $dstDir -Force }
+                Copy-Item -LiteralPath $src -Destination $dst -Force
+                $backedUp++
+            }
+        }
+        if ($backedUp -gt 0) {
+            Ok "已备份 $backedUp 个文件到：$backupDir"
+            Say '  （万一拉取后发现问题，可以到这个文件夹里把旧版本拷回来）'
+        } else {
+            Say '  本次没有"会被覆盖的已有文件"，无需备份（新增文件不覆盖任何东西）。'
+        }
+    } else {
+        Warn '已按 -NoBackup 跳过备份。若拉取后发现问题，旧版本将无法找回。'
+    }
+
+    # ---------- 7. 执行写入 ----------
+    Head '写入最新文件到本地'
+    $written = 0
+    foreach ($u in $toUpdate) {
+        try {
+            $blob = Invoke-GitHub -Method GET -Path "/repos/$Repo/git/blobs/$($u.Sha)"
+            # 按文件编号取回内容（GitHub 返回的是 Base64 编码的字节）。
+            $bytes = [Convert]::FromBase64String(($blob.content -replace '\s', ''))
+            $dst = Join-Path $Root ($u.Rel -replace '/', '\')
+            $dstDir = Split-Path -Parent $dst
+            if ($dstDir -and -not (Test-Path -LiteralPath $dstDir)) { $null = New-Item -ItemType Directory -Path $dstDir -Force }
+            [IO.File]::WriteAllBytes($dst, $bytes)
+            # 【为什么用 WriteAllBytes（写字节）而不是写文本？】
+            # 因为文件里可能有图片等二进制内容，也可能有 BOM 等细节。
+            # 直接按字节原样写入，才能保证和线上一字不差、指纹相同。
+            $written++
+        } catch {
+            Warn "写入失败：$($u.Rel)  —— $_"
+        }
+    }
+    Ok "已更新 $written 个文件"
+
+    # ---------- 8. 处理"线上已删除"的文件 ----------
+    if ($toDelete.Count -gt 0) {
+        Write-Host ''
+        Head '线上已删除的文件'
+        Say '下列文件线上已经没有了，但本地还留着：'
+        foreach ($d in $toDelete) { Write-Host "    - $d" -ForegroundColor DarkYellow }
+        Say ''
+        Say '【建议】如果你确认线上是特意删掉它们的，可以一并从本地删掉，保持两边一致；'
+        Say '        如果不确定，就选"保留"，之后你核实清楚再手动删也不迟。'
+        $delAns = Read-Host '  是否把本地这些文件也删掉？[y=删除 / 回车=保留]'
+        if ($delAns -match '^[Yy]') {
+            # 参照部署时的严格策略：涉及文章（.md）删除必须二次确认。
+            $mdFiles = @($toDelete | Where-Object { $_ -like '*.md' -or $_ -like '*.markdown' })
+            $doDelete = $true
+            if ($mdFiles.Count -gt 0) {
+                Write-Host ''
+                Warn "其中包含 $($mdFiles.Count) 篇文章/页面文件（.md）："
+                foreach ($m in $mdFiles) { Write-Host "      $m" -ForegroundColor Red }
+                $again = Read-Host '  这些是内容文件，删掉就没了。确实要删吗？[输入 DELETE 才删除]'
+                $doDelete = ($again -ceq 'DELETE')
+            }
+            if ($doDelete) {
+                $delCount = 0
+                foreach ($d in $toDelete) {
+                    try {
+                        if (-not $NoBackup) {
+                            $src = Join-Path $Root ($d -replace '/', '\')
+                            $dst = Join-Path $backupDir $d
+                            $dstDir = Split-Path -Parent $dst
+                            if (-not (Test-Path -LiteralPath $dstDir)) { $null = New-Item -ItemType Directory -Path $dstDir -Force }
+                            Copy-Item -LiteralPath $src -Destination $dst -Force
+                            # 删除前也先备份一份，万一误删还能找回。
+                        }
+                        Remove-Item -LiteralPath (Join-Path $Root ($d -replace '/', '\')) -Force
+                        $delCount++
+                    } catch { Warn "删除失败：$d —— $_" }
+                }
+                Ok "已删除 $delCount 个本地文件"
+            } else {
+                Say '  已取消删除，这些文件保留在本地。'
+            }
+        } else {
+            Say '  已保留，本地这些文件不动。'
+        }
+    }
+
+    # ---------- 9. 对齐基准 ----------
+    Write-Baseline $remote.CommitSha
+    Ok "本地基准已更新为 $($remote.CommitSha.Substring(0,7))（线上最新）"
+    Say '  下次部署时脚本就能正确判断"本地是否落后"了。'
+
+    Write-Host ''
+    if ($backedUp -gt 0 -and -not $NoBackup) {
+        Say "备份位置：$backupDir"
+    }
+    Ok '拉取完成，本地已同步到线上最新版本。'
+    # 【提醒】拉取只下载代码，不会触发网站重建，也不会改动线上任何内容。
+}
+
 # ================================ 开始执行 ===================================
 # 【说明】前面都是"定义工具和函数"，从这里开始才是真正的执行流程。
 # 按顺序读下去，就能理解整个部署从头到尾做了什么。
@@ -1341,22 +1711,82 @@ if ($Status) { Show-Status; Write-Host ''; exit 0 }
 # 如果您带了 -Status 参数，就只显示部署记录然后结束，不做任何改动。
 # 【为什么放在这么靠前？】因为只想看状态时，不该打扰您去验证身份、更不该有任何写操作。
 
-# 只有真正要写入时才需要令牌
-if (-not $DryRun) {
-    # 不是预览模式（也就是真要提交），才需要身份验证。
-    if ($SetToken) { Remove-Item -LiteralPath $TokenFile -Force -ErrorAction SilentlyContinue }
-    # 如果您带 -SetToken 参数，先把旧的令牌文件删掉。
-    # 效果：下次就会跳过"用保存的令牌"，直接引导您重新填一个。
-    # 这正是"更换令牌"的实现方式。
-    Head 'GitHub 身份验证'
-    try { $script:Token = Get-Token } catch { Die $_ }
-    # 获取令牌。失败就报错退出。
-    Ok '身份验证通过'
-} elseif ($SetToken) {
+# ---------- 令牌准备 ----------
+# 【什么情况需要令牌？】
+#   · 正式部署：必须（要往线上提交内容）。
+#   · 拉取 -Pull：必须（要读大量线上文件）。
+#   · 预览 -DryRun：不是必须，但"有最好" —— 见下面说明。
+#
+# 【关于预览模式的一个改进】早期版本预览时完全不加载令牌（纯匿名只读）。
+# 但 GitHub 对"匿名请求"的额度极低（同一 IP 每小时仅 60 次），
+# 而预览要读取线上完整文件清单、比对几百个文件，多跑几次就会撞上限额，
+# 报出令人困惑的 "HTTP 403"。所以现在改为：
+#   只要本机已经存过令牌，预览时就顺手用上（额度 5000 次/小时，几乎不会用完）；
+#   本机没存过令牌也能照常预览（退回匿名模式，第一次使用不会卡住）。
+$needToken   = (-not $DryRun) -or $Pull
+# 必须要令牌的情形（否则走不下去）。
+$wantToken   = $needToken -or (Test-Path -LiteralPath $TokenFile)
+# 值得用令牌的情形（预览时若本机有存货也直接用上）。
+
+if ($SetToken -and $DryRun -and -not $Pull) {
     Die '-SetToken 不能和 -DryRun 一起用。'
     # 【逻辑冲突检查】-DryRun 是"只读预览、不做任何事"，
     # -SetToken 是"去改令牌文件"，两者性质矛盾。
     # 与其默默忽略一个，不如明确报错，避免您误以为设置成功了。
+}
+
+if ($wantToken) {
+    if ($SetToken) { Remove-Item -LiteralPath $TokenFile -Force -ErrorAction SilentlyContinue }
+    # 如果您带 -SetToken 参数，先把旧的令牌文件删掉。
+    # 效果：下次就会跳过"用保存的令牌"，直接引导您重新填一个。
+    # 这正是"更换令牌"的实现方式。
+
+    if ($needToken) {
+        # 必须拿到令牌：拿不到就直接停下（继续下去必然失败）。
+        Head 'GitHub 身份验证'
+        try { $script:Token = Get-Token } catch { Die $_ }
+        Ok '身份验证通过'
+    } else {
+        # 预览模式且本机有令牌：静默用上，不打扰您，只为避免撞上匿名额度限制。
+        try { $script:Token = Read-StoredToken } catch { $script:Token = $null }
+    }
+} else {
+    # 本机没存过令牌，且只是预览 —— 允许匿名只读。
+    Write-Host ''
+    Warn '本机还没有保存 GitHub 令牌，将以"匿名"方式预览。'
+    Say  '  匿名请求每小时额度很低（约 60 次），偶尔可能报 HTTP 403。'
+    Say  '  若遇到，先正式部署一次（会引导你填令牌），之后预览就不会受限了。'
+}
+
+# ---------- 0.5 拉取模式（-Pull）：线上 → 本地 ----------
+# 【为什么放在这里（身份验证之后）？】这一点非常重要：
+#   拉取需要调用大量 GitHub 接口（取快照、比指纹、下载文件）。
+#   如果没带令牌，这些请求会以"匿名身份"发出，而匿名请求额度极低
+#   （同一 IP 每小时只有 60 次），很容易中途撞上限额、报 HTTP 403 失败。
+#   所以必须等令牌加载完成（上面那段）之后，才能开始拉取。
+if ($Pull) {
+    Head '拉取线上最新代码到本地'
+    if ($DryRun) {
+        Warn '提示：-Pull 会真实写入本地文件，-DryRun 的"只预览"对拉取无效。'
+        Say  '      也就是本次依然会把线上文件下载下来覆盖本地（有备份）。'
+        Say  '      若只想"看看会拉取哪些文件"而不写入，请看下面的"对比结果"清单后按 Ctrl+C 中止。'
+    }
+    if ($NoBackup)    { Warn '已启用 -NoBackup：本次不备份被覆盖的文件。' }
+    if ($Force)       { Warn '已启用 -Force：冲突文件将直接采用线上版本。' }
+    if ($SkipWatch)   { Say  '（-SkipWatch 在拉取模式下无作用，可忽略）' }
+    if ($SkipViews)   { Say  '（-SkipViews 在拉取模式下无作用，可忽略）' }
+    if ($SkipData)    { Say  '（-SkipData 在拉取模式下无作用，可忽略）' }
+    Write-Host ''
+    try {
+        Invoke-Pull
+    } catch {
+        Die "拉取失败：$_"
+    }
+    Write-Host ''
+    exit 0
+    # 拉取完成后直接结束，绝不继续走下面的部署流程。
+    # 【这一点至关重要】否则"刚拉取完"紧接着"又推上去"，
+    # 会白白产生一条内容相同的提交记录。
 }
 
 # ---------- 1. 刷新浏览量 ----------
