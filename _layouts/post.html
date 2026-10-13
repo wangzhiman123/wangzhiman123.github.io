@@ -1,13 +1,37 @@
 ---
+# ============================================================================
+# 本文件是什么？
+# ----------------------------------------------------------------------------
+# 这是「文章详情页」的排版模板——也就是访客点开某一篇文章后看到的那一页。
+#
+# 它规定了文章页从上到下各块的排列顺序：
+#   ① 文章大标题、简介
+#   ② 发布信息一栏：发布时间、更新时间（仅当内容改过）、封面图、作者、浏览量、预计阅读时长
+#   ③ 目录（TOC = 本文小标题导航，点一下能跳到对应段落）
+#   ④ 文章正文
+#   ⑤ 文章底部：所属分类、标签、版权声明、分享按钮
+#
+# 上面这段（两个 --- 之间）是「挂载声明」，告诉程序这一页要额外挂载哪些小面板和小脚本。
+# ============================================================================
 layout: default
+# 套用 default 这个「基础框架模板」，它负责页面最外层的整体骨架（导航栏、侧边栏、页脚）。
+
 panel_includes:
-  - hot-posts
-  - toc
+# panel_includes 是「侧边栏面板」清单。短横线代表往清单里加一项，顺序就是显示顺序。
+  - hot-posts   # 热门文章面板（显示浏览量最高的几篇文章）
+  - toc         # 本文目录面板
+  # ⚠️ 上面这一项是本项目对主题的自定义改动。
+  # 主题原版这里是 [toc]，本项目额外加上了 hot-posts，
+  # 也就是在侧边栏里先显示「热门文章」，再显示「本文目录」。
+
 tail_includes:
-  - related-posts
-  - post-nav
+# tail_includes 是「文章正文后面要接的内容」。
+  - related-posts   # 相关文章推荐（主题会自动找出内容相近的其他文章）
+  - post-nav        # 上一篇 / 下一篇导航
+
 script_includes:
-  - comment
+# script_includes 是「本页面需要额外加载的脚本」。
+  - comment         # 评论功能脚本（对应 Artalk 评论组件）
 ---
 
 {%- comment -%}
@@ -23,27 +47,42 @@ script_includes:
 
   主题升级后，请对照新版 _layouts/post.html 重新同步本文件（仅需保留上面 panel_includes 的差异）。
 {%- endcomment -%}
+{# 上面这段是给以后升级主题的您自己看的备忘，程序会完全忽略，不会显示在网页上。 #}
 
+{# 载入语言包，把界面上的固定文字（"发布于""更新于"等）翻译成网站设置的语言。 #}
 {% include lang.html %}
 
+{# 判断这篇文章要不要显示目录（依据文章开头有没有写 toc: false）。
+   处理完会得到一个变量 enable_toc，为 true 时后面才显示目录相关的东西。 #}
 {% include toc-status.html %}
 
 <article class="px-1" data-toc="{{ enable_toc }}">
+  {# data-toc 属性把"要不要显示目录"这个信息告诉给页面的样式和脚本使用。 #}
   <header>
+    {# ---- 第 ① 块：文章标题和简介 ---- #}
     <h1 data-toc-skip>{{ page.title }}</h1>
+    {# 显示文章标题。data-toc-skip 的意思是"这行标题不要被收进目录里"，
+       否则目录第一条永远是文章标题本身，重复且累赘。 #}
     {% if page.description %}
       <p class="post-desc fw-light mb-4">{{ page.description }}</p>
+      {# 如果文章开头写了 description（简介/摘要），就显示在标题下面。
+         没有写就不显示这一行。 #}
     {% endif %}
 
     <div class="post-meta text-muted">
+      {# post-meta 是标题下面那行灰色小字，装着时间、作者、浏览量等信息。 #}
       <!-- published date -->
       <span>
         {{ site.data.locales[lang].post.posted }}
+        {# 显示"发布于"两个字（从语言包里取）。 #}
         {% include datetime.html date=page.date tooltip=true lang=lang %}
+        {# 显示文章的发布时间。tooltip=true 表示鼠标悬停时会弹出完整时刻提示。 #}
       </span>
 
       <!-- lastmod date -->
       {% if page.last_modified_at and page.last_modified_at != page.date %}
+        {# 只有当"最后修改时间存在"且"与发布时间不同"时才显示"更新于"。
+           这样没改过的文章不会出现多余的重复时间，页面更干净。 #}
         <span>
           {{ site.data.locales[lang].post.updated }}
           {% include datetime.html date=page.last_modified_at tooltip=true lang=lang %}
@@ -51,23 +90,37 @@ script_includes:
       {% endif %}
 
       {% if page.image %}
+        {# ---- 第 ② 块：文章封面大图（文章开头写了 image: 才会出现） ---- #}
+        {# 下面三行用 capture（捕获）语法，先把要用的 HTML 属性片段拼好存起来，待会儿一次性塞进 img 标签。 #}
         {% capture src %}src="{{ page.image.path | default: page.image }}"{% endcapture %}
+        {# 拼出 src="图片地址"，兼容 image: 直接写地址、或写成 image: {path: 地址} 两种情况。 #}
+
         {% capture class %}class="preview-img{% if page.image.no_bg %}{{ ' no-bg' }}{% endif %}"{% endcapture %}
+        {# 拼出样式类名。no_bg 是"不要图片背景"的开关，
+           例如透明底的 PNG 图标加上 no_bg 后，就不会被套上白色底块。 #}
+
         {% capture alt %}alt="{{ page.image.alt | xml_escape | default: "Preview Image" }}"{% endcapture %}
+        {# 拼出 alt="图片说明文字"。图片加载失败时显示这段文字，也方便搜索引擎理解图片。
+           【可DIY修改】把 "Preview Image" 换成"文章封面"等中文说法更友好。 #}
 
         {% if page.image.lqip %}
           {%- capture lqip -%}lqip="{{ page.image.lqip }}"{%- endcapture -%}
+          {# lqip 是"低清占位图"：大图还没加载出来时，先显示一张模糊小图，避免页面闪出大片空白。 #}
         {% endif %}
 
         <div class="mt-3 mb-3">
           <img {{ src }} {{ class }} {{ alt }} w="1200" h="630" {{ lqip }}>
+          {# w="1200" h="630" 是提前声明图片的宽高比例，
+             好处是浏览器能提前算出图片要占多大地方，文字不会在图片加载完的一瞬间被"挤跳"。 #}
           {%- if page.image.alt -%}
             <figcaption class="text-center pt-2 pb-2">{{ page.image.alt }}</figcaption>
+            {# 如果给图片写了 alt 说明，就在图片下面再居中显示一行图片说明文字。 #}
           {%- endif -%}
         </div>
       {% endif %}
 
       <div class="d-flex justify-content-between">
+        {# 这一行左边放作者、右边放浏览量和阅读时长，用 justify-content-between 把两者顶到两边。 #}
         <!-- author(s) -->
         <span>
           {% if page.author %}
@@ -75,21 +128,30 @@ script_includes:
           {% elsif page.authors %}
             {% assign authors = page.authors %}
           {% endif %}
+          {# 兼容两种写法：单作者 page.author，或多作者 page.authors。
+             取到后统一存进 authors 变量，后面按同一个逻辑处理。 #}
 
           {{ site.data.locales[lang].post.written_by }}
+          {# 显示"作者"两个字。 #}
 
           <em>
             {% if authors %}
               {% for author in authors %}
                 {% if site.data.authors[author].url -%}
                   <a href="{{ site.data.authors[author].url }}">{{ site.data.authors[author].name }}</a>
+                  {# 如果作者在 _data/authors.yml 里登记了个人主页地址，
+                     就把作者名做成可点击的链接，点了能跳过去。 #}
                 {%- else -%}
                   {{ site.data.authors[author].name }}
+                  {# 没登记主页地址，就只显示一个纯文字作者名。 #}
                 {%- endif %}
                 {% unless forloop.last %}{{ '</em>, <em>' }}{% endunless %}
+                {# 多个作者之间用逗号隔开（只要不是最后一个就补个逗号）。 #}
               {% endfor %}
             {% else %}
               <a href="{{ site.social.links[0] }}">{{ site.social.name }}</a>
+              {# 文章没写作者时，就用 _config.yml 里配置的默认作者，
+                 并链接到社交链接列表里的第一个地址（本项目中是"关于"页面）。 #}
             {% endif %}
           </em>
         </span>
@@ -97,68 +159,100 @@ script_includes:
         <div>
           <!-- pageviews -->
           {% if site.pageviews.provider and site.analytics[site.pageviews.provider].id %}
+            {# 双重检查：既配置了浏览量服务商，该服务商的 id 也不为空，才显示浏览量。
+               本项目中这两项都已配置好，所以文章页会显示浏览量。 #}
             <span>
               <em id="pageviews">
                 <i class="fas fa-spinner fa-spin small"></i>
+                {# 先显示一个"转圈圈"的加载图标占位。
+                   页面加载完成后，由 _includes/pageviews/goatcounter.html 里的脚本
+                   把真实数字填进这个位置（填好后转圈图标会被替换掉）。 #}
               </em>
               {{ site.data.locales[lang].post.pageview_measure }}
+              {# 显示"次浏览"之类的单位文字。 #}
             </span>
           {% endif %}
 
           <!-- read time -->
           {% include read-time.html content=content prompt=true lang=lang %}
+          {# 根据正文长度估算"预计阅读需要几分钟"，提示读者。 #}
         </div>
       </div>
     </div>
   </header>
 
   {% if enable_toc %}
+    {# ---- 第 ③ 块：目录相关的三个元素（只在开启目录时生成） ---- #}
     <div id="toc-bar" class="d-flex align-items-center justify-content-between invisible">
+      {# 阅读时贴在页面顶部的一条目录栏，默认 invisible（不可见），
+         当页面往下滚动到正文区域后，由脚本把它变成可见。
+         上面显示文章标题，右边有个按钮能唤出完整目录。 #}
       <span class="label text-truncate">{{ page.title }}</span>
+      {# 显示文章标题；text-truncate 表示标题太长时自动省略成"标题…"，不撑破布局。 #}
       <button type="button" class="toc-trigger btn me-1">
         <i class="fa-solid fa-list-ul fa-fw"></i>
+        {# 一个"列表"小图标，点击可唤出目录。 #}
       </button>
     </div>
 
     <button id="toc-solo-trigger" type="button" class="toc-trigger btn btn-outline-secondary btn-sm">
+      {# 屏幕较窄（如手机）时显示的"目录"按钮。 #}
       <span class="label ps-2 pe-1">{{- site.data.locales[lang].panel.toc -}}</span>
+      {# 显示"目录"两个字。 #}
       <i class="fa-solid fa-angle-right fa-fw"></i>
+      {# 右侧的小箭头图标。 #}
     </button>
 
     <dialog id="toc-popup" class="p-0">
+      {# dialog 是一个"弹窗"容器：点目录按钮后，目录会以弹窗形式浮出来。 #}
       <div class="header d-flex flex-row align-items-center justify-content-between">
         <div class="label text-truncate py-2 ms-4">{{- page.title -}}</div>
+        {# 弹窗顶部显示文章标题。 #}
         <button id="toc-popup-close" type="button" class="btn-close btn-sm mx-3" aria-label="Close"></button>
+        {# 弹窗右上角的关闭按钮。aria-label="Close" 是给读屏软件用的无障碍说明。 #}
       </div>
       <div id="toc-popup-content" class="px-4 py-3 pb-4"></div>
+      {# 这个空盒子专门用来装目录条目，内容由脚本在页面加载后自动填进去。 #}
     </dialog>
   {% endif %}
 
   <div class="content">
     {{ content }}
+    {# ---- 第 ④ 块：文章正文 ---- #}
+    {# {{ content }} 是最关键的一行：真正的文章内容会被填进这里。
+       您在 _posts 文件夹里写的 Markdown 文字，经过程序转成网页后，就显示在这个位置。 #}
   </div>
 
   <div class="post-tail-wrapper text-muted">
+    {# ---- 第 ⑤ 块：文章底部信息（分类、标签、版权、分享） ---- #}
     <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
       <!-- categories -->
       {% if page.categories.size > 0 %}
+        {# 文章有分类才显示。 #}
         <div class="post-meta">
-          <i class="far fa-folder-open fa-fw me-1"></i>
+          <i class="far fa-folder-open fa-fw me-1"></i>   {# 文件夹小图标 #}
           {% for category in page.categories %}
             <a href="{{ site.baseurl }}/categories/{{ category | slugify | url_encode }}/">{{ category }}</a>
+            {# 每个分类都做成可点击的链接，点击后跳到该分类的归档页，
+               那里会列出同分类的所有文章。
+               slugify 把分类名转成适合放进网址的英文/符号形式，
+               url_encode 再把特殊字符转义，避免网址出错（比如中文或空格分类）。 #}
             {%- unless forloop.last -%},{%- endunless -%}
+            {# 多个分类之间用逗号隔开。 #}
           {% endfor %}
         </div>
       {% endif %}
 
       <!-- "Edit this post" link -->
       {% include post-edit.html lang=lang %}
+      {# "编辑这篇文章"按钮。本项目在 _config.yml 里把它关掉了，所以实际不显示。 #}
     </div>
 
     <!-- tags -->
     {% if page.tags.size > 0 %}
+      {# 文章有标签才显示。 #}
       <div class="post-tags">
-        <i class="fa fa-tags fa-fw me-1"></i>
+        <i class="fa fa-tags fa-fw me-1"></i>   {# 标签小图标 #}
         {% for tag in page.tags %}
           <a
             href="{{ site.baseurl }}/tags/{{ tag | slugify | url_encode }}/"
@@ -166,6 +260,8 @@ script_includes:
           >
             {{- tag -}}
           </a>
+          {# 每个标签也是可点击的链接，点进去能看到所有带同一标签的文章。
+             no-text-decoration 表示链接文字不带下划线，看起来更像"小徽章"。 #}
         {% endfor %}
       </div>
     {% endif %}
@@ -176,6 +272,7 @@ script_includes:
         d-flex justify-content-between align-items-center mt-5 pb-2
       "
     >
+      {# 这一行左边是版权声明，右边是分享按钮。 #}
       <div class="license-wrapper">
         {% if site.data.locales[lang].copyright.license.template %}
           {% capture _replacement %}
@@ -183,12 +280,17 @@ script_includes:
           {{ site.data.locales[lang].copyright.license.name }}
         </a>
         {% endcapture %}
+          {# 先拼出一段"许可证名字 + 链接"的 HTML，存进 _replacement 备用。 #}
 
           {{ site.data.locales[lang].copyright.license.template | replace: ':LICENSE_NAME', _replacement }}
+          {# 取出写好的版权声明模板文字（例如"本文采用 :LICENSE_NAME 许可协议"），
+             把里面的 :LICENSE_NAME 占位符替换成刚才拼好的许可证链接。
+             这样做的目的是：改许可证名字不用改代码，改语言包文件就行。 #}
         {% endif %}
       </div>
 
       {% include post-sharing.html lang=lang %}
+      {# 分享按钮（微博、QQ、邮件等），具体平台在 _data/share.yml 里配置。 #}
     </div>
     <!-- .post-tail-bottom -->
   </div>

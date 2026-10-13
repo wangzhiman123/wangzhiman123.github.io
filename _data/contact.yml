@@ -1,28 +1,67 @@
-#  The contact options.
+# ============================================================
+# contact.yml —— 侧边栏的"联系方式"图标栏
+# ------------------------------------------------------------
+# 【这个文件干什么用】
+#   网站左侧（手机上在底部菜单里）有一竖排小图标，
+#   每个图标点一下就能跳到对应的平台。这个文件就是那一排图标的"花名册"。
+#
+# 【运行效果】
+#   页面上会出现 GitHub、知乎、B站、微信、RSS 等一排图标，点击可跳转。
+#
+# 【每一个条目的三个字段是什么意思】
+#   type    ：这个联系方式叫什么（程序内部用来识别，也会作为文字提示）
+#   icon    ：要显示哪个小图标。图标名来自免费图标库 Font Awesome，
+#             写"fab fa-xxx"表示品牌图标、"fas fa-xxx"表示普通实心图标。
+#   url     ：点击后跳去的网址。不写 url 的条目，图标会指向默认地址。
+#   noblank ：写 true 表示"在当前窗口打开"，不写则"新开一个标签页打开"。
+#
+# 【怎么改】
+#   1. 不想要某个图标：在这一条前面每一行都加一个 #（井号）注释掉即可。
+#   2. 想加新平台：把文件最下面那些被 # 注释掉的示例取消注释，
+#      再把 url 换成你自己的地址。缩进（每行前面的空格）必须保持一致。
+#   3. 顺序就是显示顺序，上下挪动整段文字就能调整图标先后。
+# ============================================================
 
+# 下面开始就是图标列表，每条以"- type:"开头，表示"列表中的一项"
 - type: github
   icon: "fab fa-github"
+  # 【可DIY修改】GitHub 图标。这里没写 url，会自动指向 _config.yml 里
+  # 配置的 GitHub 账号主页（site.github.username）。
 
 - type: zhihu
   icon: "fa-brands fa-zhihu"
+  # 【可DIY修改】知乎图标，换成你自己的知乎主页地址。
   url: https://www.zhihu.com/people/pxpiloveu
 
 - type: bilibili
   icon: "fa-brands fa-bilibili"
+  # 【可DIY修改】哔哩哔哩图标，换成你自己的 B站空间地址。
   url: https://space.bilibili.com/35768392
 
 - type: wechat
   icon: "fa-brands fa-weixin"
+  # 【可DIY修改】微信图标。因为微信没有网页版主页，
+  # 这里放的是一篇公众号文章链接，点开可以让访客看到公众号入口。
   url: https://mp.weixin.qq.com/s/60l8EQT2kyGSKww-yNw06A
 
+# 下面是"邮件"图标，目前被 # 注释掉了（不显示）。
+# 【可DIY修改】想显示邮件图标，就把下面两行的 # 去掉，
+# 并把邮箱地址填到 _config.yml 的 social.email 里。
 #- type: email
 #  icon: "fas fa-envelope"
 #  noblank: true # open link in current tab
 
 - type: rss
   icon: "fas fa-rss"
+  # RSS 图标：让读者用阅读器订阅你的网站更新，地址自动取网站根目录的 /feed.xml。
   noblank: true
-# Uncomment and complete the url below to enable more contact options
+  # noblank: true 表示"在当前窗口打开"，不新开标签页。
+
+# ============================================================
+# 以下是从 Chirpy 主题原版保留的"备选平台"示例。
+# 目前整段都被 # 注释掉，不会显示。想启用哪个就取消对应行的注释并填上地址。
+# 这些平台国内用户较少使用，一般保持注释状态即可。
+# ============================================================
 #
 # - type: mastodon
 #   icon: 'fab fa-mastodon'   # icons powered by <https://fontawesome.com/>

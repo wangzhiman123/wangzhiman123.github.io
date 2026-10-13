@@ -1,0 +1,61 @@
+{%- comment -%}
+============================================================
+【本文件是什么？】
+ 首页「本站总访问量」统计条 —— 不蒜子官方版 v1
+ ------------------------------------------------------------
+ 用途：在首页顶部的数据统计条里，追加一项「本站总访问量 X 次」。
+     数字由不蒜子（busuanzi）免费统计服务实时提供。
+
+ 它和文章浏览量的关系：
+   不冲突、互不影响。
+   · 本文件     → 只显示「全站总共被访问了多少次」（一个总数）
+   · pageviews/goatcounter.html → 显示「某一篇文章被看了多少次」
+
+ 【为什么用这段"官方代码"而不是更漂亮的自写版本？】
+   不蒜子官方的做法只有两行：
+       <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+       <span id="busuanzi_container_site_pv">本站总访问量<span id="busuanzi_value_site_pv"></span>次</span>
+   需要遵守它的两个约定，否则数字不会出现：
+     ① 必须加载那个官方 mini.js（数据由它去取）。
+     ② 显示位置必须用固定的 id：
+          busuanzi_container_site_pv —— 装数字的"外层容器"
+          busuanzi_value_site_pv     —— 真正放数字的那个空标签
+        （脚本就是靠这两个名字找到位置、把数字填进去的，名字不能改。）
+
+ ！！铁律：本文件里绝对不能出现 // 行注释 ！！
+ ------------------------------------------------------------
+ 原因：_config.yml 开启了 compress_html，生产构建会把整份 HTML 的换行
+ 全部压掉。一旦代码里出现 // 行注释，它会把「本行之后」的所有代码一路
+ 注释到脚本结尾，导致功能失效。所以：
+   ① 注释一律用 /* */ 块注释，禁用 //
+   ② 每条语句都以 ; 结尾，不依赖 JavaScript 的自动分号补全
+ （这与 _includes/pageviews/goatcounter.html 的约定完全一致。）
+ ------------------------------------------------------------
+ 【可DIY修改】
+   · 想改文案：改下面 span 里的"本站总访问量""次"几个字即可，
+     但千万不要动 id="busuanzi_container_site_pv" 和
+     id="busuanzi_value_site_pv" 这两个名字。
+   · 想顺带显示「本站访客数(UV)」：追加一段
+       <span id="busuanzi_container_site_uv">本站访客数<span id="busuanzi_value_site_uv"></span>人</span>
+     UV = 有多少个不同的访客（同一人多次访问只算一个），
+     PV = 所有页面被打开的总次数（同一人多次访问会累加）。
+   · 想加首屏加载动画/自定义初始值：官方 mini.js 不支持传参，
+     如需"初始值"这类高级设置，需改用自建统计（如 Umami），
+     不属于本文件的职责范围。
+   · 不想用了：把本文件清空，并删掉 _layouts/home.html 里对应的
+     "include busuanzi-site-pv.html" 那一行即可。
+============================================================
+{%- endcomment -%}
+
+{# 官方脚本：数据由它去不蒜子服务器取，取回后自动填入下面的 span。
+   async 表示"异步加载、不挡着页面其它内容"，所以不会拖慢首屏。
+   地址用 // 开头（不加 https:），让浏览器自动跟随当前页面的协议，
+   这样 http 和 https 访问都不会出现"混合内容被拦截"的问题。 #}
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+{# 下面是"显示位置"。两个 id 是不蒜子脚本内置约定的名字，不能改。
+   脚本加载完成后会把 id="busuanzi_value_site_pv" 这个空标签里填上数字。
+   【加载期间的兜底】脚本没到位时这个 span 里是空的，会短暂显示成
+   "本站总访问量次"（中间少个数字）。如果介意，可以在 CSS 里给
+   容器加一段淡入效果，或干脆接受这一瞬间的状态（多数访客感知不到）。 #}
+<span id="busuanzi_container_site_pv">本站总访问量<span id="busuanzi_value_site_pv"></span>次</span>

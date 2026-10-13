@@ -1,4 +1,12 @@
 <!-- The Footer -->
+<!-- ============================================================================
+      【本文件是什么？】
+      这是网站最底部的「页脚」——每一页拉到最后都会看到的那一小块区域。
+      它从上到下包含三部分：
+        ① 版权行：© 年份 作者名 + 版权声明（鼠标悬停会有补充说明）
+        ② 建站技术说明：本站由 Jekyll 驱动、使用 Chirpy 主题
+        ③ 备案信息：工信部 ICP 备案号 + 公安联网备案号（国内网站必须展示）
+      ============================================================================ -->
 
 <footer
   aria-label="Site Info"
@@ -7,31 +15,60 @@
     flex-lg-row justify-content-lg-between align-items-lg-center pb-lg-3
   "
 >
+  {# aria-label="Site Info" 是给读屏软件（视障人士使用）的说明，告诉它"这里是网站信息区"。 #}
+  {# class 里那一堆缩写的意思是：
+     d-flex = 用弹性布局（自动排版）；
+     flex-column = 手机上竖向排列（第一行版权、第二行技术说明、第三行备案号）；
+     justify-content-center = 手机上居中；
+     text-muted = 文字用灰色，低调不抢眼；
+     flex-lg-row = 屏幕够宽时改成横向排列；
+     justify-content-lg-between = 宽屏时把左右两块顶到两边；
+     align-items-lg-center = 宽屏时上下居中对齐；
+     pb-lg-3 = 宽屏时底部留一点空白。
+     【可DIY修改】想让页脚文字颜色更深，可以把 text-muted 删掉；
+     想让它不要居中，可以把 justify-content-center 删掉。 #}
+
+  <!-- ================= 第 ① 部分：版权行 ================= -->
   <p>
     {{- '©' }}
+    {# 版权符号。 #}
     <time>{{ 'now' | date: '%Y' }}</time>
+    {# 显示当前年份，且会随年份自动更新，不用每年手动改。
+       'now' 表示"现在"，date: '%Y' 表示"只取四位数的年份"，例如 2026。 #}
 
     {% if site.social.links %}
       <a href="{{ site.social.links[0] }}">{{ site.social.name }}</a>.
+      {# 显示作者名，并做成可点击链接，点击跳到社交链接列表里的第一个地址
+         （本项目在 _config.yml 里设的是"关于"页面）。
+         末尾那个句点就是句号，让句子读起来完整。 #}
     {% else %}
       <em class="fst-normal">{{ site.social.name }}</em>.
+      {# 万一没有配置社交链接，就只显示纯文字的作者名，不做成链接。 #}
     {% endif %}
 
     {% if site.data.locales[include.lang].copyright.brief %}
+      {# 显示简短的版权声明（例如"保留所有权利"）。 #}
       <span
         data-bs-toggle="tooltip"
         data-bs-placement="top"
         title="{{ site.data.locales[include.lang].copyright.verbose }}"
       >
+        {# data-bs-toggle="tooltip" 表示"鼠标悬停时弹出一个小提示框"；
+           data-bs-placement="top" 表示提示框显示在上方；
+           title="..." 里装的就是提示框要显示的完整声明文字。 #}
         {{- site.data.locales[include.lang].copyright.brief -}}
       </span>
     {% endif %}
   </p>
 
+  <!-- ================= 第 ② 部分：建站技术说明 ================= -->
   <p>
     {%- capture _platform -%}
       <a href="https://jekyllrb.com" target="_blank" rel="noopener">Jekyll</a>
     {%- endcapture -%}
+    {# 先拼出一段"Jekyll 官网链接"存起来备用。
+       target="_blank" 表示在新标签页打开；
+       rel="noopener" 是一个安全设置，防止新开的页面反过来控制当前页面。 #}
 
     {%- capture _theme -%}
       <a
@@ -43,9 +80,17 @@
         rel="noopener"
       >Chirpy</a>
     {%- endcapture -%}
+    {# 再拼出一段"Chirpy 主题的链接"存起来。
+       title="v{{ theme.version }}" 表示鼠标悬停时会显示主题的版本号，
+       例如 v7.6.0，方便排查问题时确认版本。 #}
 
     {{ site.data.locales[include.lang].meta | replace: ':PLATFORM', _platform | replace: ':THEME', _theme }}
+    {# 取出一句预先写好的说明文字模板（大意是"由 :PLATFORM 强力驱动 | 主题 :THEME"），
+       然后把里面的两个占位符替换成刚才拼好的链接。
+       这样做的目的：改文案不用动代码，改语言包文件就行。 #}
   </p>
+
+  <!-- ================= 第 ③ 部分：备案信息 ================= -->
   <div
     class="footer-content"
     style="
@@ -59,11 +104,25 @@
       text-align: center;
     "
   >
+    {# 这一段用内联样式直接写，不依赖主题样式表，
+       所以以后升级主题也基本不会走形。
+       flex-wrap: wrap 表示屏幕窄时两个备案号会自动分成两行。
+       【可DIY修改】column-gap 是左右间距，row-gap 是上下行距，数字可随意调。 #}
+
     <a href="https://beian.miit.gov.cn/" rel="noreferrer" target="_blank">赣ICP备2025074120号-2</a>
+    {# 工信部 ICP 备案号，点击可跳转到国家备案查询官网核对。
+       【重要】这个号码是本网站专属的，换成别的网站时这里必须改成自己的备案号，
+       否则属于违规（国内服务器必须悬挂真实备案号）。 #}
+
     <span style="display: inline-flex; align-items: center; column-gap: 0.25rem;">
+      {# 这个小容器把"图标 + 公安备案号"横向并排放在一起，图标和文字间距 0.25rem。 #}
       <img src="/assets/beian.png" width="20" height="20" alt="公安备案图标">
+      {# 公安备案的官方小图标。
+         图片文件放在 assets/beian.png，宽高都限定 20 像素。
+         提前写死宽高可以让浏览器先算好位置，避免图片加载出来时文字被"挤一下"。 #}
       <a href="https://beian.mps.gov.cn/#/query/webSearch?code=36010802001277" rel="noreferrer" target="_blank">赣公网安备36010802001277号</a>
+      {# 公安联网备案号，点击可跳转官方查询页核对。
+         链接里的 code=36010802001277 就是备案编号，换网站时这里也要同步改。 #}
     </span>
   </div>
 </footer>
-

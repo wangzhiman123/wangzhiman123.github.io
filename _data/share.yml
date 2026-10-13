@@ -1,19 +1,54 @@
-#  Sharing options at the bottom of the post.
-#  Icons from <https://fontawesome.com/>
+# ============================================================
+# share.yml —— 文章底部的"分享"按钮
+# ------------------------------------------------------------
+# 【这个文件干什么用】
+#   每篇文章最下面那排"分享到…"的按钮，就是根据这个文件生成的。
+#   访客点一下，就能把当前文章的标题和网址带到对应平台去分享。
+#
+# 【运行效果】
+#   文章底部出现微博、QQ、邮件三个分享按钮。
+#
+# 【关键小技巧：URL 和 TITLE 是"占位符"】
+#   下面 link 里的 URL 和 TITLE 不是真的文字，而是两个"填空位"。
+#   程序在生成网页时会自动把它们替换成：
+#     URL   -> 当前这篇文章的网址
+#     TITLE -> 当前这篇文章的标题
+#   所以您只需要照抄平台的分享地址格式，不要改动 URL / TITLE 这两个词。
+#
+# 【怎么改】
+#   1. 不要某个按钮：把那一小段前面每行都加 # 注释掉。
+#   2. 加新平台：把文件下方注释掉的示例取消注释。
+#   3. 图标名来自 Font Awesome 图标库，可到 fontawesome.com 上查名字。
+# ============================================================
 
+# platforms 表示"平台列表"，下面每一段以"- type:"开头，代表一个分享按钮。
 platforms:
+  # ---- 微博分享 ----
   - type: Weibo
     icon: "fab fa-weibo"
+    # 【可DIY修改】icon 换成别的图标名，按钮图标就变了。
+    # link 是微博官方的分享接口，其中 &url=URL 和 title=TITLE 就是上面说的填空位。
     link: "https://service.weibo.com/share/share.php?title=TITLE&url=URL"
- 
+
+  # ---- QQ 空间分享 ----
   - type: QQ
     icon: "fa-brands fa-qq"
     link: "https://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=URL&title=TITLE"
- 
+
+  # ---- 邮件分享 ----
   - type: Email
     icon: "fas fa-envelope"
+    # 【可DIY修改】把 1320233415@qq.com 换成你自己的邮箱地址。
+    # mailto: 表示"打开收件箱写信"；subject=TITLE 是自动填好邮件标题，
+    # body=URL 是自动把文章网址写进邮件正文，访客只需点发送即可。
     link: "mailto:1320233415@qq.com?subject=TITLE&body=URL"
 
+# ============================================================
+# 以下是从 Chirpy 主题原版保留的"备选平台"示例，目前全部被注释掉。
+# 想启用某个平台，就把它那几行前面的 # 去掉。
+# 注意：Mastodon 那一段写了多个 instances（站点），
+#       表示点击后会让访客自己选择用哪个 Mastodon 站点来分享。
+# ============================================================
   # Uncomment below if you need to.
   #
   # - type: Linkedin

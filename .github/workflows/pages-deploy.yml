@@ -1,21 +1,68 @@
+# ============================================================================
+# 【本文件是什么？】
+# 这是 GitHub Actions 的「自动构建并上线」配置。
+# ----------------------------------------------------------------------------
+# GitHub Actions 可以理解为 GitHub 免费提供的"云端机器人"：
+# 您只要把写好的文章推到 GitHub 网站，这个机器人就会自动帮您：
+#   ① 把 Markdown 文章编译成真正的网页
+#   ② 检查网页有没有坏掉的链接
+#   ③ 把网页发布到网上（GitHub Pages，以及可选的您自己的服务器）
+#
+# 一句话概括运行效果：
+#   您在本地改完文章、推送到 GitHub → 等两三分钟 → 网站就自动更新好了，
+#   全程不需要您做任何手工操作。
+#
+# 本文件分三段（下面 jobs 里的三个名字）：
+#   build         —— 编译网站并打包，是整个流程的基础
+#   deploy        —— 把编译结果发布到 GitHub Pages（默认托管）
+#   deploy-server —— 把编译结果同步到您自己的火山引擎服务器（可选，默认关闭）
+#
+# 阅读提示：YAML 格式靠缩进表示层级，缩进对不齐会直接报错。
+# ============================================================================
+
 name: "Build and Deploy"
+# 这个自动化流程的名字，会显示在 GitHub 网站的 Actions 页面上。
+
+# ---------------------- 什么时候自动运行 ----------------------
 on:
+  # 触发条件 1：有人向 main 分支推送代码时自动运行
   push:
     branches:
       - main
+      # 只有 main 分支的推送才触发（其他分支不影响线上网站）。
     paths-ignore:
       - .gitignore
       - README.md
       - LICENSE
+      # 【小优化】如果这次改动只涉及这三个文件，就不用重新构建网站了——
+      # 因为它们的内容跟网页显示毫无关系，白跑一次浪费时间。
 
+  # 触发条件 2：定时自动运行
   # 每 6 小时重建一次：让「Update Post Views」写入的 _data/views.json 能落到线上。
   # 该工作流在 UTC 01:00 / 07:00 / 13:00 / 19:00 运行，这里延后 30 分钟重建（cron 用 UTC）。
   # cron改回代码：'30 1,7,13,19 * * *'，该代码的自动运行频率为 4 次/天
   schedule:
     - cron: '30 19 * * *'  # ← 由 4 次/天 改为 1 次/天（北京时间 03:00）
+    # 【这段话很重要，请仔细看】为什么网站需要"定时重建"？
+    #   浏览量数字是"编译时印进网页"的。也就是说，即使数据文件更新了，
+    #   不重新编译一次，线上网页里的数字就还是旧的。
+    #   所以这里安排定时任务：每天固定时间自动重建一次，把最新数字刷上去。
+    #
+    # 【时间怎么换算？】GitHub 服务器用 UTC 时间（世界标准时间），
+    #   北京时间 = UTC + 8 小时。
+    #   所以 '30 19 * * *' 表示 UTC 19:30，换算成北京时间就是次日 03:30。
+    #   cron 这五个位置的含义依次是：分 时 日 月 星期。
+    #
+    # 【可DIY修改】想让浏览量更新更勤快，把上面这行换成注释里提到的
+    #   '30 1,7,13,19 * * *' 即可（每天 4 次）。
+    #   ⚠️ 但必须和 .github/workflows/update-views.yml 里的抓取时间配合调整，
+    #   建议在抓取任务之后半小时左右重建，否则可能白重建一次。
 
+  # 触发条件 3：允许您手动点击运行
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
+    # 加上这一段后，GitHub 的 Actions 页面会出现「Run workflow」按钮，
+    # 您可以随时手动点一下让它跑一遍（例如刚改完想立刻上线）。
     inputs:
       branch:
         description: >-
@@ -23,7 +70,9 @@ on:
           说明：GitHub「Run workflow」界面右上角本身就有分支下拉框，界面上选的分支即本次运行的 ref；
           这个参数主要用于 gh workflow run / REST API 触发时显式指定，默认留空即为 main。
         required: false
+        # required: false 表示可以不填。
         default: 'main'
+        # 不填就用 main。
         type: string
       environment:
         description: >-
@@ -32,81 +81,148 @@ on:
         required: false
         default: 'github-pages'
         type: choice
+        # type: choice 表示这是一个下拉选择框，只能从下面 options 里选。
         options:
           - github-pages
 
+# ---------------------- 权限声明 ----------------------
 permissions:
+  # 这一段是在告诉 GitHub："这次自动化任务需要用到这些权限，请授权"。
+  # 权限给得越精准，安全性越高（万一配置被篡改，能做的坏事也有限）。
   contents: read
+  # 只读仓库内容（读取文章、代码）。
   pages: write
+  # 允许发布网页到 GitHub Pages（必须给，否则发不出去）。
   id-token: write
+  # 允许获取一个临时凭证，供 GitHub Pages 验证身份用（新版官方要求）。
   # upload-artifact（自有服务器产物）需要写权限，缺失会导致 403 并使 build job 失败
   actions: write
+  # 允许上传构建产物。如果漏掉这一条，build 阶段会直接报 403 错误失败。
 
 # Allow one concurrent deployment
 # 不取消进行中的运行，保证最后一次提交一定被部署上线
 concurrency:
+  # concurrency = 并发控制，用来规定"同一个任务不要同时跑好几遍"。
   group: "pages"
+  # 把发布任务都归到 pages 这一个队列里，排队执行。
   cancel-in-progress: false
+  # 【这一项的选择很关键】false = 新任务等旧任务跑完再开始，不打断旧的。
+  # 好处是：如果您一口气推了好几次改动，最后一次一定会上线，
+  # 不会出现"最旧的版本把最新的覆盖掉"这种糟心事。
 
+# ---------------------- 三个任务 ----------------------
 jobs:
+
+  # ==================== 任务一：编译网站 ====================
   build:
+    # 这是最核心的任务，产出"编译好的网站文件"，后面两个部署任务都要用它。
     runs-on: ubuntu-latest
+    # 在 GitHub 提供的 Ubuntu Linux 云主机上运行（免费额度内不花钱）。
 
     steps:
+      # steps = 一步步要做的事情，按顺序执行。
+
       - name: Checkout
+        # 第 1 步：把仓库里的代码下载到这台云主机上。
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          # 【为什么写 0？】默认只下载最近一次记录（浅克隆），快但信息不全。
+          # 写 0 表示"下载完整历史"。本项目的 _plugins/posts-lastmod-hook.rb
+          # 需要通过 Git 历史来判断文章什么时候改过，所以必须拿全历史，
+          # 否则"更新于 xxx"会显示不出来。
 
       - name: Setup Pages
+        # 第 2 步：读取 GitHub Pages 的配置信息。
         id: pages
+        # 给这一步起个代号叫 pages，后面可以用 steps.pages.outputs.base_path 取到它读出来的结果（网站子路径）。
         uses: actions/configure-pages@v6
 
       - name: Setup Ruby
+        # 第 3 步：准备 Ruby 运行环境（Jekyll 是用 Ruby 写的）。
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: 3.4
+          # 使用 Ruby 3.4 版本。
           bundler-cache: true
+          # 自动缓存并安装项目需要的组件（依赖包），
+          # 有缓存后第二次运行会快很多。
 
       - name: Build site
+        # 第 4 步：真正开始"把文章编译成网页"。
         run: bundle exec jekyll b -d "_site${{ steps.pages.outputs.base_path }}"
+        # 这条命令的意思是：
+        #   bundle exec  —— 用项目里指定的工具版本来执行；
+        #   jekyll b     —— b 是 build（构建）的简写；
+        #   -d "输出的文件夹" —— 把生成的网页放到 _site 目录里。
         env:
           JEKYLL_ENV: "production"
+          # 声明当前是"正式环境"。
+          # 【作用】开启正式环境的优化策略，比如 _config.yml 里的 compress_html
+          # 就会把网页压缩瘦身，让访客打开更快。
 
       # 链接检查只告警、不阻断发布：网页端写作时偶发的坏链/缺图不应导致整站无法上线
       - name: Test site
+        # 第 5 步：自动检查生成的网页里有没有打不开的链接。
         continue-on-error: true
+        # 【关键设置】即使这一步发现问题，也不中断整个流程。
+        # 原因：写文章时偶尔少写一个图、贴错一条链接是常事，
+        # 不该因为这点小毛病就让整站无法更新。
         run: |
           bundle exec htmlproofer "_site${{ steps.pages.outputs.base_path }}" \
             --disable-external \
             --ignore-urls "/^http:\/\/127.0.0.1/,/^http:\/\/0.0.0.0/,/^http:\/\/localhost/,/^http:\/\/lsrz\.cs\.mfa\.gov\.cn/"
+        # htmlproofer 是一个专门检查链接的工具。两个参数的含义：
+        #   --disable-external —— 只检查网站内部链接，不检查外站链接。
+        #       为什么要这样？因为外站偶尔维护、访问慢，我们不希望因为
+        #       别人的网站打不开，就说自己的网站有问题。而且也能加快检查速度。
+        #   --ignore-urls     —— 忽略这几个"本地调试地址"，
+        #       它们在正式网站上本来就不该存在，检查出来也没有意义。
 
       - name: Upload site artifact
+        # 第 6 步：把编译好的网站打包上传，交给后面的发布任务使用。
         uses: actions/upload-pages-artifact@v5
         with:
           path: "_site${{ steps.pages.outputs.base_path }}"
+          # 要打包上传的文件夹。
 
       # 供自有服务器部署使用的普通 artifact
       # 开关：仓库 Settings → Secrets and variables → Actions → Variables → DEPLOY_TO_SERVER
       - name: Upload site for self-hosted server
+        # 第 7 步：额外再打包一份，专门给您自己的服务器用。
         if: ${{ vars.DEPLOY_TO_SERVER == 'true' }}
+        # 【开关的作用】只有当仓库设置里的 DEPLOY_TO_SERVER 变量等于 true 时，
+        # 这一步才会执行。默认不设置就是不跑，也就不占资源。
+        # 怎么设置：GitHub 仓库页面 → Settings（设置）→ Secrets and variables（机密与变量）
+        #          → Actions → Variables（变量）标签 → 新建一个名为 DEPLOY_TO_SERVER、
+        #          值为 true 的变量即可。
         uses: actions/upload-artifact@v4
         with:
           name: site
           path: "_site${{ steps.pages.outputs.base_path }}"
           retention-days: 1
+          # 【可DIY修改】打包文件保留天数，这里设为 1 天。
+          # 设置得短一点，可以避免 GitHub 存储空间被大量历史产物占满。
 
+  # ==================== 任务二：发布到 GitHub Pages ====================
   deploy:
+    # 这个任务负责把网站发布到 GitHub 免费提供的托管服务上。
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+      # 指定所属"环境"名称，并记录发布后的网址。
+      # 好处：GitHub 仓库首页右侧会显示一个"访问网站"的链接，点一下就能打开网站。
     runs-on: ubuntu-latest
     needs: build
+    # needs: build 表示"必须等 build 任务成功完成后，才能开始本任务"。
+    # 这是任务之间的依赖关系，保证不会发布半成品。
     steps:
       - name: Deploy to GitHub Pages
+        # 把上一步打包好的网站正式发布上线。
         id: deployment
         uses: actions/deploy-pages@v5
 
+  # ==================== 任务三：同步到自己的服务器（可选） ====================
   # rsync 推送到火山引擎服务器
   # 开关：仓库 Settings → Secrets and variables → Actions → Variables
   #       把 DEPLOY_TO_SERVER 设为 false 即可停止推送（服务器到期后用它）
@@ -114,21 +230,39 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: ${{ vars.DEPLOY_TO_SERVER == 'true' }}
+    # 同样受 DEPLOY_TO_SERVER 开关控制。
+    # 【实用场景】如果不打算再续费火山引擎服务器，只要把这个变量改成 false，
+    # 推送就会自动停止，不用回来删代码——这样以后想恢复也只需改回 true。
     steps:
       - name: Download site artifact
+        # 第 1 步：把 build 任务打包好的网站下载到本任务里。
         uses: actions/download-artifact@v4
         with:
           name: site
           path: _site
 
       - name: Setup SSH key
+        # 第 2 步：准备远程登录服务器用的"钥匙"。
         run: |
           mkdir -p ~/.ssh
           printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H 115.190.250.120 >> ~/.ssh/known_hosts
+          # 逐行解释：
+          #   mkdir -p ~/.ssh               创建存放钥匙的文件夹（已存在也不报错）。
+          #   printf ... > deploy_key       把仓库里保存的私钥写成一个文件。
+          #       私钥是什么？可以理解成"一把只有您才有的网络钥匙"，
+          #       服务器认出这把钥匙，才会允许上传文件。
+          #       secrets.SSH_PRIVATE_KEY 是您在仓库设置里预先存好的机密内容，
+          #       代码里看不到它的真实值，很安全。
+          #   chmod 600                     把文件权限设成"只有本人能读"，
+          #       这是钥匙文件的硬性要求，权限太宽松会被拒绝使用。
+          #   ssh-keyscan ...               预先记录服务器的"身份指纹"。
+          #       作用：第一次连接时自动确认"对面确实是我的服务器"，
+          #       避免脚本因为等待人工确认"是否信任该主机"而卡住。
 
       - name: Rsync to server
+        # 第 3 步：把网站文件同步到服务器上。
         run: |
           rsync -rltz --delete \
             --no-owner --no-group --no-perms \
@@ -140,7 +274,37 @@ jobs:
             -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes" \
             _site/ deploy@115.190.250.120:/www/wwwroot/2019527.xyz/ \
             || { code=$?; if [ "$code" -eq 23 ]; then echo "rsync 退出码 23：部分属性未能设置（宝塔保护 .user.ini 等文件所致），文件内容已传输完成，视为成功"; else exit $code; fi; }
+          # rsync 是一个"只同步有变化的文件"的工具，比整个重传快得多。
+          # 各参数的含义：
+          #   -rltz            保留目录结构、时间戳、软链接，并压缩传输（省流量、更快）；
+          #   --delete         把服务器上"本地已经没有的旧文件"删掉，
+          #                    保证服务器内容和网站保持一致，不会残留老页面；
+          #   --no-owner --no-group --no-perms
+          #                    不修改服务器上文件的"归属和权限设置"。
+          #                    原因：GitHub 机器上的账号跟服务器上的不是同一套，
+          #                    强行修改反而会出错。
+          #   --exclude=...    这几项排除不同步，原因是它们属于服务器自己特有的配置：
+          #                       .user.ini         服务器特有的防护设置文件
+          #                       .htaccess         服务器特有的访问规则文件
+          #                       .well-known/      HTTPS 证书验证目录，覆盖了会出问题
+          #                       proxy_cache_dir/  服务器自己的缓存目录
+          #   --chmod=D775,F664  规定同步过去的文件和文件夹权限（文件夹 775、文件 664），
+          #                      保证网页服务器有权限读取。
+          #   -e "ssh -i ..."  指定用刚才那把钥匙登录，并要求严格校验主机身份、
+          #                      不允许弹出任何交互提问（因为自动化环境没人能回答）。
+          #   _site/  deploy@115.190.250.120:/www/wwwroot/2019527.xyz/
+          #                    左边是本地文件夹，右边是"登录名@服务器地址:目标文件夹"。
+          #                    deploy 是服务器上专门用于部署的账号，权限受限制更安全。
+          # 最后那一段 || { ... } 是"失败兜底处理"：
+          #   如果 rsync 报错退出，就检查错误码是不是 23。
+          #   为什么单独放行 23？因为宝塔面板（服务器管理软件）会锁定 .user.ini
+          #   这类文件不让改属性，导致 rsync 报 23——但此时文件内容其实已经传完了，
+          #   属于"假故障"。所以这种情形打印一句说明、当作成功处理，避免虚惊一场。
 
       - name: Cleanup
+        # 第 4 步：收尾清理。
         if: always()
+        # always() 表示"不管前面成功还是失败都要执行这一步"。
+        # 【为什么要清理？】把刚才写在云主机上的那把钥匙删掉。
+        # 云主机用过即销毁，但养成随手清理钥匙的习惯更稳妥。
         run: rm -f ~/.ssh/deploy_key

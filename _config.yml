@@ -1,51 +1,100 @@
-# The Site Configuration
+# ============================================================================
+# 本文件是什么？
+# ----------------------------------------------------------------------------
+# 这是整个博客网站的「总配置清单」，相当于一台机器的总控制台。
+# 网站的名字叫什么、网址是什么、作者是谁、用什么主题、开不开评论、
+# 首页每页显示几篇文章……统统在这里设置。
+#
+# 【重要】这个文件是 YAML 格式，书写规则只有两条：
+#   1. 用「冒号 + 一个空格」来赋值，例如：  title: 王志满律师
+#   2. 靠「缩进（行首的空格数）」表示从属关系，缩进必须用空格、不能用 Tab。
+# 改完保存后，网站重新构建一次就会生效。
+#
+# 带 # 号的行是注释（说明文字），不会被程序读取，写什么都行、删掉也不影响。
+# 整个文件的执行流程：Jekyll（网站生成程序）启动时读取本文件 →
+# 把这里的值填进网页模板 → 生成最终的 HTML 网页。
+# ============================================================================
 
-# Import the theme
+
+# ---------------------------- 一、主题与语言 ----------------------------
+# 这一段决定「用哪套皮肤」和「网页用什么语言显示」。
+
+# 指定使用的主题（皮肤）。主题就是别人做好的整套网页外观，
+# 我们只是站在它的基础上改内容。
 theme: jekyll-theme-chirpy
 
-# The language of the webpage › http://www.lingoes.net/en/translator/langcode.htm
-# If it has the same name as one of the files in folder `_data/locales`, the layout language will also be changed,
-# otherwise, the layout language will use the default value of 'en'.
+# 网站的界面语言。zh-CN 表示「中文-中国大陆」。
+# 【可DIY修改】改成 en 会变成英文界面；改成 zh-TW 会变成繁体中文。
+# 原理：程序会去找 _data/locales 文件夹里同名文件来翻译按钮文字，
+# 找不到就退回用英文（en）。
 lang: zh-CN
 
-# Change to your timezone › https://zones.arilyn.cc
+# 网站所在的时区。Asia/Shanghai 表示北京时间。
+# 【可DIY修改】这个值影响文章「发布日期」按哪个时区计算。
+# 如果人在国外，可以改成对应的时区名（参考 https://zones.arilyn.cc）。
 timezone: Asia/Shanghai
 
-# jekyll-seo-tag settings › https://github.com/jekyll/jekyll-seo-tag/blob/master/docs/usage.md
-# ↓ --------------------------
 
+# ------------------- 二、SEO 设置（让搜索引擎认识你） -------------------
+# SEO = 搜索引擎优化。简单说，就是「让百度、谷歌更清楚地知道你的网站是干什么的，
+# 从而在别人搜索时把你的网站排在前面」。下面这些内容会出现在搜索结果的标题和摘要里。
+
+# 网站标题。会显示在浏览器标签页、搜索结果标题、网站左上角。
+# 【可DIY修改】改成您想显示的名字即可。
 title: 王志满律师
 
+# 网站副标题（一句话口号）。显示在网站标题下方或首页的描述位置。
+# 【可DIY修改】改成正对味的宣传语。
 tagline: 专注民商事纠纷与企业法律顾问
 
+# 网站描述。主要给搜索引擎和 RSS 订阅用。
+# 【可DIY修改】建议 60～160 个字，说清楚网站是干什么的。
+# 注意：下面这种「>-」的写法表示「把后面缩进的多行文字合并成一行」，
+# 也就是换行写也没关系，程序会自动拼成一整句。文字要缩进两个空格。
 description: >- # used by seo meta and the atom feed
   王志满律师个人网站，专注合同纠纷与公司法实务，分享法律专业文章
 
-# Fill in the protocol & hostname for your site.
-# E.g. 'https://username.github.io', note that it does not end with a '/'.
+# 网站的正式网址（必须带 https://，结尾不要加斜杠 /）。
+# 【重要】这个值必须和您真实的域名一致，否则网站里的图片、样式表可能加载不出来。
+# 【可DIY修改】换域名时，这一行一定要同步改。
 url: "https://2019527.xyz"
 
+# 您的 GitHub 用户名。
+# 作用：文章页上会自动生成「在 GitHub 上查看/编辑」之类的链接。
 github:
   username: wangzhiman123
 
+# 您的 Twitter（推特）用户名。留空表示不使用。
+# 【可DIY修改】如果要填，只填用户名，不要加 @ 符号。
 twitter:
   username:   # change to your Twitter username
 
+# 作者（也就是您本人）的公开联系信息。
+# 这些信息会用在两处：文章默认作者名、网页最下方「版权归 XX 所有」。
 social:
-  # Change to your full name.
-  # It will be displayed as the default author of the posts and the copyright owner in the Footer
+  # 显示的作者名。会作为文章默认作者和页脚版权人。
+  # 【可DIY修改】改成本名或笔名。
   name: 王志满
+  # 公开邮箱。会显示在网站的联系方式区域，注意这属于公开信息。
+  # 【可DIY修改】换成您的邮箱；不想公开就清空（写成 email: ）。
   email: 1320233415@qq.com # change to your email address
+  # 「联邦宇宙」账号（一种去中心化社交网络，国内基本用不上），留空即可。
   fediverse_handle: # fill in your fediverse handle. E.g. "@username@domain.com"
+
+  # 社交链接列表（一个短横线就是一个链接）。
+  # 【特殊规则】列表里的「第一个」链接，会成为版权人名字点击后跳转的地址。
   links:
-    # The first element serves as the copyright owner's link
+    # 第一条：点作者名「王志满」后跳转的页面
     - https://2019527.xyz/about/ # 作者名"王志满"点击后跳转的地址
+    # 第二条：GitHub 主页
     - https://github.com/wangzhiman123 # change to your GitHub homepage
-    # Uncomment below to add more social links
+    # 【可DIY修改】想加更多链接，把下面几行前面的 # 删掉，换成自己的地址即可（格式保持一致）
     # - https://www.facebook.com/username
     # - https://www.linkedin.com/in/username
 
-# Site Verification Settings
+# 站长验证设置：在各搜索引擎的「站长平台」注册网站时，对方会给你一串验证码，
+# 填在这里，对方就能确认「这个网站确实是你自己的」，然后才给你开放统计数据等功能。
+# 【可DIY修改】用哪个平台就填哪个，不用的留空。
 webmaster_verifications:
   google: # fill in your Google verification code
   bing: # fill in your Bing verification code
@@ -56,65 +105,91 @@ webmaster_verifications:
 
 # ↑ --------------------------
 # The end of `jekyll-seo-tag` settings
+# （以上是 SEO 设置段落，到此结束）
 
-# Web Analytics Settings
+
+# --------------------------- 三、网站流量统计 ---------------------------
+# 这一整段决定「用哪家的统计工具来记录有多少人访问了网站」。
+# 【重点理解】这里的统计工具只负责「后台看报表」，跟页面上显示的那个
+# 「浏览量数字」不完全是一回事，具体见下面的注释。
 analytics:
+  # 谷歌分析，留空表示不用。
   google:
     id: # fill in your Google Analytics ID
+
+  # GoatCounter 统计。这里故意填了 "busuanzi"（不蒜子，一个国内免费的统计服务名）。
+  # 【为什么要这么做？】主题原本支持 GoatCounter 统计，但作者不想用全套 GoatCounter，
+  # 只想借用它「填充页面浏览量数字」的功能，所以这里保留了一个非空的假 id，
+  # 让主题以为「统计功能是开着的，该去调用浏览量组件了」，但实际对应的文件
+  # _includes/analytics/goatcounter.html 已经被清空，因此不会真的去连 GoatCounter 服务器。
+  # 【结论】这一行不要改，改了会影响浏览量的显示逻辑。
   goatcounter:
     id: busuanzi
+
+  # Umami 统计（另一种自建统计工具），留空表示不用。
   umami:
     id: # fill in your Umami ID
     domain: # fill in your Umami domain
+
+  # Matomo 统计，留空表示不用。
   matomo:
     id: # fill in your Matomo ID
     domain: # fill in your Matomo domain
+
+  # Cloudflare 网站统计的账号 id。
+  # 【可DIY修改】如果您不用 Cloudflare，可以清空（写成 id: ）。
   cloudflare:
     id: e08d28ff568f4c1fa22f7f56ed3df1e3
+
   # 百度统计（Baidu Tongji）—— 站点流量分析，仅用于后台看报表，不参与页面上"浏览量数字"的显示。
   # id 非空时，Chirpy 会自动在 <head> 中加载 _includes/analytics/baidu.html。
   # 留空（写成 id: ）即可整段停用，无需删任何文件。
+  # 【可DIY修改】换成您在百度统计后台申请到的 id 即可；想彻底关掉，把引号里清空。
   baidu:
     id: "be5a9b478abeb230cf93787a0539da2f"
+
+  # Fathom 统计，留空表示不用。
   fathom:
     id: # fill in your Fathom Site ID
 
-# Page views settings
+# 页面浏览量的「数据来源」设置。
+# 目前主题只支持 goatcounter 这一种，保持不动。
+# 注意：真正显示在文章卡片和文章页上的浏览量数字，来自 _data/views.json 文件，
+# 那个文件是由 scripts/update_views.py 脚本定时抓取后生成的。
 pageviews:
   provider: goatcounter # now only supports 'goatcounter'
 
-# Prefer color scheme setting.
-#
-# Note: Keep empty will follow the system prefer color by default,
-# and there will be a toggle to switch the theme between dark and light
-# on the bottom left of the sidebar.
-#
-# Available options:
-#
-#     light — Use the light color scheme
-#     dark — Use the dark color scheme
-#
+# --------------------------- 四、外观与显示 ---------------------------
+
+# 网站默认配色模式。
+# 【重要说明】留空 = 跟随访客电脑/手机的系统设置（系统是深色它就深色）。
+# 只要留空，网页左下角就会出现一个「太阳/月亮」小按钮，访客能自己切换深浅色。
+# 【可DIY修改】填 light = 永远浅色（白底黑字）；填 dark = 永远深色（黑底白字）。
 theme_mode: # [light | dark]
 
-# The CDN endpoint for media resources.
-# Notice that once it is assigned, the CDN url
-# will be added to all media resources (site avatar, posts' images, audio and video files) paths starting with '/'
-#
-# e.g. 'https://cdn.com'
+# CDN（内容分发网络）地址。CDN 可以理解为「把图片、视频等大文件放到全球各地的缓存服务器上，
+# 让访客就近下载，从而打开更快」。留空表示不用 CDN。
+# 【可DIY修改】如果图片加载慢，可以填入 CDN 服务商给的域名，例如 https://cdn.com
+# 注意：一旦填了，网站里所有以 / 开头的图片/音视频地址都会自动加上这个前缀。
 cdn:
 
-# the avatar on sidebar, support local or CORS resources
+# 侧边栏头像图片的路径。
+# 【可DIY修改】想换头像，就把您的图片放到 assets/ 目录下，然后把这里改成新文件名，
+# 例如 avatar: /assets/my-photo.jpg
 avatar: /assets/avatar.jpg
 
-# The URL of the site-wide social preview image used in SEO `og:image` meta tag.
-# It can be overridden by a customized `page.image` in front matter.
+# 分享到社交平台时显示的预览大图（别人在微信/QQ 里发链接时，链接下面出现的缩略图）。
+# 留空表示不用；也可以在具体某篇文章的开头单独指定该文章自己的预览图。
 social_preview_image: # string, local or CORS resources
 
-# boolean type, the global switch for TOC in posts.
+# 文章目录（TOC，Table Of Contents）的总开关。
+# true = 文章页面右侧自动生成「本文目录」，点一下能跳到对应段落。
+# 【可DIY修改】改成 false 就全部文章都不显示目录。
 toc: true
 
+# --------------------------- 五、文章页操作按钮 ---------------------------
 actions:
-  # Display "Edit this post" action on each post page to encourage contributions.
+  # 「编辑这篇文章」按钮。一般用于多人协作的网站，个人博客通常用不上。
   edit_post:
     enabled: false # set to true to display the "Edit this post" action.
     url: "" # repository base URL, e.g. https://github.com/cotes2020/jekyll-theme-chirpy/edit/master
@@ -123,17 +198,24 @@ actions:
     # Set to true if the URL should remain unchanged, which means each post will share the same edit link.
     static_url: false # [ true | false ]
 
+# ----------------------------- 六、评论系统 -----------------------------
+# 这一段决定「读者能不能在文章下面留言、用哪家评论服务」。
 comments:
-  # Global switch for the post-comment system. Keeping it empty means disabled.
+  # 全局评论开关。这里填的是当前实际启用的评论服务名字：artalk。
+  # 而且，这个值不能为空，为空就代表「全站关闭评论」。
   provider: artalk
-  # The provider options are as follows:
+  # 以下各家评论服务，只有 provider 里指定的那一家会生效，其余留空即可。
+
+  # Disqus 评论（国外服务），不用就留空。
   disqus:
     shortname: # fill with the Disqus shortname. › https://help.disqus.com/en/articles/1717111-what-s-a-shortname
-  # utterances settings › https://utteranc.es/
+
+  # utterances 评论（基于 GitHub Issues），不用就留空。
   utterances:
     repo: wangzhiman123/wangzhiman123.github.io
     issue_term: # < url | pathname | title | ...>
-  # Giscus options › https://giscus.app
+
+  # Giscus 评论（基于 GitHub Discussions），不用就留空。
   giscus:
     repo: wangzhiman123/wangzhiman123.github.io
     repo_id: R_kgDOUx9AFg
@@ -144,14 +226,18 @@ comments:
     input_position: bottom
     lang: zh-CN
     reactions_enabled: 1
-  # Artalk options › https://artalk.js.org/guide/frontend/config.html
-  # 自托管评论系统（当前启用）。需先自行部署 Artalk 服务端，部署与配置见 DEPLOY.md 第十节。
+
+  # Artalk 评论（自托管，当前正在使用）。
+  # 自托管 = 评论数据存在自己的服务器上，不受第三方平台限制。
+  # 需要先在服务器上部署 Artalk 服务端，部署与配置见 DEPLOY.md 第十节。
   artalk:
     # ⚠️ 必填：Artalk 服务端（后端 API）地址。要求公网可访问、使用 https、结尾不带 "/"。
     #    留空 = 评论功能整体关闭：页面不会渲染评论容器，也不会报错（站点照常构建）。
     #    例：https://artalk.2019527.xyz
+    # 【可DIY修改】部署好 Artalk 后，把服务地址填在这一行（现在是空的，所以评论实际上还没启用）。
     server:
     # 站点名称，用于 Artalk 多站点隔离（对应后台「站点管理」里的名称）。
+    # 同一个 Artalk 服务端可以给多个网站用，靠这个名称区分数据，别填错。
     site: 王志满律师
     # 前端静态资源地址（可选）：留空时自动取「server + /dist」。
     #    若想改用公共 CDN，可改为：https://cdn.jsdelivr.net/npm/artalk@2/dist
@@ -159,7 +245,11 @@ comments:
     # 界面语言：auto（跟随浏览器）/ zh-CN / en
     locale: auto
 
-# 自托管静态资源（可选） › https://github.com/cotes2020/chirpy-static-assets
+# --------------------- 七、静态资源自托管（进阶，可选） ---------------------
+# 主题默认从公共 CDN（比如 jsdelivr）下载字体、图标等资源。
+# 开启「自托管」后，改为从自己网站的目录里加载，好处是：不依赖国外 CDN、
+# 国内访问更稳定、页面打开更快。
+# 自托管的具体说明见「自托管静态资源（可选）-操作说明.md」。
 assets:
   self_host:
     enabled: true # 保持为空表示 false
@@ -167,6 +257,9 @@ assets:
     # only works if `assets.self_host.enabled` is 'true'
     env: # [development | production]
 
+# --------------------------- 八、PWA（可安装应用） ---------------------------
+# PWA = Progressive Web App，渐进式网页应用。开启后，访客可以用手机浏览器
+# 「添加到主屏幕」，像装了个 App 一样打开网站；还能在断网时显示缓存内容。
 pwa:
   enabled: true # The option for PWA feature (installable)
   cache:
@@ -174,58 +267,102 @@ pwa:
     # Paths defined here will be excluded from the PWA cache.
     # Usually its value is the `baseurl` of another website that
     # shares the same domain name as the current website.
+    # 【可DIY修改】想让某些路径不进缓存，把下面那行前面的 # 去掉并改成要排除的路径。
     deny_paths:
       # - "/example"  # URLs match `<SITE_URL>/example/*` will not be cached by the PWA
 
+# 首页「每页显示多少篇文章」（翻页数量）。
+# 【可DIY修改】数字改大，一页显示的文章更多、页面更长；改小，翻页更频繁。
 paginate: 10
 
-# The base URL of your site
+# 网站的子路径。留空表示网站就放在域名根目录（https://2019527.xyz/）。
+# 【重要】除非您的网站要放在类似 /blog/ 这样的子目录下，否则不要改。
 baseurl: ""
 
 # ------------ The following options are not recommended to be modified ------------------
+# （以下参数属于主题内部机制，官方建议不要改动，除非您很清楚自己在做什么）
 
+
+# -------------------- 九、正文排版引擎 Kramdown 设置 --------------------
+# 网站文章是 Markdown 格式（一种用符号排版文字的简易写法），
+# Kramdown 就是「把 Markdown 翻译成网页」的翻译官。
 kramdown:
+  # 脚注（页面底部的补充说明）后面那个「返回」小箭头的图标样式。
   footnote_backlink: "&#8617;&#xfe0e;"
+  # 代码高亮引擎。rouge 会把代码块里的关键字染上颜色，让代码更好看。
   syntax_highlighter: rouge
   syntax_highlighter_opts: # Rouge Options › https://github.com/jneen/rouge#full-options
+    # 高亮区域的 CSS 类名，主题样式靠它来上色，不要改。
     css_class: highlight
     # default_lang: console
     span:
+      # 行内代码（用反引号包起来的）是否显示行号，false = 不显示。
       line_numbers: false
     block:
+      # 整块代码是否显示行号，true = 显示。
+      # 【可DIY修改】改成 false 可以让代码块不再显示左侧行号。
       line_numbers: true
+      # 行号从第几行开始数。
       start_line: 1
 
+# ---------------------------- 十、文章集设置 ----------------------------
+# collections 用来定义「一类特殊的页面」。这里定义了侧边栏的标签页。
 collections:
   tabs:
+    # true = 这些页面要真正生成 HTML 文件（必须为 true）。
     output: true
+    # 按页面开头 order 字段的数字大小排序，数字小的排前面。
     sort_by: order
 
+# defaults：批量为某类文件设置统一的默认值，省得每篇文章都重复写。
 defaults:
+  # 【第 1 条】针对「文章」（_posts 目录下的文件）
   - scope:
       path: "" # An empty string here means all files in the project
       type: posts
     values:
+      # 默认套用 post 这个页面模板（也就是 _layouts/post.html）。
       layout: post
+      # 默认开启评论。
       comments: true # Enable comments in posts.
+      # 默认显示目录。
       toc: true # Display TOC column in posts.
       # DO NOT modify the following parameter unless you are confident enough
       # to update the code of all other post links in this project.
+      # 【重要】文章的网址格式。:title 表示用文件名里的标题部分作为网址。
+      # 例如文件 2026-09-29-post-001.md 的网址就是 /posts/post-001/。
+      # 擅自修改会导致站内已存在的文章链接、浏览量统计全部对不上，务必慎重！
       permalink: /posts/:title/
+
+  # 【第 2 条】针对「草稿」（_drafts 目录下的文件）。
   - scope:
       path: _drafts
     values:
+      # 草稿页不显示评论区。
       comments: false
+
+  # 【第 3 条】针对侧边栏标签页（上面 collections 里定义的 tabs）。
   - scope:
       path: ""
       type: tabs # see `site.collections`
     values:
+      # 套用 page 模板。
       layout: page
+      # 标签页的网址格式，例如「关于」页就是 /about/。
       permalink: /:title/
 
+# ---------------------------- 十一、样式编译 ----------------------------
 sass:
+  # 把网页样式文件（SCSS）压缩成最小体积，让页面加载更快。
+  # 【可DIY修改】改成 expanded 会保留换行和缩进、方便调试，但文件更大（正式网站不建议）。
   style: compressed
 
+# ---------------------------- 十二、HTML 压缩 ----------------------------
+# 构建时把生成的网页「瘦身」：删掉多余的空行、注释、闭合标签，减小体积、加快打开速度。
+# 【重要副作用】压缩时会把代码里的换行符也删掉，所以网页里内联的 JavaScript 代码
+# 绝对不能用「//」写单行注释（换行没了，后面的代码会被一起注释掉导致报错），
+# 必须用 /* 星号斜杠 */ 这种块注释。本项目的 _includes/pageviews/goatcounter.html
+# 就是按这个规则写的。
 compress_html:
   clippings: all
   comments: all
@@ -233,8 +370,12 @@ compress_html:
   profile: false
   blanklines: false
   ignore:
+    # 在「开发模式」下不压缩，方便本机调试时看清代码。
     envs: [development]
 
+# ------------------------ 十三、构建时排除的文件 ------------------------
+# 下面这些文件只存在于您的电脑/仓库里，不会被打包发布到网站上。
+# 好处：别人访问不到部署脚本，也减少网站体积。
 exclude:
   - "*.gem"
   - "*.gemspec"
@@ -253,11 +394,17 @@ exclude:
   # 阿里云 ECS 自主部署工具（见 deploy/README.md，仅服务器使用）
   - deploy
 
+# ------------------------- 十四、分类与标签归档 -------------------------
+# 让网站自动为每个「分类」和「标签」生成一个汇总页面，
+# 列出属于该分类/标签的所有文章。
 jekyll-archives:
+  # enabled 表示要为哪几类生成归档页，这里同时开启了分类和标签。
   enabled: [categories, tags]
   layouts:
+    # 分类归档页用 category 模板，标签归档页用 tag 模板。
     category: category
     tag: tag
   permalinks:
+    # 【可DIY修改】归档页的网址格式。改了以后，搜索引擎里已收录的旧链接会失效。
     tag: /tags/:name/
     category: /categories/:name/

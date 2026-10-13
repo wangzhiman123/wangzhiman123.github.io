@@ -1,6 +1,15 @@
 {%- comment -%}
+  ============================================================================
+  【本文件是什么？】
   Artalk 评论组件（自托管）—— 对应 _config.yml 的 comments.provider: artalk
   官网与文档：https://artalk.js.org/
+
+  一句话概括：这段代码负责在文章底部"长出"一个评论区，
+  让读者能留言、回复、按表情，并且评论数据存在您自己的服务器上。
+
+  什么是"自托管"？就是不依赖第三方评论平台（如多说、Disqus），
+  把评论服务部署在自己的服务器上，数据完全掌握在自己手里，
+  不会因为第三方平台关停而丢失评论。
 
   加载方式：主题 _includes/comment.html 的「评论切换器」会按
   `comments/{{ site.comments.provider }}.html` 动态 include 本文件，
@@ -18,78 +27,168 @@
   ⚠️ 内联脚本禁用 `//` 行注释：_config.yml 开启了 compress_html，正式构建会
      压掉全部换行，`//` 会把后续代码一并注释掉。一律用 `/* */`，
      语句以 `;` 结尾，分支加花括号（详见 DEPLOY.md 第五节）。
+  ============================================================================
 {%- endcomment -%}
 
+
 {%- assign _artalk_server = site.comments.artalk.server | default: '' | strip -%}
+{# 读出 Artalk 服务端的地址（在 _config.yml 里配置）。
+   default: '' 兜底防止报错；strip 去掉可能误打的空格。 #}
+
 {%- if _artalk_server != '' -%}
+{# 只有服务端地址确实填了，才输出评论代码。
+   现在 _config.yml 里这一项是空的，所以整段都不会生成、页面上也就没有评论区。
+   以后部署好 Artalk 服务端、把地址填上，评论功能就自动生效了，不必回来改代码。 #}
+
   {%- assign _artalk_assets = site.comments.artalk.assets_url | default: '' | strip -%}
+  {# 读出"评论前端文件（外观和逻辑）从哪里下载"的地址。 #}
+
   {%- if _artalk_assets == '' -%}
     {%- assign _artalk_assets = _artalk_server | append: '/dist' -%}
   {%- endif -%}
+  {# 如果没单独配置这个地址，就自动用"服务端地址 + /dist"作为默认值。
+     这样大多数情况下只要填一次服务端地址就够了，省事。 #}
+
 <!-- https://artalk.js.org/ -->
 <script>
   (function () {
+    /* 自执行函数：立即运行，内部变量不会污染外部，避免和其他脚本打架。 */
+
     const server = '{{ _artalk_server }}';
+    /* 把上面读到的服务端地址写进 JavaScript（会被替换成真实地址）。 */
+
     const assetsURL = '{{ _artalk_assets }}';
+    /* 把评论前端文件地址写进 JavaScript。 */
+
     const locale = {{ site.comments.artalk.locale | default: 'auto' | jsonify }};
+    /* 评论区界面的语言。
+       auto 表示"自动跟随访客浏览器的语言"。
+       jsonify 的作用是把这段文字安全地转成 JavaScript 里的字符串格式
+       （自动加上引号并转义特殊符号），防止文字里的符号破坏代码。 */
 
     /* 评论区容器：插到 <footer> 之前，与主题其它评论组件的位置保持一致 */
     const $container = document.createElement('div');
+    /* 新建一个空盒子，用来装评论区。 */
+
     $container.id = 'artalk-comments';
+    /* 给它起个 id，方便 Artalk 知道"把评论区画在哪里"。 */
+
     $container.className = 'text-center text-muted small py-3';
+    /* 加一些样式类：居中、灰色、小字、上下留白。
+       这样在评论还没加载出来时，那句"评论加载中…"看着也整齐。 */
+
     $container.textContent = '评论加载中…';
+    /* 先放上一句提示文字，让访客知道这里将来是评论区。
+       【可DIY修改】想换成"正在加载评论"等说法，直接改这行引号里的文字。 */
+
     document.querySelector('footer').insertAdjacentElement('beforebegin', $container);
+    /* 把这个盒子插到网页底部（footer）的前面，也就是正文的下面。
+       beforebegin 表示"插在目标元素的前面"。 */
 
     let artalk;
+    /* 声明一个变量，用来存"评论区对象"，方便后面控制它（比如切换深色模式）。 */
 
     function initArtalk() {
+      /* 这个函数负责"真正把评论区建起来"。 */
       if (!window.Artalk) {
         return;
       }
+      /* 检查 Artalk 的主程序是否已经下载并加载好了；
+         没有的话就先不建，直接返回（因为下面的 Artalk.init 必须靠它）。
+         这是一道保险，避免下载慢的时候报错。 */
+
       $container.textContent = '';
+      /* 清空"评论加载中…"这句提示，准备换上真正的评论区。 */
+
       artalk = Artalk.init({
+        /* 告诉 Artalk 怎么工作，下面这些是它的配置项。 */
         el: '#artalk-comments',
+        /* 评论区画在哪个盒子里（对应上面起的 id）。 */
         server: server,
+        /* 评论数据存到哪个服务端。 */
         site: {{ site.comments.artalk.site | default: site.title | jsonify }},
+        /* 站点名称。同一个 Artalk 服务端可以给多个网站共用，
+           靠这个名称把各网站的评论数据分开，避免串台。
+           没单独配置就用网站标题兜底。 */
         pageKey: {{ page.url | jsonify }},
+        /* 页面标识：用网页地址区分"这是哪一篇文章的评论"。
+           必须保证同一篇文章每次生成的地址都一样，否则评论会对不上。 */
         pageTitle: {{ page.title | jsonify }},
+        /* 页面标题，评论后台列表里会显示它，方便您快速认出是哪个页面。 */
         locale: locale,
+        /* 界面语言（见上文）。 */
         darkMode: Theme.isDark
+        /* 评论区是否用深色主题。
+           Theme.isDark 是主题提供的一个开关：访客当前看的是深色模式就为 true，
+           这样评论区能跟着网站一起变黑，不会出现"网站黑了、评论区还是白的"。 */
       });
     }
 
     function loadArtalk() {
+      /* 这个函数负责"把评论需要的文件下载下来"。 */
+
       const $style = document.createElement('link');
+      /* 创建一个 <link> 标签，用来加载评论区的样式（外观）。 */
       $style.rel = 'stylesheet';
+      /* 声明这是一个样式文件。 */
       $style.href = assetsURL + '/Artalk.css';
+      /* 指向样式文件的地址。 */
       document.head.appendChild($style);
+      /* 挂到网页头部，浏览器就会去下载它。 */
 
       const $script = document.createElement('script');
+      /* 再创建一个 <script> 标签，用来加载评论区的主程序。 */
       $script.src = assetsURL + '/Artalk.js';
+      /* 主程序地址。 */
       $script.async = true;
+      /* 异步下载，不挡着页面其他内容，保证打开速度。 */
       $script.onload = initArtalk;
+      /* 【关键衔接】主程序下载完成后，自动调用上面的 initArtalk 把评论区建起来。
+         这样就不用去猜"什么时候下载完"，交给浏览器通知我们。 */
       document.head.appendChild($script);
+      /* 挂到网页头部，开始下载。 */
     }
 
     /* 跟随主题的明暗切换（与主题内置评论组件同一套机制） */
     addEventListener('message', (event) => {
+      /* 监听网站内部发出的"消息"。当访客点击左下角的太阳/月亮按钮切换深浅色时，
+         主题会发出这样一则消息。 */
+
       if (event.source !== window || !event.data || event.data.id !== Theme.eventId || !artalk) {
         return;
       }
+      /* 四重过滤，确认这确实是"我们自己网站发出来的、且是主题的切换通知"：
+         ① 消息来源必须是本页面（挡掉别人的消息，避免被干扰）；
+         ② 消息里得有内容；
+         ③ 消息的编号要和主题约定的编号一致；
+         ④ 评论区必须已经建好了（还没建好就不用切了）。
+         任一条不满足就直接返回，不做任何处理。 */
+
       artalk.setDarkMode(Theme.isDark);
+      /* 通知评论区："现在该换成深色/浅色了"，让评论区跟网站保持一致的观感。 */
     });
 
     /* 懒加载：滚动到评论区附近才开始请求资源 */
+    /* 懒加载是什么意思？就是"不到需要的时候不下载"。
+       访客如果只看文章、根本没往下翻到评论区，那就完全不下载评论相关文件，
+       省流量、页面也更快。 */
     const observer = new IntersectionObserver(
+      /* IntersectionObserver 是浏览器自带的一个"监视元素是否进入视野"的工具。 */
       (entries) => {
         if (entries[0].isIntersecting) {
           loadArtalk();
+          /* 一旦评论区进入或接近可视区域，才开始下载评论资源。 */
           observer.disconnect();
+          /* 下载过就不再监视了，避免重复触发浪费性能。 */
         }
       },
       { threshold: [0] }
+      /* threshold: [0] 表示"刚碰到可见区域边缘就算进入"，
+         这样访客快滚到评论区时就能提前开始加载，体验更顺滑。 */
     );
     observer.observe($container);
+    /* 开始监视前面创建的那个评论区盒子。 */
   })();
+
 </script>
 {%- endif -%}

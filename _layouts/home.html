@@ -1,7 +1,26 @@
 ---
+# ============================================================================
+# 本文件是什么？
+# ----------------------------------------------------------------------------
+# 这是网站的「首页」文件，也就是访客打开 https://2019527.xyz 时看到的那一页。
+# 它规定了：首页顶部显示什么统计信息、下面一排排的文章卡片长什么样、
+# 每张卡片上显示哪些信息（标题、摘要、日期、分类、浏览量）、以及底部的翻页按钮。
+#
+# 文件结构说明：
+#   1. 上面两个「---」之间的部分叫 front matter（文件头声明），用来告诉程序
+#      「这个页面套哪个模板、要额外挂载哪些小组件」。
+#   2. 两个「---」下面的部分是 Liquid 模板语法（Jekyll 的专用写法）：
+#      {% 这种百分号包起来的 %} 是「指令」，用来做判断、循环、赋值；
+#      {{ 这种双大括号 }} 是「填空」，用来把变量里的内容显示到网页上。
+# ============================================================================
 layout: default
 panel_includes:
   - hot-posts # ⚠️ 自定义项：热门文章面板。Chirpy 升级后如替换本文件，请把这一行加回来
+  # 上面这行的作用：在首页侧边栏额外挂载「热门文章」这个小面板
+  # （对应文件 _includes/hot-posts.html，会按浏览量排出前几名文章）。
+  # 如果以后升级主题、覆盖了本文件，一定要记得把这一行补回来，否则热门文章会消失。
+  # 【可DIY修改】想调整热门文章显示几条，不用改这里，改 _layouts/home.html 里
+  # hot-posts 对应的 include 参数即可（见 _includes/hot-posts.html）。
 ---
 
 {%- comment -%}
@@ -24,64 +43,122 @@ panel_includes:
     5. 改完后按 UPGRADE.md 的「升级后自检清单」逐项确认
   ============================================================
 {%- endcomment -%}
+{# 说明：上面 {%- comment -%} ... {%- endcomment -%} 之间的内容，
+   Jekyll 会完全忽略、不会输出到网页上，所以可以放心写中文说明和警告。 #}
 
+{# 载入语言包：根据 _config.yml 里的 lang 设置，把界面上的固定文字
+   （如"发布于""分类"等）翻译成对应语言，这里会生成一个 lang 变量备用。 #}
 {% include lang.html %}
 
+{# ---- 第一步：把全部文章分成两类：置顶文章 和 普通文章 ---- #}
+
+{# 取出所有「置顶」文章。判断标准：文章开头写了 pin: true。 #}
 {% assign all_pinned = site.posts | where: 'pin', 'true' %}
+
+{# 取出所有「普通」文章：既不是置顶的（pin != true），也不是隐藏的（hidden != true）。
+   where_exp 的写法稍微绕一点，可以理解为「按条件筛选」。 #}
 {% assign all_normal = site.posts | where_exp: 'item', 'item.pin != true and item.hidden != true' %}
 
+{# 建一个空的清单 posts，用来装「本次要显示的文章」，一会儿往里塞。 #}
 {% assign posts = '' | split: '' %}
 
 <!-- Get pinned posts on current page -->
+<!-- 中文：取出「本页应该显示的置顶文章」 -->
 
+{# 下面三行在算「本页可见的文章序号范围」。
+   举例：每页 10 篇，当前是第 2 页 → visible_start = (2-1)×10 = 10，
+   也就是从全体文章里的第 10 篇（从 0 开始数）开始显示。
+   paginator 是翻页插件自动生成的变量，我们直接拿来用即可。 #}
 {% assign visible_start = paginator.page | minus: 1 | times: paginator.per_page %}
 {% assign visible_end = visible_start | plus: paginator.per_page %}
 
+{# 如果「置顶文章总数」大于本页起始序号，说明本页还有置顶文章要显示。 #}
 {% if all_pinned.size > visible_start %}
   {% if all_pinned.size > visible_end %}
+    {# 情况一：置顶文章多到一页都放不下 → 本页显示满一整页（per_page 篇）。 #}
     {% assign pinned_size = paginator.per_page %}
   {% else %}
+    {# 情况二：置顶文章在这一页就会放完 → 本页只需要显示剩下的那几篇。 #}
     {% assign pinned_size = all_pinned.size | minus: visible_start %}
   {% endif %}
 
+  {# 循环把要显示的置顶文章一篇篇塞进 posts 清单。
+     limit: pinned_size 表示最多循环这么多次，push 就是「往清单末尾加一个」。 #}
   {% for i in (visible_start..all_pinned.size) limit: pinned_size %}
     {% assign posts = posts | push: all_pinned[i] %}
   {% endfor %}
 {% else %}
+  {# 本页没有置顶文章可显示，置顶数量记 0。 #}
   {% assign pinned_size = 0 %}
 {% endif %}
 
 <!-- Get normal posts on current page -->
+<!-- 中文：取出「本页应该显示的普通文章」 -->
 
+{# 本页要显示的普通文章数量 = 本页文章总数 − 已经占掉的置顶文章数量。
+   这样置顶文章多的页面，普通文章就会相应少一些，总篇数保持每页 10 篇。 #}
 {% assign normal_size = paginator.posts | size | minus: pinned_size %}
 
 {% if normal_size > 0 %}
   {% if pinned_size > 0 %}
+    {# 本页已经有置顶文章打头了，普通文章从第 0 篇开始接在后面。 #}
     {% assign normal_start = 0 %}
   {% else %}
+    {# 本页没有置顶文章，普通文章的起始序号要跳过前面几页已经用掉的置顶文章。 #}
     {% assign normal_start = visible_start | minus: all_pinned.size %}
   {% endif %}
 
+  {# 算出结束序号（注意循环区间要减 1，因为序号从 0 开始数）。 #}
   {% assign normal_end = normal_start | plus: normal_size | minus: 1 %}
 
+  {# 循环把普通文章一篇篇追加到 posts 清单里。 #}
   {% for i in (normal_start..normal_end) %}
     {% assign posts = posts | push: all_normal[i] %}
   {% endfor %}
 {% endif %}
 
 <!-- >>> CUSTOM-1 START 站点统计条（Chirpy 升级时整段保留并重新粘贴） -->
-{% assign total_chars = 0 %}
-{% assign total_imgs = 0 %}
-{% assign total_vids = 0 %}
+{# =========================================================================
+   CUSTOM-1：首页顶部的「数据条」——显示网站一共写了多少文章/多少字/多少图/多少视频。
+   实现思路：先把三个计数器都归零，然后遍历所有文章，一边数一边累加。
+   注意：这里用的是「就地累加」，不产生任何额外文件、也不影响访问速度
+   （这些计算都发生在网站构建阶段，访客打开网页时看到的已经是算好的数字）。
+   ========================================================================= #}
+
+{% assign total_chars = 0 %}   {# 累计字数，先清零 #}
+{% assign total_imgs = 0 %}    {# 累计配图数，先清零 #}
+{% assign total_vids = 0 %}    {# 累计视频数，先清零 #}
+
+{# 遍历网站上每一篇文章 #}
 {% for post in site.posts %}
+  {# 数这篇文章有多少个字。处理链条读法：
+     post.content  取文章正文（含 HTML 标签）
+     | strip_html  去掉所有网页标签（<p> <div> 这类）
+     | strip_newlines 去掉换行符
+     | remove: " " 去掉空格（中英文空格都不算字数）
+     | split: ""   把整段文字按「每个字符」拆成一个个小格子
+     | size        数格子总数 = 字符数
+     这样就得到「不含标签、空格、换行的纯正文字符数」，中文一个字算一个。 #}
   {% assign chars = post.content | strip_html | strip_newlines | remove: " " | split: "" | size %}
-  {% assign total_chars = total_chars | plus: chars %}
+  {% assign total_chars = total_chars | plus: chars %}   {# 累加到总字数 #}
+
+  {# 数这篇文章里有几张图。小技巧：把正文按 "<img" 切开，
+     切出来的段数减 1 就等于 <img 出现的次数（也就是图片张数）。 #}
   {% assign imgs = post.content | split: "<img" | size | minus: 1 %}
-  {% assign total_imgs = total_imgs | plus: imgs %}
-  {% assign vids = post.content | split: "<iframe" | size | minus: 1 %}
-  {% assign local_vids = post.content | split: "<video" | size | minus: 1 %}
-  {% assign total_vids = total_vids | plus: vids | plus: local_vids %}
+  {% assign total_imgs = total_imgs | plus: imgs %}      {# 累加到总图片数 #}
+
+  {# 数视频数。视频有两种写法：外链视频 <iframe> 和本地视频 <video>，要分别数再相加。 #}
+  {% assign vids = post.content | split: "<iframe" | size | minus: 1 %}        {# 外链视频（如 B站/YouTube 嵌入播放器） #}
+  {% assign local_vids = post.content | split: "<video" | size | minus: 1 %}   {# 本站自托管的视频 #}
+  {% assign total_vids = total_vids | plus: vids | plus: local_vids %}         {# 两类加起来 #}
 {% endfor %}
+
+{# 下面这个 div 就是显示在首页顶部的统计条本身。
+   它用 style 直接写内联样式（不依赖外部样式表），
+   这样即使主题样式升级换了名字，这一块也不会走形。
+   display: flex 表示里面的项目横向排列；
+   flex-wrap: wrap 表示屏幕窄的时候自动换行（手机上也能看全）；
+   justify-content: center 表示整体居中；column-gap/row-gap 控制项目之间的间距。 #}
 <div
   class="text-muted mt-3 mb-0"
   style="
@@ -94,11 +171,17 @@ panel_includes:
     text-align: center;
   "
 >
+  {# 每一项都是一段 <span>：一个小图标 + 一句文字。
+     white-space: nowrap 表示这段文字不许换行，避免"120 篇文章"被拆成两行。 #}
   <span style="display: inline-block; white-space: nowrap;">
     <i class="fas fa-book-open"></i> 本站已发布 <strong>{{ site.posts | size }}</strong> 篇文章
+    {# 上面 {{ site.posts | size }} 会自动显示文章总数，会随发文自动变化，无需手工维护。 #}
   </span>
   <span style="display: inline-block; white-space: nowrap;">
     <i class="fas fa-pen-nib"></i> 累计创作 <strong>{{ total_chars | divided_by: 10000.0 | round: 1 }}</strong> 万字
+    {# 把总字数除以 10000（.0 保证按小数计算、不丢精度），再四舍五入保留 1 位小数，
+       结果就是"多少万字"，例如 12.3 万字。
+       【可DIY修改】想让统计更精确，把末尾的 round: 1 改成 round: 2（保留两位小数）。 #}
   </span>
   <span style="display: inline-block; white-space: nowrap;">
     <i class="fas fa-images"></i> 文章配图 <strong>{{ total_imgs }}</strong> 张
@@ -106,30 +189,58 @@ panel_includes:
   <span style="display: inline-block; white-space: nowrap;">
     <i class="fas fa-film"></i> 视频节目 <strong>{{ total_vids }}</strong> 个
   </span>
+  {# 【可DIY修改】上面四段文字（"本站已发布""累计创作""文章配图""视频节目"）
+     都可以直接改成您喜欢的说法；图标可以换成别的 Font Awesome 图标名
+     （把 fa-book-open 换成 fa-star 之类）。 #}
+
+  {# ---- CUSTOM-3：本站总访问量（不蒜子官方版） ----
+     作用：在上面四项之后，再追加一项「本站总访问量 X 次」。
+     数字来自不蒜子免费统计服务，由 _includes/busuanzi-site-pv.html 渲染。
+     与上面前四项的区别：前四项是"网站自己数出来的"（文章数、字数等，
+     构建时就固定好）；这一项是"外部统计服务实时给的"（数字会随访问增长，
+     需要访客浏览器去请求一次）。两者互不影响。
+     【可DIY修改】不想显示总访问量，把下面这一行删掉即可，
+     其余四项不受任何影响。 #}
+  <span style="display: inline-block; white-space: nowrap;">
+    <i class="fas fa-chart-line"></i>
+    {% include busuanzi-site-pv.html %}
+  </span>
 </div>
 
 <style>
   /* 文章卡片上的浏览量：与同行的日期/分类等 meta 信息保持一致的视觉风格 */
-  #post-list .pv-card {
-    white-space: nowrap;
-    line-height: 1.5;
+  #post-list .pv-card {          /* 只作用于首页文章列表里的浏览量区域，不影响别处 */
+    white-space: nowrap;         /* 浏览量数字和图标不许换行，避免挤成两行 */
+    line-height: 1.5;            /* 行高，让它和旁边的日期文字纵向对齐好看 */
   }
-  #post-list .pv-card .fa-eye {
-    opacity: 0.7;
+  #post-list .pv-card .fa-eye {  /* 眼睛图标 */
+    opacity: 0.7;                /* 稍微调淡一点，不抢正文的视觉焦点 */
   }
 </style>
 <!-- <<< CUSTOM-1 END -->
 
+
+<!-- 首页文章列表的容器，下面是「把清单里的文章一篇篇做成卡片」的循环 -->
 <div id="post-list" class="flex-grow-1 px-xl-1">
-  {% for post in posts %}
-    <article class="card-wrapper card">
+  {% for post in posts %}   {# posts 就是前面辛苦筛选拼好的「本页文章清单」 #}
+    <article class="card-wrapper card">   {# 一篇文章 = 一张卡片 #}
+      {# 整张卡片都是可点击的，点击后跳到这篇文章的详情页。
+         post.url 是这篇文章的网址，relative_url 会把它补成完整可用的链接。 #}
       <a href="{{ post.url | relative_url }}" class="post-preview row g-0 flex-md-row-reverse">
         {% assign card_body_col = '12' %}
+        {# 上面这行决定「卡片右边文字区域」占几列。
+           网页布局把一行分成 12 格（Bootstrap 栅格），12 = 占满整行。
+           如果文章有封面图，稍后会被改成 7，把剩下 5 格留给图片。
+           flex-md-row-reverse 表示：屏幕够宽时，图片显示在右边（和文字左右调换）。 #}
 
-        {% if post.image %}
+        {% if post.image %}   {# 如果这篇文章设置了封面图（文章开头写了 image: xxx） #}
           {% assign src = post.image.path | default: post.image %}
+          {# 兼容两种写法：图片写成 image: {path: xxx} 或直接写 image: xxx，两种都能取到图片地址。 #}
 
           {% if post.media_subpath %}
+            {# media_subpath 是「图片统一存放的文件夹」设置。
+               如果填写了它，且图片地址不是以 http:// 或 https:// 开头的外链，
+               就自动在前面拼上这个文件夹路径。 #}
             {% unless src contains '://' %}
               {% assign src = post.media_subpath
                 | append: '/'
@@ -137,14 +248,19 @@ panel_includes:
                 | replace: '///', '/'
                 | replace: '//', '/'
               %}
+              {# 最后两个 replace 是把拼路径时可能出现的多余斜杠（// 或 ///）修成单个 /，
+                 避免出现 assets///img 这种读不出来的地址。 #}
             {% endunless %}
           {% endif %}
 
           {% if post.image.lqip %}
+            {# lqip = Low Quality Image Placeholder，低清占位图。
+               作用：大图加载前先显示一张很小的模糊图，避免页面出现大片空白、观感更好。 #}
             {% assign lqip = post.image.lqip %}
 
             {% if post.media_subpath %}
               {% unless lqip contains 'data:' %}
+                {# 同样的逻辑：给占位图也补上文件夹路径（除非它本身就是 base64 内嵌图）。 #}
                 {% assign lqip = post.media_subpath
                   | append: '/'
                   | append: lqip
@@ -155,47 +271,60 @@ panel_includes:
             {% endif %}
 
             {% assign lqip_attr = 'lqip="' | append: lqip | append: '"' %}
+            {# 拼成 lqip="图片地址" 这样的属性字符串，待会儿直接塞进 img 标签使用。 #}
           {% endif %}
 
           {% assign alt = post.image.alt | xml_escape | default: 'Preview Image' %}
+          {# alt 是「图片加载不出来时显示的文字」，也方便视障读者和搜索引擎理解图片内容。
+             没单独设置就默认用 'Preview Image'。
+             【可DIY修改】把 'Preview Image' 改成 '文章封面' 等中文说法更友好。 #}
 
-          <div class="col-md-5">
+          <div class="col-md-5">   {# 图片区域占 5 列 #}
             <img src="{{ src }}" alt="{{ alt }}" {{ lqip_attr }}>
           </div>
 
           {% assign card_body_col = '7' %}
+          {# 有图了，把文字区域从 12 列改成 7 列，一左一右正好凑满 12 列。 #}
         {% endif %}
 
-        <div class="col-md-{{ card_body_col }}">
+        <div class="col-md-{{ card_body_col }}">   {# 卡片右侧的文字区域 #}
           <div class="card-body d-flex flex-column">
             <h1 class="card-title my-2 mt-md-0">{{ post.title }}</h1>
+            {# 文章标题。点标题也是点整张卡片，会跳到文章正文。 #}
 
             <div class="card-text content mt-0 mb-3">
               <p>{% include post-summary.html %}</p>
+              {# 文章摘要。默认取文章开头写的 description 字段；
+                 如果没写，主题会自动截取正文开头一段作为摘要。 #}
             </div>
 
             <div class="post-meta flex-grow-1 d-flex align-items-end">
-              <div class="me-auto">
+              {# post-meta 是卡片底部那一行小字信息，包含日期、分类、置顶标记、浏览量 #}
+              <div class="me-auto">   {# me-auto 让它独占左边，把别的元素挤到右边 #}
                 <!-- posted date -->
-                <i class="far fa-calendar fa-fw me-1"></i>
+                <i class="far fa-calendar fa-fw me-1"></i>   {# 日历小图标 #}
                 {% include datetime.html date=post.date lang=lang %}
+                {# 显示发布日期。按 _config.yml 里设置的时区（北京时间）换算后显示。 #}
 
                 <!-- categories -->
-                {% if post.categories.size > 0 %}
-                  <i class="far fa-folder-open fa-fw me-1"></i>
+                {% if post.categories.size > 0 %}   {# 有分类才显示分类，没有就不显示 #}
+                  <i class="far fa-folder-open fa-fw me-1"></i>   {# 文件夹小图标 #}
                   <span class="categories">
                     {% for category in post.categories %}
                       {{ category }}
                       {%- unless forloop.last -%},{%- endunless -%}
+                      {# 显示分类名；只要不是最后一个分类，就在后面补一个逗号。
+                         forloop.last 是循环自带的变量，为 true 时表示"这是最后一个"。 #}
                     {% endfor %}
                   </span>
                 {% endif %}
               </div>
 
-              {% if post.pin %}
+              {% if post.pin %}   {# 如果这篇文章是置顶的 #}
                 <div class="pin ms-1">
-                  <i class="fas fa-thumbtack fa-fw"></i>
+                  <i class="fas fa-thumbtack fa-fw"></i>   {# 图钉图标 #}
                   <span>{{ site.data.locales[lang].post.pin_prompt }}</span>
+                  {# 显示"置顶"两个字（从语言包里取，中文站显示中文）。 #}
                 </div>
               {% endif %}
 
@@ -208,8 +337,11 @@ panel_includes:
                 key 规则：文章 url 路径，例如 /posts/post-046/
               {%- endcomment -%}
               <div class="pv-card ms-1" title="浏览量">
-                <i class="far fa-eye fa-fw me-1"></i>
+                {# title="浏览量" 是鼠标悬停在上面时弹出的小提示文字。 #}
+                <i class="far fa-eye fa-fw me-1"></i>   {# 眼睛小图标 #}
                 <span class="pv-num">{{ site.data.views[post.url] | default: 0 }}</span>
+                {# 从 _data/views.json 里按文章网址取对应的浏览量数字；
+                   万一没有这个文章的记录，就显示 0（default: 0 的作用），不会报错。 #}
               </div>
               <!-- <<< CUSTOM-2 END -->
             </div>
@@ -219,10 +351,11 @@ panel_includes:
         </div>
       </a>
     </article>
-  {% endfor %}
+  {% endfor %}   {# 文章循环结束 #}
 </div>
 <!-- #post-list -->
 
+{# 如果总页数超过 1 页，就在底部显示翻页按钮（上一页 / 页码 / 下一页）。 #}
 {% if paginator.total_pages > 1 %}
   {% include post-paginator.html %}
 {% endif %}
