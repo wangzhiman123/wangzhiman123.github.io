@@ -40,7 +40,7 @@
 
 ---
 
-## 三、文件清单（共 38 个）
+## 三、文件清单（共 40 个）
 
 ### 网站本体（构建网站必需）
 
@@ -51,7 +51,9 @@
 | `_layouts/home.html` | 首页版式：文章卡片列表、置顶逻辑、站点统计条、浏览量显示 |
 | `_layouts/post.html` | 文章详情页版式：标题、封面图、目录、正文、版权、分享 |
 | `_includes/hot-posts.html` | 右侧"热门文章"面板 |
-| `_includes/footer.html` | 页脚：版权、网站运行天数、建站技术说明、ICP 备案、公安备案 |
+| `_includes/footer.html` | 页脚：版权（含网站运行天数）、建站技术说明、ICP 备案、公安备案 |
+| `_includes/metadata-hook.html` | **自定义注入点**（主题官方预留）：用来给页面补充自定义 CSS/meta，不改主题源码 |
+| `assets/css/custom-footer.css` | 自定义补充样式：主要修手机端页脚"内容顶到横线"的问题 |
 | `_includes/pageviews/goatcounter.html` | 浏览量填充脚本（本站的浏览量核心） |
 | `_includes/analytics/baidu.html` | 百度统计代码 |
 | `_includes/analytics/goatcounter.html` | **故意留空**的文件（用来屏蔽主题自带的 GoatCounter，详见文件内注释） |
@@ -135,6 +137,18 @@
   **同样请不要手工修改。**
 
 这两个文件会被 GitHub Actions 或服务器上的定时任务自动更新，每次自动提交一次。
+
+### 补充：如何让本地部署"跳过"这两个文件
+
+默认情况下，本地部署（`deploy.bat`）也会刷新并上传这两个文件（与线上定时任务分工协作）。
+如果你希望**让线上定时任务独占维护它们、本地部署完全不插手**，用 `-SkipData` 参数：
+
+```powershell
+deploy.bat -SkipData              # 本次部署：这两个文件不上传、不覆盖线上
+deploy.bat -SkipViews -SkipData   # 更进一步：连"刷新"也不做，全程不碰这两个文件
+```
+
+两个开关的分工见《一键部署使用说明.md》第三节。**默认不带参数时行为不变**，属于按需开启。
 
 ---
 

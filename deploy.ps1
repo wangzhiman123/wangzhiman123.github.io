@@ -46,7 +46,10 @@
 可用参数（在命令行里加，例如 .\deploy.ps1 -DryRun）：
    -DryRun         只预览会改动哪些文件，不真的上传（不需要令牌）
    -Message "..."  自定义提交说明
-   -SkipViews      跳过刷新浏览量
+   -SkipViews      跳过"刷新浏览量"这一步（不查询统计接口、不在本地生成数据文件）
+   -SkipData       跳过"浏览量数据文件"的同步：_data/views.json 与 _data/pv_state.json
+                   这两个文件即使变了也不上传、不覆盖线上，交给 GitHub 定时任务维护
+                   （可与 -SkipViews 一起用：连刷新也不做，全程不碰这两个文件）
    -SkipWatch      推送后不等待构建结果
    -Status         只看最近几次部署的状态，不做任何改动
    -SetToken       重新设置 / 更换 GitHub 令牌
@@ -81,7 +84,19 @@ param(
     [switch] $DryRun,
     # 试运行：只计算并显示会改哪些文件，绝不真的上传。改东西前先看看很有用。
     [switch] $SkipViews,
-    # 跳过"刷新浏览量"这一步，适合赶时间或者不想产生查询记录时用。
+    # 跳过"刷新浏览量"这一步（不查询统计接口、不写本地数据文件），
+    # 适合赶时间、或者不想产生额外查询记录时用。
+    [switch] $SkipData,
+    # 跳过"浏览量数据文件"的同步（_data/views.json、_data/pv_state.json）。
+    # 【和上面 -SkipViews 的区别，请务必分清】
+    #   -SkipViews：跳过"抓取"这一步 —— 不去查询统计接口，本地不生成这两个文件。
+    #   -SkipData ：跳过"上传"这一步 —— 这两个文件即使变了也不上传、不覆盖线上。
+    # 两个开关可以单独用，也可以一起用（一起用 = 这两个文件从抓取到上传全程不碰）。
+    # -SkipData 适合与线下的其它工具/wangzhiman 的定时任务分工的场景：
+    # 让线上（GitHub 定时任务）独占维护这两个文件，本地部署完全不插手。
+    # 【为什么单独做成开关而不是永久排除？】因为本地的浏览量刷新、以及线上定时任务的
+    # 数据纠错，都依赖这两个文件能正常提交；永久排除会切断这条链路。
+    # 所以这里保留成"按需开启"，默认行为不变。
     [switch] $SkipWatch,
     # 提交完成后不等 GitHub 构建、不检查网站，直接结束（不想干等就用它）。
     [switch] $Status,
@@ -175,6 +190,21 @@ $ExcludePathPrefixes = @('assets/lib', '_sass/vendors', 'assets/js/dist')
 # 要排除的"路径前缀"清单。这三处都是主题自带的第三方代码，
 # 属于"官方文件、我们不会改"，所以不参与同步。
 # 好处：万一这些文件在两边有细微差异，也不会干扰"哪些文件被改了"的判断。
+
+$DataFileRelPaths = @('_data/views.json', '_data/pv_state.json')
+# 两个"浏览量数据文件"的相对路径清单（这是本项目的专用清单，不是通用排除项）。
+# 【它们是干什么的？】
+#   _data/views.json   网页真正要读的数据（每篇文章显示多少次浏览）。
+#   _data/pv_state.json 内部账本（记录每篇文章查询了几次，供下次纠错用）。
+# 【为什么要单独列出来？】因为这两个文件由"本地部署"和"线上的 GitHub 定时任务"
+# 两条链路各自维护。某些场景下（例如 -SkipData）需要让它们不参与本地同步，
+# 但又不能影响其它文件，所以单独做成一张清单，方便精确控制。
+# 【注意】本清单只在带 -SkipData 参数时才生效，默认不排除。
+
+$SkipDataSelected = @{}
+# 准备一张"实际要跳过的数据文件"表（空表表示一个都不跳过）。
+# 【为什么用 $() 里赋值？】这张表在下面会根据 -SkipData 是否开启被填入内容，
+# 然后交给 Test-ExcludedPath 使用；先在这里定义好，避免后面读不到它。
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 # 强制使用 TLS 1.2 这种加密协议去访问网络。
@@ -536,6 +566,13 @@ function Get-Token {
 function Test-ExcludedPath([string] $rel) {
     # 这个函数的作用：判断某个文件/文件夹是否属于"不该同步"的范围。
     # 参数 $rel 是"相对于项目根目录的路径"，例如 assets/lib/xxx.js。
+    if ($SkipDataSelected.Count -gt 0 -and $SkipDataSelected.ContainsKey($rel)) {
+        return $true
+        # 【本次新增】如果本次开启了 -SkipData，且这个文件正是两个浏览量数据文件之一，
+        # 就判定为"该排除"。这样它们既不会被上传，也不会被当作"要删除的文件"。
+        # 【为什么要放在最前面判断？】因为这是本次任务的重点，优先处理最直观；
+        # 而且它的判断最快（直接查表），放在前面也顺带省一点时间。
+    }
     foreach ($p in $ExcludePathPrefixes) {
         if ($rel -eq $p -or $rel.StartsWith($p + '/')) { return $true }
         # 两种都算命中：刚好等于这个前缀，或者以"前缀/"开头。
@@ -1343,6 +1380,31 @@ if ($SkipViews) {
         # 浏览量数据就算没更新成功，也不该阻止您发文章。
         # 分清"必须成功"和"尽力而为"，是写自动化脚本的重要思路。
     }
+}
+
+# ---------- 1.5 处理「跳过浏览量数据文件」开关 ----------
+# 【这一步做了什么？】如果本次带了 -SkipData，就把那两个数据文件登记进"排除表"，
+# 让下面的文件比对彻底无视它们（不对比、不上传、也不算删除）。
+# 【注意执行顺序】必须放在"扫描本地文件"之前，否则排除规则来不及生效。
+if ($SkipData) {
+    foreach ($p in $DataFileRelPaths) {
+        $SkipDataSelected[$p] = $true
+        # 逐个登记进排除表。键是"相对路径"，值随便给个 $true 表示"要跳过"。
+    }
+    Head '跳过浏览量数据文件'
+    Warn '按你的要求，本次不刷新、也不上传这两个文件（-SkipData）：'
+    Say  '  · _data/views.json    （网页读取的浏览量数据）'
+    Say  '  · _data/pv_state.json （内部纠错账本）'
+    Say  '  它们将由 GitHub 上的定时任务继续维护，本地部署不插手。'
+    # 【为什么要明确列出文件名？】因为"跳过数据同步"是个有副作用的操作，
+    # 打印清楚到底跳过了什么，事后排查"为什么浏览量没更新"时一眼就能看到原因。
+    # 【提醒】如果同时用了 -SkipViews，那连"刷新"也跳过了，
+    # 这两个文件本次从头到尾都不会被碰（本地既不生成、也不上传）。
+} else {
+    $SkipDataSelected.Clear()
+    # 没带 -SkipData 就保证排除表是空的（默认行为不变：这两个文件照常同步）。
+    # 【为什么还要 Clear 一下？】因为 $SkipDataSelected 是脚本级变量，
+    # 显式清空可以杜绝"万一被别处写入过"导致默认行为被意外改变。
 }
 
 # ---------- 2. 对比远程仓库 ----------
