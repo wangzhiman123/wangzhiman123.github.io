@@ -51,7 +51,7 @@
 | `_layouts/home.html` | 首页版式：文章卡片列表、置顶逻辑、站点统计条、浏览量显示 |
 | `_layouts/post.html` | 文章详情页版式：标题、封面图、目录、正文、版权、分享 |
 | `_includes/hot-posts.html` | 右侧"热门文章"面板 |
-| `_includes/footer.html` | 页脚：版权、ICP 备案、公安备案 |
+| `_includes/footer.html` | 页脚：版权、网站运行天数、建站技术说明、ICP 备案、公安备案 |
 | `_includes/pageviews/goatcounter.html` | 浏览量填充脚本（本站的浏览量核心） |
 | `_includes/analytics/baidu.html` | 百度统计代码 |
 | `_includes/analytics/goatcounter.html` | **故意留空**的文件（用来屏蔽主题自带的 GoatCounter，详见文件内注释） |
