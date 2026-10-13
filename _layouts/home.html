@@ -330,19 +330,34 @@ panel_includes:
 
               <!-- >>> CUSTOM-2 START 卡片浏览量（Chirpy 升级时整段保留并重新粘贴） -->
               {%- comment -%}
-                浏览量：与文章页共用同一份数据源 _data/views.json
-                （由 GitHub Actions 定时抓取真实访问量，构建时静态渲染）。
-                两处共用一份数据 → 卡片与文章页的数值永远一致；
-                也不发起任何前端请求 → 不会加载失败、不会一直转圈。
+                浏览量：显示方案由 _config.yml 的 viewcount.provider 决定。
+                  · static（默认）：读 _data/views.json，构建时静态渲染 —— 打开即可见。
+                  · busuanzi       ：卡片改用「文章卡片专用」的不蒜子方案见下方说明。
+                注意：首页卡片是"列表"，同一页有很多张卡片，
+                不蒜子官方 mini.js 只认固定的 page_pv 容器（一页只能有一个），
+                所以列表卡片**不逐张实时取数**；busuanzi 方案下，卡片显示的是
+                _data/views.json 里由定时任务维护的快照值（保证不出现大量并发请求）。
+                文章***详情页***才是真正由不蒜子前端实时显示的。
                 key 规则：文章 url 路径，例如 /posts/post-046/
               {%- endcomment -%}
+              {%- comment -%} 读出总开关（static / busuanzi / 空）。
+                   未配置 viewcount 段 → 按 static 处理（向后兼容）；
+                   明确留空（写成 provider: ）→ 卡片浏览量整块不渲染。 {%- endcomment -%}
+              {%- if site.viewcount -%}
+                {%- assign _vc_home = site.viewcount.provider | default: '' | strip -%}
+              {%- else -%}
+                {%- assign _vc_home = 'static' -%}
+              {%- endif -%}
+              {%- if _vc_home != '' -%}
               <div class="pv-card ms-1" title="浏览量">
                 {%- comment -%} title="浏览量" 是鼠标悬停在上面时弹出的小提示文字。 {%- endcomment -%}
                 <i class="far fa-eye fa-fw me-1"></i>   {%- comment -%} 眼睛小图标 {%- endcomment -%}
                 <span class="pv-num">{{ site.data.views[post.url] | default: 0 }}</span>
                 {%- comment -%} 从 _data/views.json 里按文章网址取对应的浏览量数字；
-                   万一没有这个文章的记录，就显示 0（default: 0 的作用），不会报错。 {%- endcomment -%}
+                   万一没有这个文章的记录，就显示 0（default: 0 的作用），不会报错。
+                   【两种方案共用这一行】原因见上方注释：列表卡片统一用快照值。 {%- endcomment -%}
               </div>
+              {%- endif -%}
               <!-- <<< CUSTOM-2 END -->
             </div>
             <!-- .post-meta -->

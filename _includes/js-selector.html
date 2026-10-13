@@ -1,0 +1,130 @@
+<!-- JS selector for site. -->
+<!-- ============================================================================
+  【本文件是什么？】
+  本文件覆盖 Chirpy 主题自带的 _includes/js-selector.html（基于 v7.6.0）。
+  ----------------------------------------------------------------------------
+  与主题原版**只有 1 处差异**：文件末尾「Pageviews」那一段里，
+  新增了一段按 viewcount.provider 分派组件的逻辑（用 CUSTOM-VIEWCOUNT 标记包裹）。
+  ----------------------------------------------------------------------------
+  【为什么要覆盖它？】
+  主题原本只支持 goatcounter 一种浏览量来源。我们引入的「可插拔浏览量方案」
+  需要在加载器里多认一个 provider 名字（busuanzi），所以必须覆盖本文件。
+
+  【Chirpy 升级时怎么处理本文件】
+  1. 打开 github.com/cotes2020/jekyll-theme-chirpy
+     → 切到新版本 tag → 打开 _includes/js-selector.html 复制全文
+  2. 用新版全文整体替换本文件
+  3. 再把下面 CUSTOM-VIEWCOUNT 标记的那几行重新粘贴回去
+  4. 注意：本文件顶部的中文注释若被新版覆盖掉属正常，按需补回即可。
+
+  【写作注意】本文件是 Liquid 模板，HTML 注释 <!- - - -> 里的内容
+  Liquid 依然会解析。所以本注释块里**绝对不能出现** Liquid 标签字形，
+  否则会被当成真标签而产生语法错误。
+============================================================================ -->
+
+<!-- commons -->
+
+{% assign urls = site.data.origin[type].search.js %}
+
+<!-- layout specified -->
+
+{% if page.layout == 'post' or page.layout == 'page' or page.layout == 'home' %}
+  {% assign urls = urls | append: ',' | append: site.data.origin[type]['lazy-polyfill'].js %}
+
+  {% unless page.layout == 'home' %}
+    <!-- image lazy-loading & popup & clipboard -->
+    {% assign urls = urls
+      | append: ','
+      | append: site.data.origin[type].glightbox.js
+      | append: ','
+      | append: site.data.origin[type].clipboard.js
+    %}
+  {% endunless %}
+{% endif %}
+
+{% if page.layout == 'home'
+  or page.layout == 'post'
+  or page.layout == 'archives'
+  or page.layout == 'category'
+  or page.layout == 'tag'
+%}
+  {% assign locale = include.lang | split: '-' | first %}
+
+  {% assign urls = urls
+    | append: ','
+    | append: site.data.origin[type].dayjs.js.common
+    | append: ','
+    | append: site.data.origin[type].dayjs.js.locale
+    | replace: ':LOCALE', locale
+    | append: ','
+    | append: site.data.origin[type].dayjs.js.relativeTime
+    | append: ','
+    | append: site.data.origin[type].dayjs.js.localizedFormat
+  %}
+{% endif %}
+
+{% if page.content contains '<h2' or page.content contains '<h3' and site.toc and page.toc %}
+  {% assign urls = urls | append: ',' | append: site.data.origin[type].toc.js %}
+{% endif %}
+
+{% if page.mermaid %}
+  {% assign urls = urls | append: ',' | append: site.data.origin[type].mermaid.js %}
+{% endif %}
+
+{% include jsdelivr-combine.html urls=urls %}
+
+{% case page.layout %}
+  {% when 'home', 'categories', 'post', 'page' %}
+    {% assign js = page.layout %}
+  {% when 'archives', 'category', 'tag' %}
+    {% assign js = 'misc' %}
+  {% else %}
+    {% assign js = 'commons' %}
+{% endcase %}
+
+{% capture script %}/assets/js/dist/{{ js }}.min.js{% endcapture %}
+
+<script defer src="{{ script | relative_url }}"></script>
+
+{% if page.math %}
+  <!-- MathJax -->
+  <script src="{{ '/assets/js/data/mathjax.js' | relative_url }}"></script>
+  <script id="MathJax-script" async src="{{ site.data.origin[type].mathjax.js | relative_url }}"></script>
+{% endif %}
+
+<!-- Pageviews -->
+{% if page.layout == 'post' %}
+  {% assign provider = site.pageviews.provider %}
+
+  {% if provider and provider != empty %}
+    {% case provider %}
+      {% when 'goatcounter' %}
+        {% if site.analytics[provider].id != empty and site.analytics[provider].id %}
+          {%- comment -%}
+            CUSTOM-VIEWCOUNT（开关分派）：
+            读取 _config.yml 的 viewcount.provider，决定文章页真正加载哪个
+            浏览量组件：
+              · 未配置该项        → 按 static 处理（向后兼容，保持原行为）
+              · static            → 加载主题原有的 goatcounter.html（读取 views.json 静态渲染）
+              · busuanzi          → 加载我们新增的 busuanzi.html（官方前端实时方案）
+              · 明确留空（写成 provider: ）→ 三个分支都不命中，什么都不加载 = 全站停用
+            对应文件都在 _includes/pageviews/ 下。
+            详见《浏览量方案切换与回滚说明.md》。
+          {%- endcomment -%}
+          {%- comment -%} 先用 remove 把 null 转成空串，便于统一判断。
+               逻辑：未配置 viewcount 段 → 视为 static；配了但值为空 → 视为停用。 {%- endcomment -%}
+          {%- if site.viewcount -%}
+            {%- assign _vc_provider = site.viewcount.provider | default: '' | strip -%}
+          {%- else -%}
+            {%- assign _vc_provider = 'static' -%}
+          {%- endif -%}
+          {%- if _vc_provider == 'busuanzi' -%}
+            {% include pageviews/busuanzi.html %}
+          {%- elsif _vc_provider == 'static' -%}
+            {% include pageviews/goatcounter.html %}
+          {%- endif -%}
+          {%- comment -%} CUSTOM-VIEWCOUNT END {%- endcomment -%}
+        {% endif %}
+    {% endcase %}
+  {% endif %}
+{% endif %}

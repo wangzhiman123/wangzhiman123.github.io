@@ -158,15 +158,34 @@ script_includes:
 
         <div>
           <!-- pageviews -->
-          {% if site.pageviews.provider and site.analytics[site.pageviews.provider].id %}
-            {%- comment -%} 双重检查：既配置了浏览量服务商，该服务商的 id 也不为空，才显示浏览量。
+          {%- if site.viewcount -%}
+            {%- assign _vc = site.viewcount.provider | default: '' | strip -%}
+          {%- else -%}
+            {%- assign _vc = 'static' -%}
+          {%- endif -%}
+          {%- comment -%} 读取 _config.yml 里的「浏览量显示方案」总开关：
+               未配置 viewcount 段 → 按 static 处理（向后兼容）
+               static    = 沿用现有方案（读取 _data/views.json，构建时静态渲染）
+               busuanzi  = 不蒜子官方前端实时方案
+               明确留空    = 全站停用浏览量显示（写成 provider: ）
+               详见《浏览量方案切换与回滚说明.md》。 {%- endcomment -%}
+          {% if _vc != '' and site.pageviews.provider and site.analytics[site.pageviews.provider].id %}
+            {%- comment -%} 双重检查：总开关没被清空，且浏览量服务商 id 不为空，才显示。
                本项目中这两项都已配置好，所以文章页会显示浏览量。 {%- endcomment -%}
             <span>
               <em id="pageviews">
-                <i class="fas fa-spinner fa-spin small"></i>
-                {%- comment -%} 先显示一个"转圈圈"的加载图标占位。
-                   页面加载完成后，由 _includes/pageviews/goatcounter.html 里的脚本
-                   把真实数字填进这个位置（填好后转圈图标会被替换掉）。 {%- endcomment -%}
+                {%- if _vc == 'busuanzi' -%}
+                  {%- comment -%} 【方案 B】不蒜子前端实时方案：
+                       先放一个省略号占位，由 _includes/pageviews/busuanzi.html
+                       加载官方 mini.js 后反射填入真实数字。 {%- endcomment -%}
+                  &hellip;
+                {%- else -%}
+                  <i class="fas fa-spinner fa-spin small"></i>
+                  {%- comment -%} 【方案 A，默认】静态渲染方案：
+                       先显示一个"转圈圈"的加载图标占位。
+                       页面加载完成后，由 _includes/pageviews/goatcounter.html 里的脚本
+                       把 _data/views.json 里算好的数字填进这个位置（填好后转圈图标被替换掉）。 {%- endcomment -%}
+                {%- endif -%}
               </em>
               {{ site.data.locales[lang].post.pageview_measure }}
               {%- comment -%} 显示"次浏览"之类的单位文字。 {%- endcomment -%}
