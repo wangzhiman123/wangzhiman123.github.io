@@ -34,12 +34,12 @@
 {%- endcomment -%}
 
 {%- if page.layout == 'post' -%}
-{# 只有在"文章详情页"才需要显示浏览量，其他页面（首页、关于页等）不加载这段脚本，
-   好处是能少加载一点代码、页面更快。 #}
+{%- comment -%} 只有在"文章详情页"才需要显示浏览量，其他页面（首页、关于页等）不加载这段脚本，
+   好处是能少加载一点代码、页面更快。 {%- endcomment -%}
 
   {%- assign pv = site.data.views[page.url] | default: 0 -%}
-  {# 从 _data/views.json 里按当前网页的网址取出这篇文章的浏览量。
-     万一没有记录，就当作 0（default: 0 兜底，避免报错）。 #}
+  {%- comment -%} 从 _data/views.json 里按当前网页的网址取出这篇文章的浏览量。
+     万一没有记录，就当作 0（default: 0 兜底，避免报错）。 {%- endcomment -%}
 
   <script>
     (function () {

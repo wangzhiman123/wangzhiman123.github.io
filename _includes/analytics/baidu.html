@@ -34,16 +34,16 @@
 
 
 {%- assign _baidu_id = site.analytics.baidu.id | default: '' | strip -%}
-{# 从总配置里读出百度统计的 id。
+{%- comment -%} 从总配置里读出百度统计的 id。
    - default: '' —— 万一这一项没配置，给个空字符串，避免下面出错；
    - strip —— 把前后不小心多打的空格去掉，防止"看起来填了、实际是空格"导致失效。
    【可DIY修改】这个 id 要改的话，请去 _config.yml 里改 analytics.baidu.id，
-   不要在本地写死，否则以后换 id 会找不到地方。 #}
+   不要在本地写死，否则以后换 id 会找不到地方。 {%- endcomment -%}
 
 {%- if _baidu_id != '' -%}
-{# 只有 id 确实填了内容（非空）才输出统计代码。
+{%- comment -%} 只有 id 确实填了内容（非空）才输出统计代码。
    留空时整块不生成 —— 好处：想停用百度统计，只需去 _config.yml 清空那个 id，
-   不用回来删这里的代码。 #}
+   不用回来删这里的代码。 {%- endcomment -%}
 
 <script>
   var _hmt = _hmt || [];

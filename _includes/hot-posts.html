@@ -19,118 +19,118 @@
 {%- endcomment -%}
 
 
-{# ---------------------- 第一步：读取两个基本参数 ---------------------- #}
+{%- comment -%} ---------------------- 第一步：读取两个基本参数 ---------------------- {%- endcomment -%}
 
 {%- assign MAX_HOT = include.max | default: 5 -%}
-{# 决定最多显示几篇文章。
+{%- comment -%} 决定最多显示几篇文章。
    include.max 的意思是"调用这个面板时传进来的 max 参数"（比如 {% include hot-posts.html max=8 %}）。
    如果调用方没传，就用默认值 5。
    【可DIY修改】把 5 改成 8，侧边栏就显示浏览量前 8 名的文章；
-   也可以在调用处传参（见 _layouts/home.html 的 panel_includes），那样不用改这个文件。 #}
+   也可以在调用处传参（见 _layouts/home.html 的 panel_includes），那样不用改这个文件。 {%- endcomment -%}
 
 {%- assign _panel_title = site.data.locales[include.lang].panel.hot_posts | default: '热门文章' -%}
-{# 面板的标题文字。
+{%- comment -%} 面板的标题文字。
    先去语言包里找"热门文章"对应各语言的翻译；万一没找到，就直接用中文「热门文章」兜底，
    保证任何时候都不会出现空白标题。
    【可DIY修改】想改成「最受欢迎」「大家在看」等说法，
-   可以直接把最后的 '热门文章' 改掉（但改了以后英文站也会显示中文，合理方式还是改语言包）。 #}
+   可以直接把最后的 '热门文章' 改掉（但改了以后英文站也会显示中文，合理方式还是改语言包）。 {%- endcomment -%}
 
 
-{# ---------- 第二步：给每篇文章造一个"排序用的暗号"（核心技巧） ---------- #}
-{# 为什么要这么绕？因为 Liquid（模板语言）没法直接对"浏览量"这种外部数据做排序。
+{%- comment -%} ---------- 第二步：给每篇文章造一个"排序用的暗号"（核心技巧） ---------- {%- endcomment -%}
+{%- comment -%} 为什么要这么绕？因为 Liquid（模板语言）没法直接对"浏览量"这种外部数据做排序。
    所以这里换个思路：把浏览量换算成一个可以按字符串排序的编号——
-   浏览量越高，编号越小；然后再按编号从小到大排，就等于是浏览量从高到低排。 #}
+   浏览量越高，编号越小；然后再按编号从小到大排，就等于是浏览量从高到低排。 {%- endcomment -%}
 
 {%- assign _keys = '' | split: '' -%}
-{# 先建一个空清单 _keys，用来装所有文章的排序暗号。 #}
+{%- comment -%} 先建一个空清单 _keys，用来装所有文章的排序暗号。 {%- endcomment -%}
 
 {%- for post in site.posts -%}
-  {# 遍历全站每一篇文章 #}
+  {%- comment -%} 遍历全站每一篇文章 {%- endcomment -%}
   {%- if post.hidden != true -%}
-    {# 跳过被标记为 hidden: true 的文章（这种文章不参与展示，也就不该出现在热门榜里）。 #}
+    {%- comment -%} 跳过被标记为 hidden: true 的文章（这种文章不参与展示，也就不该出现在热门榜里）。 {%- endcomment -%}
     {%- assign _v = site.data.views[post.url] | default: 0 -%}
-    {# 取出这篇文章的浏览量。
-       注意：数据来自 _data/views.json 里的记录；如果这篇文章还没有记录，就当作 0 次。 #}
+    {%- comment -%} 取出这篇文章的浏览量。
+       注意：数据来自 _data/views.json 里的记录；如果这篇文章还没有记录，就当作 0 次。 {%- endcomment -%}
 
     {%- assign _inv = 99999999 | minus: _v -%}
-    {# 关键一步："反着算"。用 99999999 这样一个足够大的数减去浏览量，
+    {%- comment -%} 关键一步："反着算"。用 99999999 这样一个足够大的数减去浏览量，
        得到"反序浏览量"：浏览越多，这个数越小。
-       例如 1000 次浏览 → 99998999；100 次浏览 → 99999899，前者更小、排更前。 #}
+       例如 1000 次浏览 → 99998999；100 次浏览 → 99999899，前者更小、排更前。 {%- endcomment -%}
 
     {%- capture _item -%}{{ _inv }}::{{ forloop.index0 }}{%- endcapture -%}
-    {# 把"反序浏览量"和"这篇文章在全站列表里的第几个（forloop.index0 从 0 开始数）"
+    {%- comment -%} 把"反序浏览量"和"这篇文章在全站列表里的第几个（forloop.index0 从 0 开始数）"
        用两个冒号拼在一起，做成一个暗号字符串，例如：99998999::3。
        冒号后面的序号有两个用处：
          ① 万一两篇文章浏览量完全相同，还能按原有的先后顺序稳定排列，不会每次刷新顺序乱跳；
-         ② 待会儿能靠这个序号把文章"找回来"。 #}
+         ② 待会儿能靠这个序号把文章"找回来"。 {%- endcomment -%}
 
     {%- assign _keys = _keys | push: _item -%}
-    {# 把造好的暗号放进 _keys 清单。 #}
+    {%- comment -%} 把造好的暗号放进 _keys 清单。 {%- endcomment -%}
   {%- endif -%}
 {%- endfor -%}
 
 {%- assign _keys = _keys | sort -%}
-{# 对清单做升序排序。
+{%- comment -%} 对清单做升序排序。
    因为前面用了"反着算"的技巧，这里升序排完，实际上就是浏览量从高到低。
    又因为所有暗号里的反序数都是 8 位数、长度一致，
-   所以按文字排序和按数字排序的结果完全相同，不会出现"999 比 1000 大"这种错乱。 #}
+   所以按文字排序和按数字排序的结果完全相同，不会出现"999 比 1000 大"这种错乱。 {%- endcomment -%}
 
 
-{# ------------------- 第三步：把排好序的前几名画成列表 ------------------- #}
+{%- comment -%} ------------------- 第三步：把排好序的前几名画成列表 ------------------- {%- endcomment -%}
 
 {%- if _keys.size > 0 -%}
-  {# 只有至少有一篇文章时才生成这个面板，否则整块不出现、不留空白。 #}
+  {%- comment -%} 只有至少有一篇文章时才生成这个面板，否则整块不出现、不留空白。 {%- endcomment -%}
   <section id="hot-posts" class="hot-posts">
-    {# section 是这个面板的最外层容器，id="hot-posts" 供样式文件精确定位。 #}
+    {%- comment -%} section 是这个面板的最外层容器，id="hot-posts" 供样式文件精确定位。 {%- endcomment -%}
     <h2 class="panel-heading">{{ _panel_title }}</h2>
-    {# 面板标题（"热门文章"）。 #}
+    {%- comment -%} 面板标题（"热门文章"）。 {%- endcomment -%}
     <ul class="content list-unstyled ps-0 pb-1 ms-1 mt-2 mb-0">
-      {# 无序列表，用来装文章条目。
+      {%- comment -%} 无序列表，用来装文章条目。
          list-unstyled 表示去掉列表前面的圆点，ps-0 表示去掉左侧缩进，让排版更干净。
-         【可DIY修改】想调整列表留白，可改这些 class（如 pb-1 数字改大留白更多）。 #}
+         【可DIY修改】想调整列表留白，可改这些 class（如 pb-1 数字改大留白更多）。 {%- endcomment -%}
 
       {%- for _key in _keys limit: MAX_HOT -%}
-        {# 遍历排序后的暗号清单，limit: MAX_HOT 表示最多只取前 MAX_HOT 条（默认 5 条）。 #}
+        {%- comment -%} 遍历排序后的暗号清单，limit: MAX_HOT 表示最多只取前 MAX_HOT 条（默认 5 条）。 {%- endcomment -%}
         {%- assign _idx = _key | split: '::' | last | plus: 0 -%}
-        {# 从暗号（例如 99998999::3）里按冒号切开，取后面那段（3），
+        {%- comment -%} 从暗号（例如 99998999::3）里按冒号切开，取后面那段（3），
            也就是这篇文章在全站列表里的序号。plus: 0 是把文字"3"转成真正的数字 3，
-           这样才能拿去下面按数字取文章。 #}
+           这样才能拿去下面按数字取文章。 {%- endcomment -%}
 
         {%- assign _post = site.posts[_idx] -%}
-        {# 用序号把对应的文章"捞回来"。 #}
+        {%- comment -%} 用序号把对应的文章"捞回来"。 {%- endcomment -%}
 
         {%- if _post -%}
-          {# 保险检查：万一没问题就正常渲染；万一取不到（理论上不会），就跳过，避免页面报错。 #}
+          {%- comment -%} 保险检查：万一没问题就正常渲染；万一取不到（理论上不会），就跳过，避免页面报错。 {%- endcomment -%}
           {%- assign _pv = site.data.views[_post.url] | default: 0 -%}
-          {# 再取一次这篇文章的浏览量数字（要显示给访客看）。 #}
+          {%- comment -%} 再取一次这篇文章的浏览量数字（要显示给访客看）。 {%- endcomment -%}
 
           <li class="hot-post lh-lg">
-            {# 一个 <li> 就是榜单里的一条。lh-lg 表示行高稍大一些，看着更舒展。 #}
+            {%- comment -%} 一个 <li> 就是榜单里的一条。lh-lg 表示行高稍大一些，看着更舒展。 {%- endcomment -%}
             <a
               class="hot-post-title text-truncate d-block"
               href="{{ _post.url | relative_url }}"
               title="{{ _post.title | escape }}"
             >
-              {# 文章标题，点击就跳到那篇文章。
+              {%- comment -%} 文章标题，点击就跳到那篇文章。
                  text-truncate = 标题太长时自动截断成"标题…"，不撑破侧边栏宽度；
                  d-block = 让它独占一行；
-                 title="..." = 鼠标悬停时弹出完整标题，截断后也能看到全名（escape 是防止标题里的特殊符号破坏网页）。 #}
+                 title="..." = 鼠标悬停时弹出完整标题，截断后也能看到全名（escape 是防止标题里的特殊符号破坏网页）。 {%- endcomment -%}
               {{- _post.title -}}
             </a>
             <div class="hot-post-meta text-muted">
-              {# 标题下面那行灰色小字：浏览量 + 日期。 #}
+              {%- comment -%} 标题下面那行灰色小字：浏览量 + 日期。 {%- endcomment -%}
               <i class="far fa-eye fa-fw" aria-hidden="true"></i>
-              {# 眼睛小图标。aria-hidden="true" 表示"这个图标只是装饰，读屏软件不用念出来"。 #}
+              {%- comment -%} 眼睛小图标。aria-hidden="true" 表示"这个图标只是装饰，读屏软件不用念出来"。 {%- endcomment -%}
               <span class="hot-post-views">{{ _pv }}</span>
-              {# 显示浏览量数字。 #}
+              {%- comment -%} 显示浏览量数字。 {%- endcomment -%}
               <span class="hot-post-sep mx-1">·</span>
-              {# 中间的小圆点分隔符，mx-1 让左右各留一点空隙。 #}
+              {%- comment -%} 中间的小圆点分隔符，mx-1 让左右各留一点空隙。 {%- endcomment -%}
               <i class="far fa-calendar fa-fw" aria-hidden="true"></i>
-              {# 日历小图标。 #}
+              {%- comment -%} 日历小图标。 {%- endcomment -%}
               <span class="hot-post-date">{{ _post.date | date: '%Y-%m-%d' }}</span>
-              {# 显示文章发布日期，格式为 2026-10-03。
+              {%- comment -%} 显示文章发布日期，格式为 2026-10-03。
                  【可DIY修改】想换格式，就改 '%Y-%m-%d'：
-                 如 '%Y年%m月%d日' 会显示成"2026年10月03日"。 #}
+                 如 '%Y年%m月%d日' 会显示成"2026年10月03日"。 {%- endcomment -%}
             </div>
           </li>
         {%- endif -%}

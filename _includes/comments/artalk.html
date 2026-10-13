@@ -32,22 +32,22 @@
 
 
 {%- assign _artalk_server = site.comments.artalk.server | default: '' | strip -%}
-{# 读出 Artalk 服务端的地址（在 _config.yml 里配置）。
-   default: '' 兜底防止报错；strip 去掉可能误打的空格。 #}
+{%- comment -%} 读出 Artalk 服务端的地址（在 _config.yml 里配置）。
+   default: '' 兜底防止报错；strip 去掉可能误打的空格。 {%- endcomment -%}
 
 {%- if _artalk_server != '' -%}
-{# 只有服务端地址确实填了，才输出评论代码。
+{%- comment -%} 只有服务端地址确实填了，才输出评论代码。
    现在 _config.yml 里这一项是空的，所以整段都不会生成、页面上也就没有评论区。
-   以后部署好 Artalk 服务端、把地址填上，评论功能就自动生效了，不必回来改代码。 #}
+   以后部署好 Artalk 服务端、把地址填上，评论功能就自动生效了，不必回来改代码。 {%- endcomment -%}
 
   {%- assign _artalk_assets = site.comments.artalk.assets_url | default: '' | strip -%}
-  {# 读出"评论前端文件（外观和逻辑）从哪里下载"的地址。 #}
+  {%- comment -%} 读出"评论前端文件（外观和逻辑）从哪里下载"的地址。 {%- endcomment -%}
 
   {%- if _artalk_assets == '' -%}
     {%- assign _artalk_assets = _artalk_server | append: '/dist' -%}
   {%- endif -%}
-  {# 如果没单独配置这个地址，就自动用"服务端地址 + /dist"作为默认值。
-     这样大多数情况下只要填一次服务端地址就够了，省事。 #}
+  {%- comment -%} 如果没单独配置这个地址，就自动用"服务端地址 + /dist"作为默认值。
+     这样大多数情况下只要填一次服务端地址就够了，省事。 {%- endcomment -%}
 
 <!-- https://artalk.js.org/ -->
 <script>

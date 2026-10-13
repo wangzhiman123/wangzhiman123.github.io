@@ -47,15 +47,15 @@
 ============================================================
 {%- endcomment -%}
 
-{# 官方脚本：数据由它去不蒜子服务器取，取回后自动填入下面的 span。
+{%- comment -%} 官方脚本：数据由它去不蒜子服务器取，取回后自动填入下面的 span。
    async 表示"异步加载、不挡着页面其它内容"，所以不会拖慢首屏。
    地址用 // 开头（不加 https:），让浏览器自动跟随当前页面的协议，
-   这样 http 和 https 访问都不会出现"混合内容被拦截"的问题。 #}
+   这样 http 和 https 访问都不会出现"混合内容被拦截"的问题。 {%- endcomment -%}
 <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
 
-{# 下面是"显示位置"。两个 id 是不蒜子脚本内置约定的名字，不能改。
+{%- comment -%} 下面是"显示位置"。两个 id 是不蒜子脚本内置约定的名字，不能改。
    脚本加载完成后会把 id="busuanzi_value_site_pv" 这个空标签里填上数字。
    【加载期间的兜底】脚本没到位时这个 span 里是空的，会短暂显示成
    "本站总访问量次"（中间少个数字）。如果介意，可以在 CSS 里给
-   容器加一段淡入效果，或干脆接受这一瞬间的状态（多数访客感知不到）。 #}
+   容器加一段淡入效果，或干脆接受这一瞬间的状态（多数访客感知不到）。 {%- endcomment -%}
 <span id="busuanzi_container_site_pv">本站总访问量<span id="busuanzi_value_site_pv"></span>次</span>
