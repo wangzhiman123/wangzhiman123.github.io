@@ -90,3 +90,11 @@ order: 4
      想换成别的样式可以改：.prompt-tip（提示）、.prompt-info（信息）、
      .prompt-warning（警告）、.prompt-danger（危险）。
      不想要这个提示框效果，就把这一整行删掉。 -->
+
+## 友情链接
+
+<!-- 下面这一行是友情链接板块。友链内容不在这里手写，而是自动从 _data/links.yml
+     读取生成，所以「关于」页、顶部「友链」页、侧边栏三处内容永远一致。
+     想增删改某一条友链，请打开 _data/links.yml，或用 tools\友链管理.html 可视化操作。 -->
+
+{% include friend-links.html show_apply=false %}

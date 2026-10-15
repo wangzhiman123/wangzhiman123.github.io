@@ -1,0 +1,496 @@
+/* ============================================================================
+   friend-links.css —— 「友情链接」板块样式
+   ----------------------------------------------------------------------------
+   【本文件是什么】
+     友情链接板块的全部外观样式。板块结构由 _includes/friend-links.html 生成，
+     这里只负责"化妆"：卡片外观、网格排布、悬停动效、深色模式适配。
+
+   【设计原则：与全站风格保持一致】
+     ① 不写死任何前景/背景颜色，一律使用 Chirpy 主题的 CSS 变量
+        （var(--fg-color) 正文色、var(--bg-color) 背景色、var(--alt-bg-color) 次级背景），
+        因此浅色/深色模式自动跟随，用户切主题时这块也跟着变。
+     ② 只借用 Chirpy 自带的 Bootstrap 5 类（card / row / col / text-muted），
+        不引入任何第三方库，保持与「热门文章」面板同样的观感。
+     ③ 全部用 rem 相对单位 + CSS Grid 的 auto-fill，与站点其它板块一样手机端自动换行。
+
+   【想改哪里？】
+     · 卡片圆角/边框  → .fl-card
+     · 一行放几个    → .fl-grid 的 minmax(260px, 1fr)
+     · 悬停浮起高度  → .fl-card:hover 里的 translateY(-3px)
+   ========================================================================== */
+
+/* --------------------------------- 外层容器 -------------------------------- */
+.fl-section {
+  margin-top: 1.5rem;
+}
+
+/* 板块标题。与 Chirpy 侧边栏 panel-heading 视觉一致，但字号更大，
+   因为这里出现在正文主栏而不是侧边栏。 */
+.fl-heading {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--fg-color);
+}
+
+/* 标题下的一行小字说明 */
+.fl-subtitle {
+  color: var(--fg-color);
+  opacity: 0.7;
+  font-size: 0.875rem;
+  margin: 0.35rem 0 0;
+}
+
+/* ------------------------------- 网格 / 列表 ------------------------------- */
+/* auto-fill + minmax：屏幕宽就自动多放几列，窄了就自动变一列，
+   不需要为手机端单独写媒体查询。260px 是"一个卡片最小多宽才不挤"。 */
+.fl-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+/* 列表式布局：改成单列，每行一个卡片，靠 padding 挤一点空间 */
+.fl-list .fl-grid {
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+}
+
+/* --------------------------------- 卡片本体 ------------------------------- */
+.fl-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(128, 128, 128, 0.25);   /* 半透明灰边，深浅色模式都不突兀 */
+  border-radius: 12px;
+  background-color: var(--bg-color);
+  color: var(--fg-color);
+  text-decoration: none;                        /* 去掉链接默认下划线 */
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+/* 悬停时轻微上浮 + 投影 + 边框变主题主色，让卡片"活"起来 */
+.fl-card:hover,
+.fl-card:focus-visible {
+  transform: translateY(-3px);
+  border-color: var(--link-color, var(--fg-color));
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  color: var(--fg-color);
+}
+
+/* 键盘 Tab 聚焦时的可见轮廓（无障碍要求，不能删） */
+.fl-card:focus-visible {
+  outline: 2px solid var(--link-color, currentColor);
+  outline-offset: 2px;
+}
+
+/* --------------------------------- Logo 区 ------------------------------- */
+.fl-logo {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  object-fit: contain;             /* 图片不变形，必要时裁切 */
+  background-color: var(--alt-bg-color);
+  padding: 4px;
+}
+
+/* 无 Logo 时的默认图标：直接用文字首字做色块，
+   这样每个站点即使没图也有辨识度，不会是一块空白。
+   配色由下面的 :nth-child 自动分配（8 个站点一轮循环），
+   Liquid 模板不用算颜色，逻辑更简单，也不会因为字符编码算错下标。 */
+.fl-logo-fallback {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #fff;
+  user-select: none;
+}
+
+/* 【默认图标调色板】8 个低饱和深色，叠加白色文字对比度充足、可读性好。
+   【可DIY修改】直接改这 8 个色值即可整体换配色。 */
+.fl-grid > .fl-card:nth-child(8n+1) .fl-logo-fallback { background: #3b6ea5; }
+.fl-grid > .fl-card:nth-child(8n+2) .fl-logo-fallback { background: #7a5195; }
+.fl-grid > .fl-card:nth-child(8n+3) .fl-logo-fallback { background: #2f7d6d; }
+.fl-grid > .fl-card:nth-child(8n+4) .fl-logo-fallback { background: #a35a3a; }
+.fl-grid > .fl-card:nth-child(8n+5) .fl-logo-fallback { background: #4f6d3a; }
+.fl-grid > .fl-card:nth-child(8n+6) .fl-logo-fallback { background: #8a5b2b; }
+.fl-grid > .fl-card:nth-child(8n+7) .fl-logo-fallback { background: #4c5b8a; }
+.fl-grid > .fl-card:nth-child(8n+8) .fl-logo-fallback { background: #7d3f52; }
+
+/* 兜底色：万一以后容器层级变了导致 :nth-child 没命中，至少还是块看得见的深色 */
+.fl-logo-fallback { background: #4f6d3a; }
+
+/* 加载失败兜底：图片挂了就把容器藏起来，JS 随即显示默认图标 */
+.fl-logo.is-broken {
+  display: none;
+}
+
+/* -------------------------------- 文字内容区 ------------------------------ */
+.fl-body {
+  min-width: 0;              /* 关键：允许 flex 子项收缩，否则长文字会撑破卡片 */
+  flex: 1 1 auto;
+}
+
+.fl-name {
+  font-weight: 600;
+  font-size: 1rem;
+  line-height: 1.35;
+  color: var(--fg-color);
+  /* 单行过长省略，完整名字靠下面的 title 提示 */
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fl-desc {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--fg-color);
+  opacity: 0.72;
+  margin-top: 0.2rem;
+  /* 最多显示两行，超出省略 */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 底部图标行（邮箱 / RSS / 外链提示） */
+.fl-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--fg-color);
+  opacity: 0.65;
+}
+
+.fl-meta a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.fl-meta a:hover {
+  text-decoration: underline;
+}
+
+/* --------------------------------- 申请区块 ------------------------------ */
+.fl-apply {
+  margin-top: 1.25rem;
+  padding: 0.9rem 1rem;
+  border-radius: 12px;
+  /* 淡色底：浅色模式下是浅灰，深色模式下自动变深灰 */
+  background-color: var(--alt-bg-color);
+  font-size: 0.875rem;
+  line-height: 1.7;
+  color: var(--fg-color);
+}
+
+.fl-apply a {
+  color: var(--link-color, currentColor);
+}
+
+/* ========================= 以下为「读者自助申请区」 ========================= */
+/* 【本段是什么】
+   友情链接板块下方"申请友链"区域的全部样式，覆盖两种模式：
+     模式 form    —— 表单（输入框、下拉、行内错误提示、按钮）
+     模式 comment —— 留言模板框 + 复制按钮 + 去评论区按钮
+   与上方友链卡片共用同一套配色规则，深浅色模式自动跟随。 */
+
+/* ---------- 区块外层与标题 ---------- */
+.fl-apply-zone {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(128, 128, 128, 0.2);
+}
+
+.fl-apply-heading {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--fg-color);
+}
+
+.fl-apply-intro {
+  font-size: 0.875rem;
+  color: var(--fg-color);
+  opacity: 0.72;
+  margin: 0.35rem 0 1rem;
+}
+
+/* ---------- 表单容器 ---------- */
+.fl-apply-box {
+  background-color: var(--bg-color);
+  border: 1px solid rgba(128, 128, 128, 0.25);
+  border-radius: 12px;
+  padding: 1.1rem 1.2rem;
+}
+
+/* 两个字段并排一行；窄屏自动变一列（见文末媒体查询） */
+.fl-field-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 16px;
+}
+
+.fl-field-row .fl-field {
+  flex: 1 1 220px;
+}
+
+/* ---------- 单个字段 ---------- */
+.fl-field {
+  display: block;
+  margin-bottom: 0.85rem;
+}
+
+.fl-label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--fg-color);
+  margin-bottom: 0.3rem;
+}
+
+/* 必填星号 */
+.fl-req {
+  color: #c0392b;
+  font-style: normal;
+  margin-left: 2px;
+}
+
+/* "选填"标记 */
+.fl-optional {
+  font-weight: 400;
+  font-size: 0.75rem;
+  color: var(--fg-color);
+  opacity: 0.5;
+  margin-left: 4px;
+}
+
+.fl-field input,
+.fl-field textarea {
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: var(--fg-color);
+  background-color: var(--bg-color);
+  border: 1px solid rgba(128, 128, 128, 0.35);
+  border-radius: 8px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.fl-field textarea {
+  resize: vertical;   /* 允许读者自己拖高度，但不能拖宽撑破布局 */
+  min-height: 2.4rem;
+  line-height: 1.6;
+}
+
+.fl-field input::placeholder,
+.fl-field textarea::placeholder {
+  color: var(--fg-color);
+  opacity: 0.38;
+}
+
+/* 聚焦态：主题色描边 + 淡光晕，和主题里其他输入框观感一致 */
+.fl-field input:focus,
+.fl-field textarea:focus {
+  outline: none;
+  border-color: var(--link-color, currentColor);
+  box-shadow: 0 0 0 3px rgba(59, 110, 165, 0.15);
+}
+
+/* 校验失败态：红色描边 */
+.fl-field input.is-invalid,
+.fl-field textarea.is-invalid {
+  border-color: #c0392b;
+}
+
+.fl-field input.is-invalid:focus,
+.fl-field textarea.is-invalid:focus {
+  box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.15);
+}
+
+/* ---------- 行内错误提示 ---------- */
+.fl-err {
+  display: block;
+  font-size: 0.75rem;
+  color: #c0392b;
+  min-height: 1.1rem;   /* 占位，避免提示出现时下方元素跳动 */
+  margin-top: 0.2rem;
+}
+
+/* ---------- 蜜罐字段：移出可视区但仍可被程序填写 ---------- */
+.fl-hp {
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+  opacity: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+/* ---------- 按钮组 ---------- */
+.fl-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.fl-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1.1rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: var(--fg-color);
+  background-color: var(--bg-color);
+  border: 1px solid rgba(128, 128, 128, 0.35);
+  border-radius: 8px;
+  cursor: pointer;
+  text-decoration: none;   /* 它同时也是 <a>（去评论区按钮），要去掉下划线 */
+  transition: background-color 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.fl-btn:hover {
+  border-color: var(--link-color, currentColor);
+  color: var(--link-color, currentColor);
+  text-decoration: none;
+}
+
+.fl-btn:active { transform: translateY(1px); }
+
+.fl-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* 主按钮：主题蓝底白字 */
+.fl-btn-primary {
+  background-color: var(--link-color, #3b6ea5);
+  border-color: var(--link-color, #3b6ea5);
+  color: #fff;
+}
+
+.fl-btn-primary:hover {
+  background-color: var(--fg-color);
+  border-color: var(--fg-color);
+  color: var(--bg-color);
+  opacity: 0.9;
+}
+
+.fl-btn-sm {
+  padding: 0.25rem 0.7rem;
+  font-size: 0.75rem;
+}
+
+/* ---------- 结果提示（提交反馈 / 复制反馈） ---------- */
+.fl-tip {
+  font-size: 0.8125rem;
+  margin: 0.6rem 0 0;
+  min-height: 1.2rem;
+}
+
+.fl-tip.is-ok { color: #1e874b; }
+.fl-tip.is-warn { color: #c0392b; }
+
+/* ---------- 审核须知（小字灰色提示） ---------- */
+.fl-apply-note {
+  display: block;
+  font-size: 0.78rem;
+  line-height: 1.7;
+  color: var(--fg-color);
+  opacity: 0.6;
+  margin-top: 0.85rem;
+  padding-top: 0.7rem;
+  border-top: 1px dashed rgba(128, 128, 128, 0.25);
+}
+
+/* ---------- 评论模式：留言模板框 ---------- */
+.fl-apply-hint {
+  font-size: 0.875rem;
+  color: var(--fg-color);
+  opacity: 0.8;
+  margin: 0 0 0.75rem;
+}
+
+.fl-template-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.35rem;
+}
+
+.fl-template-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--fg-color);
+}
+
+/* 用 <pre> 展示模板：等宽字体、保留换行，一眼看清要填哪几项 */
+.fl-template {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 0.8125rem;
+  line-height: 1.75;
+  color: var(--fg-color);
+  background-color: var(--alt-bg-color);
+  border: 1px solid rgba(128, 128, 128, 0.22);
+  border-radius: 8px;
+  padding: 0.8rem 0.9rem;
+  margin: 0 0 0.5rem;
+  overflow-x: auto;      /* 模板行很长时横向滚动，不撑破布局 */
+  white-space: pre-wrap;  /* 长行自动折行，窄屏也能看全 */
+  user-select: all;      /* 点一下即可全选，方便手动复制 */
+}
+
+.fl-template:focus-visible {
+  outline: 2px solid var(--link-color, currentColor);
+  outline-offset: 2px;
+}
+
+/* "前往评论区"按钮与模板框之间留出间距 */
+.fl-apply-box .fl-btn-primary {
+  margin-top: 0.85rem;
+}
+
+/* ------------------------------ 移动端微调 ------------------------------- */
+@media (max-width: 576px) {
+  .fl-card {
+    padding: 0.75rem 0.85rem;
+  }
+  .fl-logo,
+  .fl-logo-fallback {
+    width: 38px;
+    height: 38px;
+  }
+  .fl-heading {
+    font-size: 1.15rem;
+  }
+  /* 申请区：窄屏下内边距收窄，字段全部单列显示 */
+  .fl-apply-zone {
+    margin-top: 1.5rem;
+    padding-top: 1.1rem;
+  }
+  .fl-apply-box {
+    padding: 0.9rem 0.85rem;
+  }
+  .fl-field-row {
+    flex-direction: column;
+  }
+  .fl-field-row .fl-field {
+    flex: 1 1 100%;
+  }
+  .fl-actions .fl-btn {
+    flex: 1 1 100%;   /* 按钮在手机上占满一行，好点按 */
+    justify-content: center;
+  }
+}

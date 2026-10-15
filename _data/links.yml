@@ -1,0 +1,84 @@
+﻿# ============================================================================
+# links.yml —— 「友情链接」数据源 + 读者自助申请配置（全站唯一）
+# ----------------------------------------------------------------------------
+# 本文件由 tools\友链管理.html 生成，也可手工编辑，两种方式等效。
+#
+# 友链字段：name/url 必填；description/logo/email/rss 选填；
+#           order 为排序权重（数字小的靠前）；active: false 表示暂时隐藏。
+#   logo 留空 = 前台自动生成彩色首字图标（推荐，不依赖外部图片）。
+#
+# ⚠️ 下面 links 列表里只会出现「审核通过」的链接。
+#   待审核与已拒绝的申请记录保存在管理台内，请用「导出申请存档」
+#   单独存为 JSON —— 它们本来就不该出现在前台。
+# ============================================================================
+
+enabled: true
+title: 友情链接
+subtitle: 与优秀的站点互相学习、彼此引流
+new_tab: true
+layout: card
+max: 0
+show_apply: true
+
+# ---------- 读者自助申请区 ----------
+# mode: form = 表单模式（读者填表，提交后自动发邮件）
+#       comment = 评论模式（读者在评论区按模板留言）
+#       none = 关闭申请区
+apply:
+  enabled: true
+  mode: form
+  email: "1320233415@qq.com"
+  intro: >-
+    欢迎与本站交换友情链接。请填写下方申请表单，审核通过后将展示在友链列表中。
+  note: >-
+    本站仅收录内容健康、已备案、访问正常的站点；纯广告、采集站、跳转页一律不予通过。审核一般 1–3 天，结果会回复到您填写的邮箱。
+  comment_anchor: "#artalk-comments"
+
+# ---------- 友链清单（仅含已审核通过的链接）----------
+links:
+
+  # ---------- 第 1 条 ----------
+  - name: 人民法院在线服务网
+    url: "https://zxfw.court.gov.cn"
+    description: 人民法院在线服务是最高人民法院推出的电子诉讼平台，集成调解、立案、阅卷、送达、保全、鉴定等全国通用诉讼服务功能。
+    logo: "https://www.google.com/s2/favicons?domain=gov.cn&sz=64"
+    email: ""
+    rss: ""
+    order: 1
+    active: true
+
+  - name: 中国裁判文书网
+    url: "https://wenshu.court.gov.cn"
+    description: 人民法院出版社主办，查询全国法院生效裁判文书的官方平台
+    logo: "https://www.google.com/s2/favicons?domain=court.gov.cn&sz=64"
+    email: ""
+    rss: ""
+    order: 2
+    active: true
+
+  - name: 国家法律法规数据库
+    url: "https://flk.npc.gov.cn"
+    description: 全国人大常务委员会办公厅主办，法律、行政法规、司法解释权威文本
+    logo: "https://www.google.com/s2/favicons?domain=npc.gov.cn&sz=64"
+    email: ""
+    rss: ""
+    order: 3
+    active: true
+
+  - name: GitHub
+    url: "https://github.com"
+    description: 全球最大的代码托管平台，也是本站源码的存放处
+    logo: "https://www.google.com/s2/favicons?domain=github.com&sz=64"
+    email: ""
+    rss: ""
+    order: 4
+    active: true
+
+  - name: 买四个萝卜
+    url: "https://blog.msglbo.cn"
+    description: 只有坏掉的东西才会停下来
+    logo: ""
+    email: ""
+    rss: ""
+    order: 60
+    active: true

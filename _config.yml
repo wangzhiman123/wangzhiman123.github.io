@@ -433,3 +433,29 @@ jekyll-archives:
     # 【可DIY修改】归档页的网址格式。改了以后，搜索引擎里已收录的旧链接会失效。
     tag: /tags/:name/
     category: /categories/:name/
+
+# =========================== 十五、友情链接板块 ===========================
+# 【本段是什么】
+#   「友情链接」板块的开关与样式微调入口。
+#
+# 【重要：大部分配置不在这里】
+#   友链列表、以及板块自身的配置（标题/是否新窗口打开/卡片或列表式等）
+#   全部放在 _data/links.yml —— 因为 Jekyll 的 _data 文件天然支持
+#   多层结构，比在 _config.yml 里堆一大段列表更好维护、更好注释。
+#
+#   日常增删友链：改 _data/links.yml（或打开 tools\友链管理.html 可视化操作）
+#   板块配置：   也在 _data/links.yml 顶部的配置段
+#
+# 【下面这个开关的作用】
+#   设为 true 时，即使 _data/links.yml 里的 enabled 为 false 也仍然显示；
+#   保持 false（推荐）= 完全以 links.yml 里的 enabled 为准，单一数据源。
+#
+# 【板块显示在哪些位置】
+#   ① /links/ 顶部导航独立页（_tabs/links.md）
+#   ② 「关于」页底部（_tabs/about.md 末尾调用）
+#   ③ 首页/文章页右侧边栏小面板（_layouts/home.html 的 panel_includes）
+#   三处共用一份数据，内容永远一致。详见《友链板块使用说明.md》。
+# ==========================================================================
+friend_links:
+  # 【可DIY修改】留空或 false = 以 _data/links.yml 里的 enabled 为准（推荐）
+  enabled:

@@ -1,0 +1,24 @@
+{%- comment -%}
+  ============================================================================
+  本文件是什么？
+  ----------------------------------------------------------------------------
+  这是「友情链接」的侧边栏小组件（首页、文章页右侧那一栏）。
+
+  · 位置：紧跟在侧边栏原有面板之后，视觉上与「最近更新」「热门文章」并列
+  · 作用：在首页/文章页也能一眼看到友链，不用专门点进「友链」页
+  · 显示条数：默认最多 4 条（侧边栏窄），完整列表请到 /links/ 页
+
+  【挂载方式】
+    在 _layouts/home.html 等模板的 front matter 里加：
+      panel_includes:
+        - hot-posts
+        - friend-links     ← 加这一行
+    挂载后可通过 max 参数控制条数，例如 {% include friend-links.html max=3 %}
+  ============================================================================
+{%- endcomment -%}
+
+{%- assign _c = site.data.links -%}
+{%- if _c.enabled != false and _c.links -%}
+  {%- comment -%} 先判断：有数据才挂载，避免侧边栏出现一个空面板。 {%- endcomment -%}
+  {% include friend-links.html max=4 icon=false heading=false title=_c.title show_apply=false layout="list" %}
+{%- endif -%}

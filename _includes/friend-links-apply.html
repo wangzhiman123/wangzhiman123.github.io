@@ -1,0 +1,399 @@
+{%- comment -%}
+  ============================================================================
+  本文件是什么？
+  ----------------------------------------------------------------------------
+  这是「友情链接 · 读者自助申请区」，显示在友情链接列表下方。
+
+  · 两种模式，在 _data/links.yml 的 apply.mode 里随时切换：
+      form    —— 表单模式：读者按模板填字段 → 点提交 → 自动唤起邮件客户端，
+                 申请内容已按固定格式排好，直接发到站长邮箱。
+      comment —— 评论模式：不提供表单，引导读者在本页评论区留言，
+                 页面给出「一键复制」的留言模板，读者粘贴后修改即可。
+      none    —— 完全关闭申请区。
+
+  · 为什么用邮件而不是服务器存数据？
+    本站是纯静态网站（Jekyll + GitHub Pages / Nginx），
+    页面上跑的只是 HTML，没有后端程序可以接收表单 POST。
+    邮件是纯静态站做"读者投稿"最稳妥、也最不容易被垃圾提交滥用的方式。
+    站长收到邮件后，在 tools\友链管理.html 里审核并录入即可。
+
+  · 防垃圾的三个小设计（不引入任何验证码服务）：
+      ① 蜜罐字段：藏一个机器人不会填的输入框，填了直接静默丢弃；
+      ② 提交频率限制：60 秒内只能提交一次；
+      ③ 提交间隔计时：读者填表时能看到"距上次提交"的提示。
+
+  ============================================================================
+  【怎么配置】（_data/links.yml）
+  ----------------------------------------------------------------------------
+    apply:
+      enabled: true          # 总开关
+      mode: form             # form | comment | none
+      email: a@b.com         # 收件邮箱（表单模式点提交时用这个）
+      intro: 一段引导文字      # 显示在区块顶部
+      note: 一段审核须知       # 显示在表单下方，小字灰色
+      comment_anchor: #artalk-comments   # 评论模式的"去评论区"按钮跳转锚点
+
+  ============================================================================
+  【表单字段与校验规则】（前端 JS 校验，见文件末尾脚本）
+  ----------------------------------------------------------------------------
+    站点名称 *   2–30 字     必填
+    站点网址 *   必填，须以 http:// 或 https:// 开头，且域名含一点
+    站点简介 *   10–80 字    必填（审核友链主要看这条）
+    头像地址     选填，须是 http(s) 图片地址
+    联系方式 *   邮箱格式    必填，站长靠它回复你
+    补充说明     选填，≤200 字（可写备案号、交换条件等）
+  ============================================================================
+{%- endcomment -%}
+
+{%- assign _cfg = site.data.links -%}
+{%- assign _ap = _cfg.apply | default: empty -%}
+{%- assign _ap_enabled = _ap.enabled -%}
+{%- if _ap_enabled == nil or _ap_enabled == '' -%}{%- assign _ap_enabled = true -%}{%- endif -%}
+{%- assign _ap_mode = _ap.mode | default: 'form' -%}
+{%- assign _ap_email = _ap.email | default: _cfg.apply_email | default: site.social.email | default: '' -%}
+
+{%- if _ap_enabled and _ap_mode != 'none' and _ap_email != '' -%}
+  {%- comment -%} 三重保护：① 总开关开了；② 模式不是 none；③ 收件邮箱不为空。
+     邮箱为空时静默不渲染申请区——否则读者点了提交也不知道发去哪，会更困惑。 {%- endcomment -%}
+
+  {%- assign _intro = _ap.intro | default: _cfg.apply_text | default: '欢迎与本站交换友情链接。请按下方要求填写申请，审核通过后将展示在友链列表中。' -%}
+  {%- assign _note = _ap.note | default: '本站仅收录内容健康、已备案、访问正常的站点；纯广告、采集站、跳转页一律不予通过。审核一般 1–3 天，结果会回复到您填写的邮箱。' -%}
+
+  <section class="fl-apply-zone" id="friend-links-apply">
+    <h3 class="fl-apply-heading">
+      <i class="fas fa-handshake me-2" aria-hidden="true"></i>申请友链
+    </h3>
+    <p class="fl-apply-intro">{{ _intro }}</p>
+
+    {%- if _ap_mode == 'comment' -%}
+      {%- comment -%} ============ 模式二：评论留言 ============ {%- endcomment -%}
+      <div class="fl-apply-box">
+        <p class="fl-apply-hint">
+          <i class="fas fa-comment-dots me-1" aria-hidden="true"></i>
+          请在本页面下方<strong>评论区</strong>按下面的模板留言申请，站长看到后会与你联系。
+        </p>
+
+        <div class="fl-template-row">
+          <span class="fl-template-label">留言模板</span>
+          <button type="button" class="fl-btn fl-btn-sm" id="fl-copy-template" data-target="fl-comment-template">
+            <i class="far fa-copy me-1" aria-hidden="true"></i>复制模板
+          </button>
+        </div>
+        <pre class="fl-template" id="fl-comment-template" tabindex="0">【友链申请】
+站点名称：
+站点网址：
+站点简介：
+头像地址：（没有可留空）
+联系方式：
+补充说明：（可留空）</pre>
+
+        <p class="fl-apply-note">
+          <i class="fas fa-circle-info me-1" aria-hidden="true"></i>{{ _note }}
+        </p>
+
+        <a class="fl-btn fl-btn-primary" href="{{ _ap.comment_anchor | default: '#artalk-comments' }}">
+          <i class="fas fa-arrow-down me-1" aria-hidden="true"></i>前往评论区留言
+        </a>
+        <p class="fl-tip" id="fl-copy-result" role="status" aria-live="polite"></p>
+      </div>
+
+    {%- else -%}
+      {%- comment -%} ============ 模式一：表单填写 ============ {%- endcomment -%}
+      <form class="fl-apply-box" id="fl-apply-form" novalidate autocomplete="off">
+        <div class="fl-field-row">
+          <label class="fl-field">
+            <span class="fl-label">站点名称 <em class="fl-req">*</em></span>
+            <input type="text" id="fl-name" name="name" maxlength="30" placeholder="例如：中国法律公众号" required>
+            <span class="fl-err" data-err-for="fl-name"></span>
+          </label>
+          <label class="fl-field">
+            <span class="fl-label">站点网址 <em class="fl-req">*</em></span>
+            <input type="text" id="fl-url" name="url" placeholder="https://example.com" required>
+            <span class="fl-err" data-err-for="fl-url"></span>
+          </label>
+        </div>
+
+        <label class="fl-field">
+          <span class="fl-label">站点简介 <em class="fl-req">*</em></span>
+          <textarea id="fl-desc" name="description" rows="3" maxlength="80"
+                    placeholder="一句话介绍你的站点，如：专注民商事纠纷与企业法律顾问" required></textarea>
+          <span class="fl-err" data-err-for="fl-desc"></span>
+        </label>
+
+        <div class="fl-field-row">
+          <label class="fl-field">
+            <span class="fl-label">头像地址 <span class="fl-optional">选填</span></span>
+            <input type="text" id="fl-logo" name="logo" placeholder="https://example.com/logo.png">
+            <span class="fl-err" data-err-for="fl-logo"></span>
+          </label>
+          <label class="fl-field">
+            <span class="fl-label">联系方式（邮箱） <em class="fl-req">*</em></span>
+            <input type="text" id="fl-email" name="email" placeholder="you@example.com" required>
+            <span class="fl-err" data-err-for="fl-email"></span>
+          </label>
+        </div>
+
+        <label class="fl-field">
+          <span class="fl-label">补充说明 <span class="fl-optional">选填</span></span>
+          <textarea id="fl-extra" name="extra" rows="2" maxlength="200"
+                    placeholder="如网站备案号、希望交换的位置、是否已互加等"></textarea>
+        </label>
+
+        {%- comment -%} 蜜罐（honeypot）：用 CSS 移到屏幕外并设为 aria-hidden。
+           真人看不到也tab 不到；自动填表的程序通常会把它填上，填了就被静默丢弃。 {%- endcomment -%}
+        <div class="fl-hp" aria-hidden="true">
+          <label>请不要填写这一项<input type="text" id="fl-website" name="website" tabindex="-1" autocomplete="off"></label>
+        </div>
+
+        <div class="fl-actions">
+          <button type="submit" class="fl-btn fl-btn-primary">
+            <i class="fas fa-paper-plane me-1" aria-hidden="true"></i>提交申请
+          </button>
+          <button type="button" class="fl-btn" id="fl-fill-demo">
+            <i class="fas fa-flask me-1" aria-hidden="true"></i>填入示例
+          </button>
+          <button type="reset" class="fl-btn">
+            <i class="fas fa-rotate-left me-1" aria-hidden="true"></i>清空
+          </button>
+        </div>
+
+        <p class="fl-apply-note">
+          <i class="fas fa-circle-info me-1" aria-hidden="true"></i>{{ _note }}
+        </p>
+        <p class="fl-tip" id="fl-form-result" role="status" aria-live="polite"></p>
+      </form>
+    {%- endif -%}
+  </section>
+
+  <script>
+  /* ==========================================================================
+     申请区脚本
+     --------------------------------------------------------------------------
+     ⚠️ 压缩注意：_config.yml 开启了 compress_html，会删掉所有换行。
+        所以这里绝不能用 // 行注释，一律用 /* *\/ ，语句必须以 ; 结尾。
+     ========================================================================== */
+  (function () {
+    var APPLY_EMAIL = {{ _ap_email | jsonify }};
+    var MODE = {{ _ap_mode | jsonify }};
+
+    /* ---------------------- 一、评论模式：一键复制模板 ---------------------- */
+    if (MODE === 'comment') {
+      var btn = document.getElementById('fl-copy-template');
+      var tip = document.getElementById('fl-copy-result');
+      if (btn) {
+        btn.addEventListener('click', function () {
+          var text = document.getElementById('fl-comment-template').textContent;
+          var done = function (ok) {
+            tip.textContent = ok ? '模板已复制，粘贴到评论区即可填写。' : '复制失败，请手动选中上方文字复制。';
+            tip.className = 'fl-tip ' + (ok ? 'is-ok' : 'is-warn');
+          };
+          if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(fallbackCopy(text)); });
+          } else {
+            done(fallbackCopy(text));
+          }
+        });
+      }
+      /* 兼容旧浏览器 / http 环境：选中文本后用 execCommand 复制 */
+      function fallbackCopy(text) {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        var ok = false;
+        try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+        document.body.removeChild(ta);
+        return ok;
+      }
+    }
+
+    /* ---------------------- 二、表单模式：校验与提交 ---------------------- */
+    var form = document.getElementById('fl-apply-form');
+    if (!form) { return; }
+    var result = document.getElementById('fl-form-result');
+    var submitBtn = form.querySelector('button[type="submit"]');
+    var LAST = 0;   /* 上次提交时间戳，用于频率限制 */
+
+    /* ---- 2.1 校验规则表 ---- */
+    var RULES = {
+      'fl-name': {
+        label: '站点名称',
+        test: function (v) { return v.length >= 2 && v.length <= 30; },
+        msg: '站点名称需为 2–30 个字'
+      },
+      'fl-url': {
+        label: '站点网址',
+        test: function (v) {
+          if (!/^https?:\/\//i.test(v)) { return false; }
+          /* 取协议后的主机部分，要求含至少一个点（排除 http://abc 这类无效地址） */
+          var host = v.replace(/^https?:\/\//i, '').split(/[/?#]/)[0];
+          return host.indexOf('.') > 0 && host.indexOf(' ') < 0;
+        },
+        msg: '请填写完整网址，须以 http:// 或 https:// 开头'
+      },
+      'fl-desc': {
+        label: '站点简介',
+        test: function (v) { return v.length >= 10 && v.length <= 80; },
+        msg: '站点简介需为 10–80 个字'
+      },
+      'fl-logo': {
+        label: '头像地址',
+        optional: true,
+        test: function (v) {
+          return /^https?:\/\/[^\s]+\.(png|jpe?g|gif|webp|svg|ico)$/i.test(v.trim());
+        },
+        msg: '头像需为 http(s) 开头的图片地址（png/jpg/gif/webp/svg/ico）'
+      },
+      'fl-email': {
+        label: '联系方式',
+        test: function (v) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim()); },
+        msg: '请填写正确的邮箱地址，便于站长回复你'
+      }
+    };
+
+    /* ---- 2.2 读一个字段并做校验 ---- */
+    function check(id) {
+      var el = document.getElementById(id);
+      var rule = RULES[id];
+      var out = form.querySelector('[data-err-for="' + id + '"]');
+      var raw = (el.value || '').trim();
+      var empty = raw === '';
+
+      /* 选填项留空 = 直接通过，不打扰读者 */
+      if (empty && rule.optional) {
+        clearErr(el, out);
+        return true;
+      }
+      /* 必填项留空 = 提示"必填"，与格式错误区分开 */
+      if (empty) {
+        setErr(el, out, rule.label + '为必填项');
+        return false;
+      }
+      if (!rule.test(raw)) {
+        setErr(el, out, rule.msg);
+        return false;
+      }
+      clearErr(el, out);
+      return true;
+    }
+
+    function setErr(el, out, msg) {
+      el.classList.add('is-invalid');
+      el.setAttribute('aria-invalid', 'true');
+      out.textContent = msg;
+    }
+    function clearErr(el, out) {
+      el.classList.remove('is-invalid');
+      el.removeAttribute('aria-invalid');
+      out.textContent = '';
+    }
+
+    /* ---- 2.3 输入时实时消错：只在用户改过之后才提示，避免一上来满屏红字 ---- */
+    Object.keys(RULES).forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) { return; }
+      el.addEventListener('blur', function () { check(id); });
+      el.addEventListener('input', function () {
+        if (el.classList.contains('is-invalid')) { check(id); }
+      });
+    });
+
+    /* ---- 2.4 组装申请邮件 ---- */
+    function buildMail(v) {
+      var lines = [
+        '【友链申请】',
+        '站点名称：' + v.name,
+        '站点网址：' + v.url,
+        '站点简介：' + v.description,
+        '头像地址：' + (v.logo || '（未提供）'),
+        '联系方式：' + v.email,
+        '补充说明：' + (v.extra || '（无）'),
+        '',
+        '—— 本邮件由 2019527.xyz 友链申请表单自动生成'
+      ];
+      return {
+        subject: '友链申请｜' + v.name,
+        body: lines.join('\n')
+      };
+    }
+
+    /* ---- 2.5 提交 ---- */
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      /* 蜜罐命中 = 机器人，静默丢弃：清空表单、不给任何提示、不发邮件 */
+      if (document.getElementById('fl-website').value !== '') {
+        form.reset();
+        return;
+      }
+
+      /* 频率限制：60 秒一次 */
+      var now = Date.now();
+      if (LAST && now - LAST < 60000) {
+        var wait = Math.ceil((60000 - (now - LAST)) / 1000);
+        say('提交过于频繁，请 ' + wait + ' 秒后再试。', 'is-warn');
+        return;
+      }
+
+      /* 逐项校验 */
+      var ids = Object.keys(RULES);
+      var firstBad = null;
+      ids.forEach(function (id) { if (!check(id) && !firstBad) { firstBad = id; } });
+      if (firstBad) {
+        say('还有 ' + ids.length - ids.filter(function (id) {
+          return !document.getElementById(id).classList.contains('is-invalid');
+        }).length + ' 项需要修正，请检查标红的输入框。', 'is-warn');
+        var bad = document.getElementById(firstBad);
+        bad.focus();
+        return;
+      }
+
+      var v = {
+        name: document.getElementById('fl-name').value.trim(),
+        url: document.getElementById('fl-url').value.trim(),
+        description: document.getElementById('fl-desc').value.trim(),
+        logo: document.getElementById('fl-logo').value.trim(),
+        email: document.getElementById('fl-email').value.trim(),
+        extra: document.getElementById('fl-extra').value.trim()
+      };
+      var mail = buildMail(v);
+
+      /* 唤起邮件客户端 */
+      var href = 'mailto:' + encodeURIComponent(APPLY_EMAIL) +
+                 '?subject=' + encodeURIComponent(mail.subject) +
+                 '&body=' + encodeURIComponent(mail.body);
+      window.location.href = href;
+
+      LAST = now;
+      say('已为你打开邮件客户端，应用内容已自动填好，发送即可。发送后本表单会锁定 60 秒。', 'is-ok');
+      form.querySelectorAll('input, textarea').forEach(function (el) { el.disabled = true; });
+      submitBtn.disabled = true;
+      setTimeout(function () {
+        form.querySelectorAll('input, textarea').forEach(function (el) { el.disabled = false; });
+        submitBtn.disabled = false;
+      }, 60000);
+    });
+
+    /* ---- 2.6 填入示例：方便站主自己测一遍流程 ---- */
+    var demo = document.getElementById('fl-fill-demo');
+    if (demo) {
+      demo.addEventListener('click', function () {
+        document.getElementById('fl-name').value = '示例站点名称';
+        document.getElementById('fl-url').value = 'https://example.com';
+        document.getElementById('fl-desc').value = '这是一个示例站点简介，用于演示友链申请表单的填写方式，请替换为你自己的信息。';
+        document.getElementById('fl-logo').value = '';
+        document.getElementById('fl-email').value = 'you@example.com';
+        document.getElementById('fl-extra').value = '这是补充说明示例。';
+        say('已填入示例内容，可直接点「提交申请」查看完整流程。', 'is-ok');
+      });
+    }
+
+    function say(msg, cls) {
+      result.textContent = msg;
+      result.className = 'fl-tip ' + (cls || '');
+    }
+  })();
+  </script>
+{%- endif -%}

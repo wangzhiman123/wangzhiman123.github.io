@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>友情链接管理台 · 王志满律师网</title>
+<style>
+:root{
+  --bg:#f6f7f9; --card:#fff; --fg:#1f2329; --muted:#6b7280;
+  --line:#e5e7eb; --primary:#3b6ea5; --primary-d:#2c5480;
+  --danger:#c0392b; --ok:#1e874b; --warn:#a56a12; --warn-bg:#fdf3e3;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Microsoft YaHei","PingFang SC",system-ui,sans-serif;background:var(--bg);color:var(--fg);font-size:14px;line-height:1.6}
+header{background:var(--primary);color:#fff;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;position:sticky;top:0;z-index:20;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+header h1{margin:0;font-size:18px;font-weight:600}
+header h1 small{display:block;font-size:12px;font-weight:400;opacity:.85;margin-top:2px}
+.bar{display:flex;gap:8px;flex-wrap:wrap}
+button{border:1px solid var(--line);background:var(--card);color:var(--fg);padding:8px 14px;border-radius:8px;cursor:pointer;font-size:14px;font-family:inherit;transition:.15s}
+button:hover{border-color:var(--primary);color:var(--primary)}
+button.primary{background:var(--primary);border-color:var(--primary);color:#fff}
+button.primary:hover{background:var(--primary-d)}
+button.danger{color:var(--danger);border-color:#f0c8c3}
+button.danger:hover{background:var(--danger);color:#fff;border-color:var(--danger)}
+button.ok{color:var(--ok);border-color:#b9e2cd}
+button.ok:hover{background:var(--ok);color:#fff}
+button.warn{color:var(--warn);border-color:#f0dcb4}
+button.warn:hover{background:var(--warn);color:#fff}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.sm{padding:4px 10px;font-size:12px;border-radius:6px}
+main{max-width:1460px;margin:0 auto;padding:18px 24px 60px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:16px}
+.card h2{margin:0 0 4px;font-size:16px;font-weight:600;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card h2 .sub{font-size:12px;font-weight:400;color:var(--muted)}
+.hint{color:var(--muted);font-size:13px;margin:4px 0 12px}
+.hint b{color:var(--fg)}
+label.field{display:block;margin-bottom:11px}
+label.field span{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+input[type=text],input[type=email],input[type=url],input[type=number],input[type=password],select,textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:14px;font-family:inherit;background:#fff;color:var(--fg)}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--primary)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;color:var(--muted);font-weight:600}
+tr.off td{opacity:.5}
+td input{padding:6px 8px;font-size:13px}
+.msg{padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:13px;display:none}
+.msg.ok{display:block;background:#e7f6ee;color:var(--ok);border:1px solid #b9e2cd}
+.msg.warn{display:block;background:var(--warn-bg);color:var(--warn);border:1px solid #f0dcb4}
+.msg.err{display:block;background:#fdeceb;color:var(--danger);border:1px solid #f0c8c3}
+textarea{min-height:150px;font-family:Consolas,"Courier New",monospace;font-size:12.5px;line-height:1.55}
+.steps{margin:0;padding-left:20px;color:var(--muted);font-size:13px}
+.steps li{margin-bottom:5px}
+.steps b{color:var(--fg)}
+.tag{display:inline-block;padding:1px 8px;border-radius:20px;font-size:11px;background:#eef2f7;color:var(--muted);white-space:nowrap}
+.tag.pend{background:var(--warn-bg);color:var(--warn)}
+.tag.pass{background:#e7f6ee;color:var(--ok)}
+.tag.rej{background:#fdeceb;color:var(--danger)}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.filters button{padding:5px 12px;font-size:13px;border-radius:20px}
+.filters button.cur{background:var(--primary);border-color:var(--primary);color:#fff}
+.app-item{border:1px solid var(--line);border-radius:10px;padding:13px 15px;margin-bottom:10px;background:#fcfcfd}
+.app-item.st-pending{border-left:4px solid var(--warn)}
+.app-item.st-approved{border-left:4px solid var(--ok)}
+.app-item.st-rejected{border-left:4px solid var(--danger)}
+.app-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.app-name{font-weight:600;font-size:15px}
+.app-name a{color:var(--primary);text-decoration:none;word-break:break-all}
+.app-name a:hover{text-decoration:underline}
+.app-time{font-size:12px;color:var(--muted)}
+.app-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:7px 16px;margin:9px 0;font-size:13px}
+.app-grid div{min-width:0}
+.app-grid b{color:var(--muted);font-weight:500;margin-right:4px}
+.app-grid input{padding:5px 8px;font-size:12.5px}
+.app-desc{font-size:13px;background:#fff;border:1px solid var(--line);border-radius:7px;padding:8px 10px;margin-bottom:8px;white-space:pre-wrap;word-break:break-word}
+.app-note{font-size:12.5px;color:var(--warn);background:var(--warn-bg);border:1px solid #f0dcb4;border-radius:7px;padding:7px 10px;margin-bottom:9px;white-space:pre-wrap;word-break:break-word}
+.app-ops{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.app-ops .sep{width:1px;height:20px;background:var(--line);margin:0 3px}
+.empty{color:var(--muted);text-align:center;padding:26px 10px;font-size:13px}
+/* ---- 手动填写 + 代码生成区 ---- */
+.gen-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:0 16px}
+.gen-grid input{font-size:13px}
+.gen-out{position:relative}
+.gen-out textarea{min-height:190px;white-space:pre;overflow-x:auto;font-size:12.5px;line-height:1.65;background:#fbfbfc;color:var(--fg)}
+.gen-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}
+.gen-tip{font-size:12.5px;margin:0 0 12px;color:var(--muted)}
+.copy-hint{display:inline-block;font-size:12px;margin-left:8px}
+.copy-hint.ok{color:var(--ok)}
+.copy-hint.warn{color:var(--danger)}
+.copy-hint.info{color:var(--muted)}
+.logo-box{width:34px;height:34px;border-radius:8px;object-fit:contain;background:#f0f0f0;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;flex:0 0 auto}
+#lock{position:fixed;inset:0;background:rgba(20,24,30,.93);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
+#lock .box{background:#fff;border-radius:14px;padding:28px 30px;max-width:380px;width:100%;text-align:center}
+#lock h3{margin:0 0 6px;font-size:18px}
+#lock p{color:var(--muted);font-size:13px;margin:0 0 16px}
+#lock input{text-align:center;letter-spacing:3px;font-size:16px;margin-bottom:10px}
+#lockErr{color:var(--danger);font-size:13px;min-height:1.3em}
+@media(max-width:880px){.grid2{grid-template-columns:1fr}main{padding:16px 14px 50px}}
+</style>
+</head>
+<body>
+
+<div id="lock">
+  <div class="box">
+    <h3>🔒 管理台已锁定</h3>
+    <p>请输入管理口令。口令用于防止他人随手打开你的电脑时误改数据，真正的权限边界在 GitHub 仓库。</p>
+    <input type="password" id="lockIn" placeholder="管理口令" autocomplete="off">
+    <div id="lockErr"></div>
+    <button class="primary" id="lockGo" style="width:100%">进入管理台</button>
+    <p style="margin-top:14px;font-size:12px;margin-bottom:8px">首次使用可留空直接回车。</p>
+    <button class="sm" id="lockSet">设置 / 修改口令</button>
+    <button class="sm" id="lockClear">清除口令</button>
+  </div>
+</div>
+
+<header>
+  <h1>🔗 友情链接管理台
+    <small>申请审核 · 友链维护 · 数据文件：_data/links.yml</small>
+  </h1>
+  <div class="bar">
+    <button class="primary" id="btnExport">⬇ 导出 links.yml</button>
+    <button id="btnImportYml">📥 导入 YAML</button>
+    <button id="btnExportApps">💾 导出申请存档</button>
+    <button id="btnImportApps">📂 导入申请存档</button>
+    <button id="btnReset">↺ 恢复默认</button>
+  </div>
+</header>
+
+<main>
+  <div class="msg" id="msg"></div>
+
+  <div class="card">
+    <h2>📥 读者申请审核 <span class="sub">读者提交的申请通过邮件发到你的邮箱，粘贴到下方即可导入</span></h2>
+    <p class="hint">
+      审核流转：<b>待审核</b>（未处理，不上墙）→ <b>通过</b>（自动加入正式友链列表）→ <b>拒绝</b>（保留记录与理由，不上墙）。<br>
+      只有「通过」的链接才会出现在前台友情链接列表。修改本站前台的申请方式，可在下方「板块与申请配置」里切换。
+    </p>
+    <label class="field">
+      <span>导入申请内容（把收到的申请邮件正文整段粘贴进来，多封可一起粘，空行隔开）</span>
+      <textarea id="importBox" placeholder="例如：&#10;【友链申请】&#10;站点名称：中国法律公众号&#10;站点网址：https://example.com&#10;站点简介：专注民商事纠纷与企业法律顾问。&#10;头像地址：https://example.com/logo.png&#10;联系方式：you@example.com&#10;补充说明：（无）&#10;&#10;—— 本邮件由 2019527.xyz 友链申请表单自动生成"></textarea>
+    </label>
+    <div class="bar">
+      <button class="primary" id="btnImportApps2">⇩ 解析并导入为待审核</button>
+      <button id="btnAddApp">＋ 手动新增一条申请</button>
+    </div>
+    <p class="hint" style="margin-top:8px">
+      解析器识别这些中文标签：站点名称 / 站点网址（或站点地址、网址）/ 站点简介（或简介）/ 头像地址（或头像）/ 联系方式（或邮箱）/ 补充说明（或备注）。
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>🔍 申请列表 <span class="tag" id="appCnt">0 条</span></h2>
+    <div class="filters" id="appFilters">
+      <button data-f="all" class="cur">全部</button>
+      <button data-f="pending">待审核</button>
+      <button data-f="approved">已通过</button>
+      <button data-f="rejected">已拒绝</button>
+    </div>
+    <div id="appList"></div>
+  </div>
+
+  <div class="card">
+    <h2>⚙️ 板块与申请配置 <span class="sub">对应 _data/links.yml 顶部配置段</span></h2>
+    <div class="grid2">
+      <label class="field"><span>板块标题</span><input type="text" id="c_title"></label>
+      <label class="field"><span>副标题（留空则不显示）</span><input type="text" id="c_subtitle"></label>
+      <label class="field"><span>是否显示友链板块</span>
+        <select id="c_enabled"><option value="true">显示</option><option value="false">隐藏</option></select></label>
+      <label class="field"><span>链接打开方式</span>
+        <select id="c_new_tab"><option value="true">新窗口打开</option><option value="false">当前窗口打开</option></select></label>
+      <label class="field"><span>布局样式</span>
+        <select id="c_layout"><option value="card">卡片式</option><option value="list">列表式</option></select></label>
+      <label class="field"><span>最多显示条数（0=不限）</span><input type="number" id="c_max" min="0" step="1"></label>
+      <label class="field"><span>是否显示申请区</span>
+        <select id="c_show_apply"><option value="true">显示</option><option value="false">隐藏</option></select></label>
+      <label class="field"><span>申请方式（前台两种模式切换）</span>
+        <select id="c_apply_mode">
+          <option value="form">表单模式（读者填表 → 邮件提交）</option>
+          <option value="comment">评论模式（读者在评论区留言）</option>
+          <option value="none">关闭申请区</option>
+        </select></label>
+      <label class="field"><span>申请收件邮箱</span><input type="email" id="c_apply_email"></label>
+      <label class="field"><span>评论模式跳转锚点</span><input type="text" id="c_apply_anchor" placeholder="#artalk-comments"></label>
+    </div>
+    <label class="field"><span>申请区引导文字</span><textarea id="c_apply_intro" style="min-height:64px"></textarea></label>
+    <label class="field"><span>审核须知</span><textarea id="c_apply_note" style="min-height:64px"></textarea></label>
+  </div>
+
+  <div class="card">
+    <h2>✍ 手动填写 → 自动生成 YAML 代码 <span class="sub">填完自动生成可直接粘贴到 links.yml 的代码块，一键复制</span></h2>
+    <p class="hint">
+      用途：不想用下面的表格一行行填、又需要手改 <code>_data/links.yml</code> 时，
+      在这里填好字段，下方会实时生成格式完全正确的 YAML 片段，点「📋 复制代码」粘到
+      <code>links.yml</code> 的 <code>links:</code> 列表里即可（缩进已处理好）。
+    </p>
+    <div class="gen-grid">
+      <label class="field"><span>站点名称 <span style="color:var(--danger)">*</span></span>
+        <input type="text" id="g_name" placeholder="中国法律公众号"></label>
+      <label class="field"><span>站点网址 <span style="color:var(--danger)">*</span></span>
+        <input type="text" id="g_url" placeholder="https://example.com"></label>
+      <label class="field"><span>站点简介</span>
+        <input type="text" id="g_desc" placeholder="一句话介绍你的站点"></label>
+      <label class="field"><span>头像地址（留空 = 自动首字图标）</span>
+        <input type="text" id="g_logo" placeholder="https://example.com/logo.png"></label>
+      <label class="field"><span>联系邮箱</span>
+        <input type="email" id="g_email" placeholder="you@example.com"></label>
+      <label class="field"><span>RSS 订阅地址</span>
+        <input type="text" id="g_rss" placeholder="https://example.com/feed.xml"></label>
+      <label class="field"><span>排序权重（数字小的靠前）</span>
+        <input type="number" id="g_order" min="0" step="1" value="100"></label>
+    </div>
+    <div class="gen-actions">
+      <button class="primary" id="gCopy">📋 复制代码</button>
+      <button id="gCopyFull">📋 复制（含配置头，用于重建文件）</button>
+      <button class="ok" id="gAppend">➕ 复制并加入正式列表</button>
+      <button id="gClear">✕ 清空</button>
+      <span class="copy-hint info" id="gHint"></span>
+    </div>
+    <div class="gen-out" style="margin-top:12px">
+      <textarea id="gOut" readonly spellcheck="false" placeholder="填入名称与网址后，这里会自动生成 YAML 代码"></textarea>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>✅ 正式友链列表 <span class="tag" id="cnt">0 条</span> <span class="sub">这些会显示在前台；审核通过申请时会自动追加</span></h2>
+    <div class="bar">
+      <button class="primary" id="btnAdd">＋ 新增友链</button>
+      <button id="btnSort">↕ 按 order 排序</button>
+      <button id="btnToggleAll">◐ 显示/隐藏全部</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr>
+          <th style="width:50px">Logo</th><th style="width:20%">站点名称 *</th>
+          <th style="width:24%">站点描述</th><th style="width:18%">跳转 URL *</th>
+          <th style="width:11%">Email</th><th style="width:62px">排序</th>
+          <th style="width:60px">显示</th><th style="width:132px">操作</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📄 导出预览 <span class="sub">将写入 _data/links.yml 的完整内容</span></h2>
+    <textarea id="preview" readonly spellcheck="false"></textarea>
+  </div>
+
+  <div class="card">
+    <h2>📖 上线流程（三步）</h2>
+    <ol class="steps">
+      <li>在<b>申请审核</b>里处理申请（通过 / 拒绝 / 编辑 / 删除）。</li>
+      <li>点右上角 <b>「导出 links.yml」</b>，把下载的文件复制到项目目录<b>覆盖</b> <b>_data\links.yml</b>。</li>
+      <li>双击 <b>deploy.bat</b> 重新部署。通过的链接即出现在前台。</li>
+    </ol>
+    <p class="hint" style="margin-top:10px">
+      建议定期点「导出申请存档」把审核记录单独存一份 JSON。这样即使日后清空列表，历史申请与拒绝理由也不会丢。
+    </p>
+  </div>
+</main>
+
+<input type="file" id="fileInput" accept=".yml,.yaml,.txt" style="display:none">
+<input type="file" id="appFile" accept=".json" style="display:none">
+
+<script>
+/* ============================================================================
+   友情链接管理台 —— 全部逻辑
+   纯原生 JS，零依赖，全程不发起任何网络请求，数据只在本机浏览器内流转。
+   ============================================================================ */
+
+var DEFAULT_STATE = {
+  cfg: {
+    enabled:true, title:'友情链接', subtitle:'与优秀的站点互相学习、彼此引流',
+    new_tab:true, layout:'card', max:0, show_apply:true,
+    apply_mode:'form', apply_email:'1320233415@qq.com',
+    apply_intro:'欢迎与本站交换友情链接。请填写下方申请表单，审核通过后将展示在友链列表中。',
+    apply_note:'本站仅收录内容健康、已备案、访问正常的站点；纯广告、采集站、跳转页一律不予通过。审核一般 1–3 天，结果会回复到您填写的邮箱。',
+    apply_anchor:'#artalk-comments'
+  },
+  links: [
+    { name:'中国政府网', url:'https://www.gov.cn', description:'中国政府网——国务院官方网站，权威政策发布与政务信息公开平台', logo:'https://www.google.com/s2/favicons?domain=gov.cn&sz=64', email:'', rss:'', order:1, active:true },
+    { name:'中国裁判文书网', url:'https://wenshu.court.gov.cn', description:'人民法院出版社主办，查询全国法院生效裁判文书的官方平台', logo:'https://www.google.com/s2/favicons?domain=court.gov.cn&sz=64', email:'', rss:'', order:2, active:true },
+    { name:'国家法律法规数据库', url:'https://flk.npc.gov.cn', description:'全国人大常务委员会办公厅主办，法律、行政法规、司法解释权威文本', logo:'https://www.google.com/s2/favicons?domain=npc.gov.cn&sz=64', email:'', rss:'', order:3, active:true },
+    { name:'中国法院网', url:'https://www.chinacourt.org', description:'最高人民法院主办，司法解释、法院公告与审判业务资讯', logo:'https://www.google.com/s2/favicons?domain=chinacourt.org&sz=64', email:'', rss:'', order:4, active:true },
+    { name:'GitHub', url:'https://github.com', description:'全球最大的代码托管平台，也是本站源码的存放处', logo:'https://www.google.com/s2/favicons?domain=github.com&sz=64', email:'', rss:'', order:5, active:true }
+  ]
+};
+
+var DEFAULT_APPS = [
+  { id:'a-demo-1', name:'中国民商事诉讼网', url:'https://example-litigation.com',
+    description:'聚焦民商事诉讼实务，整理裁判规则与办案思路的专业站点。',
+    logo:'', email:'editor@example-litigation.com', rss:'',
+    extra:'已完成 ICP 备案，可交换首页固定位置链接。',
+    status:'pending', reviewNote:'', createdAt:'2026-10-15 09:12', reviewedAt:'' }
+];
+
+var state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+var apps = JSON.parse(JSON.stringify(DEFAULT_APPS));
+var appFilter = 'all';
+
+var PALETTE = ['#3b6ea5','#7a5195','#2f7d6d','#a35a3a','#4f6d3a','#8a5b2b','#4c5b8a','#7d3f52'];
+function fallbackColor(n){ var s=(n||'?').trim(); return PALETTE[s.charCodeAt(0)%PALETTE.length]; }
+function initial(n){ var s=(n||'?').trim(); return s?s.charAt(0).toUpperCase():'?'; }
+function nowStr(){
+  var d=new Date(), p=function(x){return x<10?'0'+x:''+x;};
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes());
+}
+function esc(s){
+  return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function notify(t,type){
+  var m=document.getElementById('msg');
+  m.className='msg '+(type||'ok'); m.innerHTML=t;
+  clearTimeout(m._t);
+  m._t=setTimeout(function(){ m.className='msg'; },7000);
+}
+
+/* ========================= 一、口令锁 ========================= */
+var KEY='fl_admin_pwd';
+function hash(s){
+  var h=5381;
+  for(var i=0;i<s.length;i++){ h=((h<<5)+h+s.charCodeAt(i))>>>0; }
+  return h.toString(36)+'-'+s.length;
+}
+function getPwd(){ try{ return localStorage.getItem(KEY)||''; }catch(e){ return ''; } }
+function setPwd(v){ try{ if(v) localStorage.setItem(KEY,hash(v)); else localStorage.removeItem(KEY); }catch(e){} }
+
+function tryUnlock(){
+  var v=document.getElementById('lockIn').value;
+  var p=getPwd();
+  if(!p || hash(v)===p){ enterApp(); }
+  else { document.getElementById('lockErr').textContent='口令不正确，请重试。'; }
+}
+function enterApp(){ document.getElementById('lock').style.display='none'; refreshPreview(); }
+
+document.getElementById('lockGo').onclick=tryUnlock;
+document.getElementById('lockIn').addEventListener('keydown',function(e){ if(e.key==='Enter') tryUnlock(); });
+document.getElementById('lockSet').onclick=function(){
+  var cur=prompt('设置一个管理口令（留空 = 取消设置）：');
+  if(cur===null) return;
+  if(cur===''){ setPwd(''); alert('已取消口令设置，下次打开无需输入。'); return; }
+  var re=prompt('再输入一次确认：');
+  if(cur!==re){ alert('两次输入不一致，未设置。'); return; }
+  setPwd(cur);
+  alert('口令已设置，保存于本机浏览器。下次打开本工具需要输入。');
+};
+document.getElementById('lockClear').onclick=function(){
+  if(!getPwd()){ alert('当前没有设置口令。'); return; }
+  if(confirm('确定清除口令吗？清除后打开本工具将不再需要输入。')){ setPwd(''); alert('已清除。'); }
+};
+
+/* ========================= 二、申请列表 ========================= */
+var STATUS_TEXT={pending:'待审核',approved:'已通过',rejected:'已拒绝'};
+var STATUS_CLS={pending:'pend',approved:'pass',rejected:'rej'};
+
+function appById(id){
+  for(var i=0;i<apps.length;i++){ if(apps[i].id===id) return apps[i]; }
+  return null;
+}
+function uid(){ return 'a'+Date.now().toString(36)+Math.floor(Math.random()*1e3); }
+function normUrl(u){ return String(u||'').trim().replace(/\/+$/,''); }
+
+function renderApps(){
+  var box=document.getElementById('appList');
+  var list=apps.filter(function(a){ return appFilter==='all' || a.status===appFilter; });
+  document.getElementById('appCnt').textContent=apps.length+' 条（当前显示 '+list.length+' 条）';
+
+  if(!list.length){
+    box.innerHTML='<div class="empty">没有符合筛选条件的申请记录。'
+      +(apps.length?'':'读者提交申请后，把邮件内容粘贴到上方「导入申请内容」即可。')+'</div>';
+    return;
+  }
+
+  var html='';
+  for(var i=0;i<list.length;i++){
+    var a=list[i];
+    var toggleBtn = appFilter==='all'
+      ? '<button class="sm '+(a.status==='pending'?'warn':'ok')+'" data-act="toggle" data-id="'+a.id+'">'
+        +(a.status==='pending'?'标记为通过':'恢复为待审核')+'</button>'
+      : '';
+
+    html += '<div class="app-item st-'+a.status+'" data-id="'+a.id+'">'
+      + '<div class="app-head">'
+      +   '<div class="app-name">'
+      +     (a.name? esc(a.name) : '<span class="tag">未填写名称</span>')
+      +     (a.url? ' <a href="'+esc(a.url)+'" target="_blank" rel="noopener noreferrer nofollow">'+esc(a.url)+'</a>' : '')
+      +   '</div>'
+      +   '<div class="app-time"><span class="tag '+STATUS_CLS[a.status]+'">'+STATUS_TEXT[a.status]+'</span>'
+      +     ' 申请于 '+esc(a.createdAt||'-')
+      +     (a.reviewedAt? ' · 处理于 '+esc(a.reviewedAt) : '')+'</div>'
+      + '</div>'
+      + '<div class="app-grid">'
+      +   '<div><b>邮箱：</b><input type="text" class="app-email" value="'+esc(a.email||'')+'"></div>'
+      +   '<div><b>头像：</b><input type="text" class="app-logo" value="'+esc(a.logo||'')+'"></div>'
+      +   '<div><b>RSS：</b><input type="text" class="app-rss" value="'+esc(a.rss||'')+'"></div>'
+      +   '<div><b>补充说明：</b><input type="text" class="app-extra" value="'+esc(a.extra||'')+'"></div>'
+      + '</div>'
+      + '<div class="app-desc">'
+      +   (a.description? esc(a.description) : '<span style="color:var(--muted)">（未填写站点简介）</span>')
+      + '</div>'
+      + (a.reviewNote? '<div class="app-note"><b>审核备注：</b>'+esc(a.reviewNote)+'</div>' : '')
+      + '<div class="app-ops">'
+      +   '<button class="sm ok" data-act="approve" data-id="'+a.id+'">✓ 通过并上墙</button>'
+      +   '<button class="sm danger" data-act="reject" data-id="'+a.id+'">✕ 拒绝</button>'
+      +   '<button class="sm" data-act="note" data-id="'+a.id+'">📝 审核备注</button>'
+      +   '<button class="sm" data-act="detail" data-id="'+a.id+'">✎ 编辑内容</button>'
+      +   '<button class="sm" data-act="gencode" data-id="'+a.id+'">📋 复制代码</button>'
+      +   '<button class="sm" data-act="toform" data-id="'+a.id+'">↧ 带入表单</button>'
+      +   '<span class="sep"></span>'+toggleBtn
+      +   '<button class="sm danger" data-act="delApp" data-id="'+a.id+'">🗑 删除记录</button>'
+      + '</div>'
+      + '</div>';
+  }
+  box.innerHTML=html;
+
+  /* 按钮事件 */
+  box.querySelectorAll('[data-act]').forEach(function(b){
+    b.onclick=function(){ appAction(b.getAttribute('data-act'), b.getAttribute('data-id')); };
+  });
+  /* 卡片内联可编辑字段 */
+  box.querySelectorAll('.app-email,.app-logo,.app-rss,.app-extra').forEach(function(el){
+    el.oninput=function(){
+      var card=el.closest('.app-item');
+      var a=appById(card.getAttribute('data-id'));
+      if(!a) return;
+      if(el.classList.contains('app-email')) a.email=el.value;
+      else if(el.classList.contains('app-logo')) a.logo=el.value;
+      else if(el.classList.contains('app-rss')) a.rss=el.value;
+      else a.extra=el.value;
+    };
+  });
+}
+
+function appAction(act,id){
+  var a=appById(id);
+  if(!a) return;
+
+  if(act==='approve'){
+    if(!a.name||!a.url){
+      notify('这条申请还缺少「站点名称」或「站点网址」，请先点「编辑内容」补全后再通过。','err');
+      return;
+    }
+    if(a.status==='approved'){ notify('这条已经是「已通过」状态，无需重复操作。','warn'); return; }
+
+    var dup=state.links.some(function(l){ return normUrl(l.url)===normUrl(a.url); });
+    if(dup){
+      notify('正式友链列表里已有相同网址的链接，未重复添加；本次仅把申请标记为「已通过」。','warn');
+    } else {
+      var maxOrder=state.links.reduce(function(m,l){ return Math.max(m, parseInt(l.order,10)||100); },0);
+      state.links.push({
+        name:a.name, url:a.url, description:a.description||'', logo:a.logo||'',
+        email:a.email||'', rss:a.rss||'', order:maxOrder+10, active:true
+      });
+    }
+    a.status='approved';
+    var n=prompt('审核备注（可留空；这段话也是回复申请者时的依据）：', a.reviewNote||'');
+    if(n!==null) a.reviewNote=n;
+    a.reviewedAt=nowStr();
+    renderApps(); renderTable(); refreshPreview();
+    notify('已通过「'+esc(a.name)+'」，已加入正式友链列表。记得导出 links.yml 并重新 deploy.bat 上线。','ok');
+
+  } else if(act==='reject'){
+    if(a.status==='rejected'){ notify('这条已经是「已拒绝」状态。','warn'); return; }
+    var note=prompt('请填写拒绝理由（保存到审核记录，建议写明原因便于日后复查）：', a.reviewNote||'');
+    if(note===null) return;
+    if(!note.trim()) notify('提示：拒绝时建议至少写一句话理由。','warn');
+    a.status='rejected'; a.reviewNote=note; a.reviewedAt=nowStr();
+    /* 若此前已上墙，一并从正式列表移除，避免"已拒绝却仍显示" */
+    var before=state.links.length;
+    state.links=state.links.filter(function(l){ return normUrl(l.url)!==normUrl(a.url); });
+    renderApps(); renderTable(); refreshPreview();
+    notify(state.links.length<before ? '已拒绝，并已从前台友链列表中移除该链接。' : '已拒绝，该链接不会出现在前台。','ok');
+
+  } else if(act==='note'){
+    var n2=prompt('审核备注：', a.reviewNote||'');
+    if(n2!==null){ a.reviewNote=n2; renderApps(); }
+
+  } else if(act==='detail'){
+    var d=prompt('编辑申请内容，用竖线 | 分隔：名称|网址|简介|邮箱|头像地址|RSS',
+      [a.name,a.url,a.description,a.email,a.logo,a.rss].join('|'));
+    if(d===null) return;
+    var p=d.split('|');
+    a.name=(p[0]||'').trim(); a.url=(p[1]||'').trim(); a.description=(p[2]||'').trim();
+    a.email=(p[3]||'').trim(); a.logo=(p[4]||'').trim(); a.rss=(p[5]||'').trim();
+    renderApps();
+    notify('已更新申请内容。','ok');
+
+  } else if(act==='toggle'){
+    a.status = (a.status==='pending') ? 'approved' : 'pending';
+    if(a.status==='pending'){ a.reviewedAt=''; }
+    renderApps(); refreshPreview();
+    notify('状态已改为「'+STATUS_TEXT[a.status]+'」。若要真正上墙，请点「通过并上墙」。','warn');
+
+  } else if(act==='gencode'){
+    /* 从申请记录直接生成 YAML 代码并复制 —— 便于手工粘贴进 links.yml */
+    if(!a.name||!a.url){
+      notify('这条申请缺少「站点名称」或「站点网址」，无法生成代码。请先点「编辑内容」补全。','err');
+      return;
+    }
+    var code=genLinkYaml({
+      name:a.name, url:a.url, description:a.description||'', logo:a.logo||'',
+      email:a.email||'', rss:a.rss||'', order:100, active:true
+    }, true);
+    copyText(code, function(okFlag){
+      if(okFlag){
+        notify('已复制「'+esc(a.name)+'」的 YAML 代码，粘贴到 links.yml 的 links: 下即可。','ok');
+      }else{
+        fillGenForm({name:a.name,url:a.url,description:a.description,logo:a.logo,email:a.email,rss:a.rss,order:100});
+        notify('浏览器阻止了自动复制，已把内容带入下方表单，可从代码框手动选中复制。','warn');
+      }
+    });
+
+  } else if(act==='toform'){
+    fillGenForm({name:a.name,url:a.url,description:a.description,logo:a.logo,email:a.email,rss:a.rss,order:100});
+    var el=document.getElementById('g_name');
+    if(el && el.scrollIntoView) el.scrollIntoView({behavior:'smooth',block:'center'});
+    notify('已把「'+esc(a.name||'该申请')+'」的内容带入下方表单，可继续修改后复制代码。','ok');
+
+  } else if(act==='delApp'){
+    if(confirm('确定删除「'+(a.name||'未命名')+'」这条申请记录吗？\n只删除申请记录，不影响正式友链列表。')){
+      apps=apps.filter(function(x){ return x.id!==id; });
+      renderApps();
+      notify('已删除该申请记录。','ok');
+    }
+  }
+}
+
+/* 状态筛选 */
+document.getElementById('appFilters').onclick=function(e){
+  var b=e.target.closest('button[data-f]');
+  if(!b) return;
+  appFilter=b.getAttribute('data-f');
+  this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('cur', x===b); });
+  renderApps();
+};
+
+/* ========================= 三、申请导入解析 ========================= */
+function parseApps(text){
+  /* 一封邮件一个块：以「站点名称：」这类标签开头的行视为新块起点 */
+  var lines=text.replace(/\r/g,'').split('\n');
+  var blocks=[], cur=null;
+  var LABEL=/^\s*(?:[【\[])?\s*(站点名称|站点网址|站点地址|网址|站点简介|站点介绍|简介|头像地址|头像|联系方式|邮箱|电子邮箱|补充说明|备注|RSS订阅|RSS)\s*(?:】\])?\s*[:：]\s*(.*)$/;
+
+  for(var i=0;i<lines.length;i++){
+    var line=lines[i];
+    var m=line.match(LABEL);
+    if(!m) continue;
+    var key=m[1], val=(m[2]||'').trim();
+    /* 「站点名称」是新申请的起点 */
+    if(key==='站点名称' || (!cur && (key==='站点网址'||key==='网址'))) {
+      if(cur) blocks.push(cur);
+      cur={id:uid(), name:'', url:'', description:'', logo:'', email:'', rss:'',
+           extra:'', status:'pending', reviewNote:'', createdAt:nowStr(), reviewedAt:''};
+    }
+    if(!cur) continue;
+    if(!val || /^(无|没有|未提供|留空|（无）)$/.test(val)) continue;
+    if(key==='站点名称') cur.name=val;
+    else if(key==='站点网址'||key==='站点地址'||key==='网址') cur.url=val;
+    else if(key==='站点简介'||key==='站点介绍'||key==='简介') cur.description=val;
+    else if(key==='头像地址'||key==='头像') cur.logo=val;
+    else if(key==='联系方式'||key==='邮箱'||key==='电子邮箱') cur.email=val;
+    else if(key==='补充说明'||key==='备注') cur.extra=val;
+    else if(key==='RSS订阅'||key==='RSS') cur.rss=val;
+  }
+  if(cur) blocks.push(cur);
+  return blocks.filter(function(b){ return b.name||b.url; });
+}
+
+document.getElementById('btnImportApps2').onclick=function(){
+  var t=document.getElementById('importBox').value.trim();
+  if(!t){ notify('请先把收到的申请邮件内容粘贴到上方文本框。','warn'); return; }
+  var parsed=parseApps(t);
+  if(!parsed.length){
+    notify('没有解析出有效申请。请确认内容里包含「站点名称：」「站点网址：」等中文标签（冒号需为中文或英文均可）。','err');
+    return;
+  }
+  var skipped=0;
+  for(var i=0;i<parsed.length;i++){
+    if(parsed[i].url && apps.some(function(a){ return normUrl(a.url)===normUrl(parsed[i].url); })){ skipped++; continue; }
+    apps.push(parsed[i]);
+  }
+  document.getElementById('importBox').value='';
+  appFilter='pending';
+  document.getElementById('appFilters').querySelectorAll('button').forEach(function(x){
+    x.classList.toggle('cur', x.getAttribute('data-f')==='pending');
+  });
+  renderApps();
+  notify('已导入 '+parsed.length+' 条申请'
+    +(skipped?'（其中 '+skipped+' 条网址重复已跳过）':'')
+    +'，当前筛选为「待审核」。','ok');
+};
+
+document.getElementById('btnAddApp').onclick=function(){
+  apps.unshift({id:uid(), name:'', url:'', description:'', logo:'', email:'', rss:'',
+    extra:'', status:'pending', reviewNote:'', createdAt:nowStr(), reviewedAt:''});
+  appFilter='all';
+  document.getElementById('appFilters').querySelectorAll('button').forEach(function(x){
+    x.classList.toggle('cur', x.getAttribute('data-f')==='all');
+  });
+  renderApps();
+  notify('已新增一条空申请，请填写内容后再点「通过并上墙」。','ok');
+};
+
+/* 申请存档导出 / 导入 */
+function download(blob,name){
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },1000);
+}
+document.getElementById('btnExportApps').onclick=function(){
+  if(!apps.length){ notify('当前没有申请记录可导出。','warn'); return; }
+  var payload={ site:state.cfg.apply_email, exportedAt:nowStr(), apps:apps };
+  download(new Blob(['﻿'+JSON.stringify(payload,null,2)],{type:'application/json'}),
+    '友链申请存档-'+nowStr().slice(0,10)+'.json');
+  notify('申请存档已导出（共 '+apps.length+' 条），建议单独保存一份。','ok');
+};
+document.getElementById('btnImportApps').onclick=function(){ document.getElementById('appFile').click(); };
+document.getElementById('appFile').onchange=function(e){
+  var f=e.target.files[0];
+  if(!f) return;
+  var fr=new FileReader();
+  fr.onload=function(){
+    try{
+      var d=JSON.parse(String(fr.result));
+      var list=Array.isArray(d)?d:(d.apps||[]);
+      if(!list.length){ notify('这个存档里没有申请记录。','warn'); return; }
+      var n=0;
+      for(var i=0;i<list.length;i++){
+        var a=list[i];
+        if(!a.id || apps.some(function(x){ return x.id===a.id; })) continue;
+        a.status=a.status||'pending';
+        a.reviewNote=a.reviewNote||'';
+        a.createdAt=a.createdAt||nowStr();
+        a.reviewedAt=a.reviewedAt||'';
+        a.extra=a.extra||''; a.rss=a.rss||'';
+        apps.push(a); n++;
+      }
+      renderApps();
+      notify('已从存档导入 '+n+' 条申请记录。','ok');
+    }catch(err){ notify('存档文件解析失败：'+err.message,'err'); }
+  };
+  fr.readAsText(f,'utf-8');
+  e.target.value='';
+};
+
+/* ========================= 四、正式友链表格 ========================= */
+function renderTable(){
+  var tb=document.getElementById('tbody');
+  tb.innerHTML='';
+  document.getElementById('cnt').textContent=state.links.length+' 条';
+
+  state.links.forEach(function(item, idx){
+    var tr=document.createElement('tr');
+    if(item.active===false) tr.className='off';
+
+    var tdL=document.createElement('td');
+    var box=document.createElement('div');
+    box.className='logo-box';
+    box.style.background=fallbackColor(item.name);
+    if(item.logo){
+      var img=document.createElement('img');
+      img.src=item.logo;
+      img.style.width='100%'; img.style.height='100%';
+      img.style.borderRadius='8px'; img.style.objectFit='contain';
+      img.onerror=function(){ box.textContent=initial(item.name); };
+      box.appendChild(img);
+    } else {
+      box.textContent=initial(item.name);
+    }
+    tdL.appendChild(box);
+
+    function cell(key, ph, type){
+      var td=document.createElement('td');
+      var inp=document.createElement('input');
+      inp.type=type||'text';
+      inp.value=item[key]||'';
+      inp.placeholder=ph||'';
+      inp.style.padding='6px 8px'; inp.style.fontSize='13px';
+      inp.oninput=function(){ item[key]=inp.value; refreshPreview(); };
+      td.appendChild(inp);
+      return td;
+    }
+
+    var tdO=document.createElement('td');
+    var io=document.createElement('input');
+    io.type='number'; io.min='0';
+    io.value=(item.order===''||item.order==null)?100:item.order;
+    io.style.padding='6px 8px';
+    io.oninput=function(){ item.order=parseInt(io.value,10); refreshPreview(); };
+    tdO.appendChild(io);
+
+    var tdA=document.createElement('td');
+    var isOn=(item.active!==false);
+    var bt=document.createElement('button');
+    bt.className='sm '+(isOn?'':'warn');
+    bt.textContent=isOn?'显示':'隐藏';
+    bt.onclick=function(){ item.active=!isOn; renderTable(); refreshPreview(); };
+    tdA.appendChild(bt);
+
+    var tdX=document.createElement('td');
+    var up=document.createElement('button');
+    up.className='sm'; up.textContent='↑'; up.title='上移';
+    up.onclick=function(){
+      if(idx>0){ state.links.splice(idx-1,0,state.links.splice(idx,1)[0]); renderTable(); refreshPreview(); }
+    };
+    var dn=document.createElement('button');
+    dn.className='sm'; dn.textContent='↓'; dn.title='下移'; dn.style.marginLeft='4px';
+    dn.onclick=function(){
+      if(idx<state.links.length-1){ state.links.splice(idx+1,0,state.links.splice(idx,1)[0]); renderTable(); refreshPreview(); }
+    };
+    var cp=document.createElement('button');
+    cp.className='sm'; cp.textContent='📋'; cp.title='复制这条的 YAML 代码';
+    cp.style.marginLeft='4px';
+    cp.onclick=function(ev){
+      if(ev && ev.stopPropagation) ev.stopPropagation();
+      var code=genLinkYaml(item, true);
+      copyText(code, function(okFlag){
+        if(okFlag){
+          notify('已复制「'+esc(item.name||'未命名')+'」的 YAML 代码。','ok');
+        }else{
+          fillGenForm(item);
+          notify('浏览器阻止了自动复制，已把内容带入生成器表单，可手动选中复制。','warn');
+        }
+      });
+    };
+    var del=document.createElement('button');
+    del.className='sm'; del.textContent='✕'; del.title='删除';
+    del.style.marginLeft='4px'; del.style.color='var(--danger)';
+    del.onclick=function(){
+      if(confirm('确定把「'+(item.name||'未命名')+'」从正式友链列表删除吗？')){
+        state.links.splice(idx,1); renderTable(); refreshPreview();
+      }
+    };
+    tdX.appendChild(up); tdX.appendChild(dn); tdX.appendChild(cp); tdX.appendChild(del);
+
+    tr.appendChild(tdL);
+    tr.appendChild(cell('name','必填'));
+    tr.appendChild(cell('description','选填'));
+    tr.appendChild(cell('url','必填 https://…','url'));
+    tr.appendChild(cell('email','选填','email'));
+    tr.appendChild(tdO); tr.appendChild(tdA); tdX.appendChild(document.createElement('td'));
+    tb.appendChild(tr);
+  });
+}
+
+document.getElementById('btnAdd').onclick=function(){
+  state.links.push({name:'',url:'',description:'',logo:'',email:'',rss:'',
+    order:(state.links.length+1)*10, active:true});
+  renderTable(); refreshPreview();
+  notify('已新增一行，请填写「站点名称」和「跳转 URL」。','ok');
+};
+document.getElementById('btnSort').onclick=function(){
+  state.links.sort(function(a,b){ return (a.order||100)-(b.order||100); });
+  renderTable(); refreshPreview();
+  notify('已按 order 排序。','ok');
+};
+document.getElementById('btnToggleAll').onclick=function(){
+  var allOn=state.links.every(function(it){ return it.active!==false; });
+  state.links.forEach(function(it){ it.active=!allOn; });
+  renderTable(); refreshPreview();
+};
+
+/* ========================= 五、配置绑定 ========================= */
+var BIND=[
+  ['c_title','title','text'],['c_subtitle','subtitle','text'],
+  ['c_enabled','enabled','bool'],['c_new_tab','new_tab','bool'],
+  ['c_layout','layout','text'],['c_max','max','num'],['c_show_apply','show_apply','bool'],
+  ['c_apply_mode','apply_mode','text'],['c_apply_email','apply_email','text'],
+  ['c_apply_intro','apply_intro','text'],['c_apply_note','apply_note','text'],
+  ['c_apply_anchor','apply_anchor','text']
+];
+function fillConfig(){
+  BIND.forEach(function(b){
+    var el=document.getElementById(b[0]);
+    var v=state.cfg[b[1]];
+    if(b[2]==='bool') el.value=(v===false)?'false':'true';
+    else if(b[2]==='num') el.value=v||0;
+    else el.value=v||'';
+  });
+}
+BIND.forEach(function(b){
+  document.getElementById(b[0]).addEventListener('input',function(e){
+    var v=e.target.value;
+    if(b[2]==='bool') state.cfg[b[1]]=(v==='true');
+    else if(b[2]==='num') state.cfg[b[1]]=parseInt(v,10)||0;
+    else state.cfg[b[1]]=v;
+    refreshPreview();
+  });
+});
+
+/* ========================= 六、YAML 序列化 / 反序列化 ========================= */
+function yq(s){
+  if(s===null||s===undefined) return '';
+  var t=String(s);
+  if(t==='') return '""';
+  if(/[:#\-{}[\],&*?|<>=!%@`"'\n\t]/.test(t) || /^\s|\s$/.test(t)
+     || /^(true|false|null|~|\d+(\.\d+)?)$/i.test(t)){
+    return '"'+t.replace(/\\/g,'\\\\').replace(/"/g,'\\"').replace(/\n/g,'\\n')+'"';
+  }
+  return t;
+}
+/* ---------------------------------------------------------------------------
+   复制到剪贴板
+   ---------------------------------------------------------------------------
+   优先用现代的 navigator.clipboard（需 https 或 localhost 等安全上下文）。
+   但本工具通常是双击用 file:// 打开的，属于非安全上下文，
+   navigator.clipboard 会直接是 undefined —— 所以必须准备 execCommand 兜底，
+   否则「复制」按钮在真实使用场景（本地双击打开）下会静默失效。 */
+function copyText(text, cb){
+  function done(okFlag){
+    if(cb) cb(okFlag);
+  }
+  if(!text){ return done(false); }
+
+  /* 情况 1：现代 API 可用 */
+  if(navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(text).then(
+      function(){ done(true); },
+      function(){ done(fallbackCopy(text)); }
+    );
+    return;
+  }
+  /* 情况 2：file:// 或 http 环境 → 退回传统方案 */
+  done(fallbackCopy(text));
+}
+
+/* 传统复制：建一个隐藏 textarea 全选后 execCommand('copy') */
+function fallbackCopy(text){
+  var ta=document.createElement('textarea');
+  ta.value=text;
+  /* 移到屏幕外但不能 display:none，否则选不中 */
+  ta.setAttribute('readonly','');
+  ta.style.position='fixed';
+  ta.style.top='0';
+  ta.style.left='-9999px';
+  ta.style.opacity='0';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  if(ta.setSelectionRange) ta.setSelectionRange(0, text.length);
+
+  var okFlag=false;
+  try{ okFlag=document.execCommand('copy'); }
+  catch(e){ okFlag=false; }
+
+  document.body.removeChild(ta);
+  return okFlag;
+}
+
+/* ---------------------------------------------------------------------------
+   生成单条友链的 YAML 代码块
+   ---------------------------------------------------------------------------
+   缩进规则与 links.yml 中 links: 下的条目完全一致：
+     "  - name: xxx"   ← 2 空格 + "- "
+     "    url: xxx"    ← 4 空格
+   所以生成的代码可以直接粘到 links: 下面，不会出现缩进错乱。 */
+function genLinkYaml(it, withComment){
+  var o = it || {};
+  var L = [];
+  if(withComment){
+    L.push('  # ---------- 「' + (o.name || '未命名站点') + '」----------');
+  }
+  L.push('  - name: '       + yq(o.name || ''));
+  L.push('    url: '        + yq(o.url || ''));
+  L.push('    description: '+ yq(o.description || ''));
+  L.push('    logo: '       + yq(o.logo || ''));
+  L.push('    email: '      + yq(o.email || ''));
+  L.push('    rss: '        + yq(o.rss || ''));
+  L.push('    order: '      + (parseInt(o.order,10) || 100));
+  L.push('    active: '     + (o.active === false ? 'false' : 'true'));
+  return L.join('\n');
+}
+
+/* 从申请记录或表单字段组装成一条友链对象 */
+function readGenForm(){
+  function v(id){ var e=document.getElementById(id); return e? (e.value||'').trim() : ''; }
+  return {
+    name:        v('g_name'),
+    url:         v('g_url'),
+    description: v('g_desc'),
+    logo:        v('g_logo'),
+    email:       v('g_email'),
+    rss:         v('g_rss'),
+    order:       parseInt(v('g_order'),10) || 100,
+    active:      true
+  };
+}
+
+/* 把一条记录（申请或已通过友链）填入生成器表单 */
+function fillGenForm(o){
+  var map={
+    g_name:o.name, g_url:o.url, g_desc:o.description,
+    g_logo:o.logo, g_email:o.email, g_rss:o.rss
+  };
+  Object.keys(map).forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.value = map[id] || '';
+  });
+  var od=document.getElementById('g_order');
+  if(od) od.value = parseInt(o.order,10) || 100;
+  renderGen();
+}
+
+/* 复制结果的轻提示（不弹窗，避免打断连续操作） */
+function genHint(text, kind){
+  var el=document.getElementById('gHint');
+  el.textContent = text;
+  el.className = 'copy-hint ' + (kind || 'info');
+  clearTimeout(el._t);
+  el._t = setTimeout(function(){
+    el.textContent=''; el.className='copy-hint info';
+  }, 4500);
+}
+
+function validateLink(o){
+  var bad=[];
+  if(!o.name) bad.push('站点名称必填');
+  if(!o.url) bad.push('站点网址必填');
+  else if(!/^https?:\/\//i.test(o.url)) bad.push('网址须以 http:// 或 https:// 开头');
+  return bad;
+}
+
+function renderGen(){
+  var o=readGenForm();
+  var bad=validateLink(o);
+  var out=document.getElementById('gOut');
+
+  if(bad.length){
+    /* 没填完时给出可读的提示，而不是输出一段残缺的 YAML
+       （半截 YAML 粘进 links.yml 反而会把文件搞坏） */
+    out.value='';
+    out.placeholder='还需填写：' + bad.join('、');
+    return false;
+  }
+  out.placeholder='';
+  out.value=genLinkYaml(o, true);
+  return true;
+}
+
+/* ---- 事件绑定 ---- */
+['g_name','g_url','g_desc','g_logo','g_email','g_rss','g_order'].forEach(function(id){
+  var el=document.getElementById(id);
+  if(el) el.addEventListener('input', renderGen);
+});
+
+document.getElementById('gCopy').onclick=function(){
+  if(!renderGen()){ genHint('请先填写站点名称与网址','warn'); return; }
+  var code=document.getElementById('gOut').value;
+  copyText(code, function(okFlag){
+    if(okFlag){
+      genHint('✓ 已复制，粘贴到 links.yml 的 links: 列表下即可','ok');
+    }else{
+      /* 兜底也失败：自动全选下方文本框，让用户按 Ctrl+C 手动复制 */
+      var ta=document.getElementById('gOut');
+      ta.focus(); ta.select();
+      genHint('浏览器阻止了自动复制，已为你全选，请按 Ctrl+C 复制','warn');
+    }
+  });
+};
+
+document.getElementById('gCopyFull').onclick=function(){
+  var o=readGenForm();
+  var bad=validateLink(o);
+  if(bad.length){ genHint('请先填写：'+bad.join('、'),'warn'); return; }
+  /* 把这条加进列表后，导出与 links.yml 完整一致的全文 */
+  var dup=state.links.some(function(l){ return normUrl(l.url)===normUrl(o.url); });
+  if(!dup) state.links.push(o);
+  var full=toYaml();
+  if(dup) state.links.pop();
+  renderTable();
+  copyText(full, function(okFlag){
+    if(okFlag){ genHint('✓ 已复制完整 links.yml 全文，可直接覆盖 _data\\links.yml','ok'); }
+    else{
+      var ta=document.getElementById('gOut');
+      ta.value=full; ta.focus(); ta.select();
+      genHint('浏览器阻止了自动复制，完整代码已放入下方文本框并全选，请按 Ctrl+C','warn');
+    }
+  });
+};
+
+document.getElementById('gAppend').onclick=function(){
+  if(!renderGen()){ genHint('请先填写站点名称与网址','warn'); return; }
+  var o=readGenForm();
+  if(state.links.some(function(l){ return normUrl(l.url)===normUrl(o.url); })){
+    genHint('正式列表里已有相同网址的链接，未重复添加','warn');
+    return;
+  }
+  state.links.push(o);
+  renderTable(); refreshPreview();
+  var code=document.getElementById('gOut').value;
+  copyText(code, function(okFlag){
+    genHint(okFlag
+      ? '✓ 已加入正式列表，并复制了该条代码'
+      : '✓ 已加入正式列表（复制失败，可从下方文本框手动选中复制）', okFlag?'ok':'warn');
+  });
+};
+
+document.getElementById('gClear').onclick=function(){
+  ['g_name','g_url','g_desc','g_logo','g_email','g_rss'].forEach(function(id){
+    var e=document.getElementById(id); if(e) e.value='';
+  });
+  document.getElementById('g_order').value=100;
+  document.getElementById('gOut').value='';
+  document.getElementById('gOut').placeholder='填入名称与网址后，这里会自动生成 YAML 代码';
+  genHint('已清空','');
+};
+
+function toYaml(){
+  var c=state.cfg, L=[];
+  L.push('# ============================================================================');
+  L.push('# links.yml —— 「友情链接」数据源 + 读者自助申请配置（全站唯一）');
+  L.push('# ----------------------------------------------------------------------------');
+  L.push('# 本文件由 tools\\友链管理.html 生成，也可手工编辑，两种方式等效。');
+  L.push('#');
+  L.push('# 友链字段：name/url 必填；description/logo/email/rss 选填；');
+  L.push('#           order 为排序权重（数字小的靠前）；active: false 表示暂时隐藏。');
+  L.push('#   logo 留空 = 前台自动生成彩色首字图标（推荐，不依赖外部图片）。');
+  L.push('#');
+  L.push('# ⚠️ 下面 links 列表里只会出现「审核通过」的链接。');
+  L.push('#   待审核与已拒绝的申请记录保存在管理台内，请用「导出申请存档」');
+  L.push('#   单独存为 JSON —— 它们本来就不该出现在前台。');
+  L.push('# ============================================================================');
+  L.push('');
+  L.push('enabled: '+(c.enabled===false?'false':'true'));
+  L.push('title: '+yq(c.title));
+  if(c.subtitle) L.push('subtitle: '+yq(c.subtitle));
+  L.push('new_tab: '+(c.new_tab===false?'false':'true'));
+  L.push('layout: '+(c.layout==='list'?'list':'card'));
+  L.push('max: '+(parseInt(c.max,10)||0));
+  L.push('show_apply: '+(c.show_apply===false?'false':'true'));
+  L.push('');
+  L.push('# ---------- 读者自助申请区 ----------');
+  L.push('# mode: form = 表单模式（读者填表，提交后自动发邮件）');
+  L.push('#       comment = 评论模式（读者在评论区按模板留言）');
+  L.push('#       none = 关闭申请区');
+  L.push('apply:');
+  L.push('  enabled: true');
+  L.push('  mode: '+yq(c.apply_mode||'form'));
+  L.push('  email: '+yq(c.apply_email));
+  L.push('  intro: >-');
+  L.push('    '+String(c.apply_intro||'').replace(/\r?\n/g,' ').replace(/\s+/g,' ').trim());
+  L.push('  note: >-');
+  L.push('    '+String(c.apply_note||'').replace(/\r?\n/g,' ').replace(/\s+/g,' ').trim());
+  L.push('  comment_anchor: '+yq(c.apply_anchor||'#artalk-comments'));
+  L.push('');
+  L.push('# ---------- 友链清单（仅含已审核通过的链接）----------');
+  L.push('links:');
+  if(!state.links.length) L.push('  # （暂无友链）');
+  state.links.forEach(function(it,i){
+    L.push('');
+    if(i===0) L.push('  # ---------- 第 1 条 ----------');
+    L.push('  - name: '+yq(it.name));
+    L.push('    url: '+yq(it.url));
+    L.push('    description: '+yq(it.description));
+    L.push('    logo: '+yq(it.logo));
+    L.push('    email: '+yq(it.email));
+    L.push('    rss: '+yq(it.rss));
+    L.push('    order: '+(parseInt(it.order,10)||100));
+    L.push('    active: '+(it.active===false?'false':'true'));
+  });
+  return L.join('\n')+'\n';
+}
+
+/* 只解析 links.yml 这种固定结构，不追求通用 YAML */
+function parseYaml(txt){
+  var lines=txt.replace(/\r/g,'').split('\n');
+  var cfg=JSON.parse(JSON.stringify(DEFAULT_STATE.cfg));
+  var links=[];
+  var cur=null;
+  var inApply=false;          /* 正在读 apply 段 */
+  var block=null, blockBuf=[]; /* 当前正在折叠的多行文本块 */
+
+  /* 剥离行尾注释：本项目所有 YAML 都习惯在值后面写中文注释
+     （例如 title: 友情链接       # 板块标题），必须去掉否则值会带上注释文字。
+     规则：# 前面是空白、且不在引号内，才算注释起点。 */
+  function stripComment(v){
+    var out='', q=null;
+    for(var i=0;i<v.length;i++){
+      var c=v.charAt(i);
+      if(q){
+        out+=c;
+        if(c===q) q=null;
+      } else if(c==='"'||c==="'"){
+        q=c; out+=c;
+      } else if(c==='#' && (i===0 || /\s/.test(v.charAt(i-1)))){
+        break;                     /* 命中行尾注释，截断 */
+      } else out+=c;
+    }
+    return out.trim();
+  }
+  /* 去引号并还原转义，与 toYaml 的 yq() 输出严格互逆 */
+  function unq(s){
+    s=stripComment(s);
+    if(s.length>1 && s.charAt(0)==='"' && s.charAt(s.length-1)==='"'){
+      return s.slice(1,-1).replace(/\\n/g,'\n').replace(/\\"/g,'"').replace(/\\\\/g,'\\');
+    }
+    if(s.length>1 && s.charAt(0)==="'" && s.charAt(s.length-1)==="'"){
+      return s.slice(1,-1).replace(/''/g,"'");
+    }
+    return s;
+  }
+  function flushLink(){ if(cur){ links.push(cur); cur=null; } }
+  function flushBlock(){
+    if(block){ cfg[block]=blockBuf.join(' ').trim(); block=null; blockBuf=[]; }
+  }
+
+  for(var i=0;i<lines.length;i++){
+    var line=lines[i];
+    if(!line.trim() || line.trim().indexOf('#')===0){
+      continue;
+    }
+
+    /* 折叠块（intro: >- / note: >-）的续行：缩进 >=2 且非 key: value */
+    if(inApply && block){
+      if(/^\s{2,}\S/.test(line) && !/^\s*[A-Za-z_]+:/.test(line)){
+        blockBuf.push(line.trim());
+        continue;
+      }
+      flushBlock();
+    }
+
+    /* 顶层 key（无缩进） */
+    var mt=line.match(/^([A-Za-z_][A-Za-z0-9_]*):\s*(.*)$/);
+    if(mt){
+      flushLink();
+      var k=mt[1], v=stripComment(mt[2]);
+      inApply=false;
+      if(k==='enabled') cfg.enabled=(v==='false');
+      else if(k==='title') cfg.title=unq(v);
+      else if(k==='subtitle') cfg.subtitle=unq(v);
+      else if(k==='new_tab') cfg.new_tab=(v!=='false');
+      else if(k==='layout') cfg.layout=(v==='list'?'list':'card');
+      else if(k==='max') cfg.max=parseInt(v,10)||0;
+      else if(k==='show_apply') cfg.show_apply=(v!=='false');
+      else if(k==='apply') inApply=true;
+      /* links: 只是清单开始标记，条目在下面 */
+      continue;
+    }
+
+    /* apply 段的子字段（缩进 2 格） */
+    var ms=line.match(/^\s{2}([A-Za-z_][A-Za-z0-9_]*):\s*(.*)$/);
+    if(ms && inApply){
+      var ak=ms[1], av=stripComment(ms[2]);
+      if(ak==='mode') cfg.apply_mode=unq(av);
+      else if(ak==='email') cfg.apply_email=unq(av);
+      else if(ak==='comment_anchor') cfg.apply_anchor=unq(av);
+      else if(ak==='intro'){ if(av==='>-'||av==='>'||av==='|'){ block='apply_intro'; blockBuf=[]; } else cfg.apply_intro=unq(av); }
+      else if(ak==='note'){ if(av==='>-'||av==='>'||av==='|'){ block='apply_note'; blockBuf=[]; } else cfg.apply_note=unq(av); }
+      continue;
+    }
+
+    /* 友链条目：- name: xxx */
+    var mn=line.match(/^\s*-\s*([A-Za-z_][A-Za-z0-9_]*):\s*(.*)$/);
+    if(mn){
+      flushLink();
+      inApply=false;
+      cur={name:'',url:'',description:'',logo:'',email:'',rss:'',order:100,active:true};
+      setF(cur,mn[1],stripComment(mn[2]));
+      continue;
+    }
+    /* 友链条目的续字段：    email: xxx（缩进 4 格） */
+    var m2=line.match(/^\s{4}([A-Za-z_][A-Za-z0-9_]*):\s*(.*)$/);
+    if(m2 && cur){ setF(cur,m2[1],stripComment(m2[2])); }
+  }
+  flushLink();
+  flushBlock();
+
+  function setF(o,k,raw){
+    var v=stripComment(raw);
+    if(k==='active') o.active=(v!=='false');
+    else if(k==='order') o.order=parseInt(v,10)||100;
+    else if(k in o) o[k]=unq(raw);
+  }
+  return {cfg:cfg, links:links};
+}
+
+function refreshPreview(){ document.getElementById('preview').value=toYaml(); }
+
+/* ========================= 七、导入导出 ========================= */
+document.getElementById('btnExport').onclick=function(){
+  var bad=[];
+  state.links.forEach(function(it,i){
+    if(!it.name||!it.name.trim()) bad.push('第 '+(i+1)+' 条缺少「站点名称」');
+    else if(!it.url||!it.url.trim()) bad.push('「'+it.name+'」缺少「跳转 URL」');
+    else if(!/^https?:\/\//i.test(it.url.trim())) bad.push('「'+it.name+'」的 URL 必须以 http:// 或 https:// 开头');
+  });
+  if(bad.length && !confirm('数据校验发现问题：\n\n· '+bad.join('\n· ')+'\n\n仍然导出吗？（前台会自动跳过不完整的条目）')){
+    return;
+  }
+  download(new Blob(['﻿'+toYaml()],{type:'text/yaml;charset=utf-8'}),'links.yml');
+  var pend=apps.filter(function(a){ return a.status==='pending'; }).length;
+  notify('已导出 links.yml，请覆盖项目的 _data\\links.yml 后运行 deploy.bat。'
+    +(pend? '（还有 '+pend+' 条申请处于「待审核」，不会出现在前台。）':''),'ok');
+};
+
+document.getElementById('btnImportYml').onclick=function(){ document.getElementById('fileInput').click(); };
+document.getElementById('fileInput').onchange=function(e){
+  var f=e.target.files[0];
+  if(!f) return;
+  var fr=new FileReader();
+  fr.onload=function(){
+    try{
+      var r=parseYaml(String(fr.result));
+      state=r;
+      fillConfig(); renderTable(); refreshPreview();
+      notify('已导入 '+state.links.length+' 条友链与申请配置。','ok');
+    }catch(err){ notify('解析失败：'+err.message+'。请确认选择的是 links.yml 文件。','err'); }
+  };
+  fr.readAsText(f,'utf-8');
+  e.target.value='';
+};
+
+document.getElementById('btnReset').onclick=function(){
+  if(!confirm('确定恢复为内置默认示例数据吗？\n当前未导出的友链修改与申请记录都会丢失。')) return;
+  state=JSON.parse(JSON.stringify(DEFAULT_STATE));
+  apps=JSON.parse(JSON.stringify(DEFAULT_APPS));
+  fillConfig(); renderTable(); renderApps(); refreshPreview();
+  notify('已恢复默认示例数据。','ok');
+};
+
+/* ========================= 八、启动 ========================= */
+function boot(){
+  fillConfig(); renderTable(); renderApps(); refreshPreview();
+  try{
+    fetch('../_data/links.yml')
+      .then(function(r){ if(!r.ok) throw 0; return r.text(); })
+      .then(function(t){
+        var r=parseYaml(t);
+        if(!r.links.length) return;
+        state=r;
+        fillConfig(); renderTable(); refreshPreview();
+        notify('已自动读取项目中的 _data/links.yml（'+r.links.length+' 条）。');
+      })
+      .catch(function(){
+        notify('当前使用内置示例数据。如需载入项目现有数据，请点「导入 YAML」选择 <b>_data/links.yml</b>。','warn');
+      });
+  }catch(e){}
+}
+boot();
+
+/* 未设口令时直接进入管理台 */
+if(!getPwd()){ document.getElementById('lock').style.display='none'; }
+</script>
+</body>
+</html>

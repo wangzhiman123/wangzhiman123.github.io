@@ -1,0 +1,206 @@
+{%- comment -%}
+  ============================================================================
+  本文件是什么？
+  ----------------------------------------------------------------------------
+  这是「友情链接」板块的渲染组件。前台任何位置想显示友链，都用一行
+  {% include friend-links.html %} 调用它即可，不必重复写渲染代码。
+
+  · 数据源：_data/links.yml —— 全站唯一一份友链数据
+  · 渲染方式：构建时由 Liquid 静态生成 HTML，前端零请求、无闪烁
+  · 默认图标：logo 留空时，按站点名首字 + 固定调色板生成彩色首字方块
+
+  ============================================================================
+  【怎么调用（可选参数）】
+  ----------------------------------------------------------------------------
+  {% include friend-links.html %}                      使用 links.yml 里全部配置
+  {% include friend-links.html max=6 %}                最多显示 6 条
+  {% include friend-links.html layout="list" %}        强制列表式布局
+  {% include friend-links.html new_tab=false %}        强制在当前窗口打开
+  {% include friend-links.html show_apply=false %}     隐藏底部「申请友链」区块
+  {% include friend-links.html title="我的伙伴" %}     覆盖板块标题
+  {% include friend-links.html icon=false %}           不显示板块图标（用于侧边栏面板）
+
+  说明：所有参数都可省略，省略时一律回落到 _data/links.yml 顶层的站点级配置。
+        这样日常增删友链不用碰任何模板，只改 links.yml 一个文件。
+
+  ============================================================================
+  【数据校验与兜底（重要）】
+  ----------------------------------------------------------------------------
+  1. 整站开关：enabled: false 时本组件什么都不输出（不留空白）。
+  2. 缺 url 的条目直接跳过——没有地址的链接点了没意义。
+  3. 缺 name 的条目跳过——避免卡片上出现空白标题。
+  4. 缺 logo 的条目 → 自动生成"首字彩色方块"默认图标。
+  5. logo 是图片，图片 404 或加载失败时（onerror）→ JS 自动切换成默认图标，
+     不会出现碎图。这是"加载异常兜底显示"的核心。
+  6. 整份列表为空时 → 输出一行灰色提示"友链暂未开放"，而不是空白页面。
+  ============================================================================
+{%- endcomment -%}
+
+
+{%- comment -%} ===================== 第一步：读取配置与数据 ===================== {%- endcomment -%}
+
+{%- assign _cfg = site.data.links -%}
+{%- comment -%} site.data.links 即 _data/links.yml。若文件缺失则为空对象，
+   下面的判断会自动跳过渲染，不会让构建报错。 {%- endcomment -%}
+
+{%- if _cfg.enabled != false -%}
+  {%- comment -%} 全局开关：只有明确写 false 才关闭；不写（nil）视为开启。 {%- endcomment -%}
+
+  {%- assign FL_LAYOUT = include.layout | default: _cfg.layout | default: 'card' -%}
+  {%- assign FL_NEWTAB = include.new_tab -%}
+  {%- if FL_NEWTAB == nil or FL_NEWTAB == '' -%}
+    {%- assign FL_NEWTAB = _cfg.new_tab -%}
+  {%- endif -%}
+  {%- if FL_NEWTAB == nil -%}{%- assign FL_NEWTAB = true -%}{%- endif -%}
+  {%- comment -%} new_tab 三态处理：调用处传了以传入的为准，否则用 links.yml 的配置，
+     都没写则默认 true（新窗口打开）。 {%- endcomment -%}
+
+  {%- assign FL_TITLE = include.title | default: _cfg.title | default: '友情链接' -%}
+  {%- assign FL_SUBTITLE = _cfg.subtitle -%}
+  {%- assign FL_MAX = include.max | default: _cfg.max | default: 0 | plus: 0 -%}
+  {%- assign FL_APPLY = include.show_apply -%}
+  {%- if FL_APPLY == nil or FL_APPLY == '' -%}{%- assign FL_APPLY = _cfg.show_apply -%}{%- endif -%}
+  {%- if FL_APPLY == nil -%}{%- assign FL_APPLY = true -%}{%- endif -%}
+  {%- assign FL_ICON = include.icon -%}
+  {%- if FL_ICON == nil -%}{%- assign FL_ICON = true -%}{%- endif -%}
+
+  {%- assign FL_LINKS = _cfg.links | default: empty -%}
+  {%- comment -%} 取出友链清单。默认 empty 是一个空数组，
+     这样下面 for 循环即使没数据也会直接跳过，页面不会出现 Liquid 报错。 {%- endcomment -%}
+
+
+  {%- comment -%} ============== 第二步：过滤无效条目 + 应用 max ============== {%- endcomment -%}
+
+  {%- assign FL_VALID = '' | split: '' -%}
+  {%- for L in FL_LINKS -%}
+    {%- if L.active != false and L.url and L.name -%}
+      {%- comment -%} 三道校验：① active 不为 false（未隐藏）；② 必须有 url；
+         ③ 必须有 name。任一不满足就丢弃这条，不会渲染出残缺卡片。 {%- endcomment -%}
+      {%- assign FL_VALID = FL_VALID | push: L -%}
+    {%- endif -%}
+  {%- endfor -%}
+
+  {%- if FL_MAX > 0 -%}
+    {%- assign FL_VALID = FL_VALID | slice: 0, FL_MAX -%}
+    {%- comment -%} slice: 0, FL_MAX = 从第 0 项起取 FL_MAX 项，实现"最多显示 N 条"。 {%- endcomment -%}
+  {%- endif -%}
+
+
+  {%- comment -%} ========================= 第三步：渲染板块 ========================= {%- endcomment -%}
+
+  <section class="fl-section{% if FL_LAYOUT == 'list' %} fl-list{% endif %} friend-links" id="friend-links">
+    {%- comment -%} fl-list 只在列表式时加上，供 CSS 单列排布用。 {%- endcomment -%}
+
+    {%- if include.heading != false -%}
+      <h2 class="fl-heading">
+        {%- if FL_ICON -%}<i class="fas fa-link me-2" aria-hidden="true"></i>{%- endif -%}
+        {{- FL_TITLE -}}
+      </h2>
+      {%- if FL_SUBTITLE and FL_SUBTITLE != '' -%}
+        <p class="fl-subtitle">{{ FL_SUBTITLE }}</p>
+      {%- endif -%}
+    {%- endif -%}
+
+    {%- if FL_VALID.size > 0 -%}
+      {%- comment -%} 有数据 → 渲染卡片网格。 {%- endcomment -%}
+      <div class="fl-grid">
+        {%- for L in FL_VALID -%}
+
+          {%- comment -%} --- 站点 Logo 的三种情况，任一失败都回落到默认图标 ---
+              ① links.yml 给了 logo → 用 <img>，并挂 onerror 兜底
+              ② 没给 logo             → 直接渲染"首字色块"（不请求任何图片，最快）
+              ③ logo 图片加载失败     → onerror 立刻隐藏图片、同时显示首字色块
+                 （不会出现碎图，这是"加载异常兜底显示"的核心）
+
+              首字色块的颜色由 CSS 的 :nth-child 决定（见 friend-links.css）：
+              8 个站点一轮循环，相邻站点颜色不同，便于视觉区分。
+              【可DIY修改】改配色 → 改 friend-links.css 里
+                 .fl-card:nth-child(8n+N) 的 background。 {%- endcomment -%}
+          {%- assign _ch = L.name | strip | slice: 0 -%}
+          {%- if _ch == '' -%}{%- assign _ch = '·' -%}{%- endif -%}
+
+          {%- if L.logo and L.logo != '' -%}
+            {%- capture _logo_html -%}
+              <img class="fl-logo" src="{{ L.logo | escape }}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+            {%- endcapture -%}
+          {%- endif -%}
+
+          <a class="fl-card"
+             href="{{ L.url | escape }}"
+             title="{{ L.name | escape }}{% if L.description %} — {{ L.description | strip_html | escape }}{% endif %}"
+             {%- if FL_NEWTAB %} target="_blank" rel="noopener noreferrer nofollow"{% endif %}>
+            {%- comment -%} target="_blank" = 新窗口打开（可在 links.yml 用 new_tab 关掉）；
+               rel 加 noopener 防"新页面反向操纵本页"，nofollow 表示不传递权重，
+               对外链友链是推荐做法。 {%- endcomment -%}
+
+            {%- if _logo_html -%}
+              {{- _logo_html -}}
+              <span class="fl-logo-fallback" style="display:none;" aria-hidden="true">{{ _ch | escape }}</span>
+              {%- comment -%} 两个元素都渲染：图片成功时 fallback 保持 display:none；
+                 图片失败时 onerror 让图片隐藏、同时把 fallback 显示出来。
+                 fallback 的背景色不写死，由 CSS 的 :nth-child 自动分配（见 friend-links.css）。 {%- endcomment -%}
+            {%- else -%}
+              <span class="fl-logo-fallback" aria-hidden="true">{{ _ch | escape }}</span>
+            {%- endif -%}
+
+            <span class="fl-body">
+              <span class="fl-name">{{ L.name | escape }}</span>
+              {%- if L.description and L.description != '' -%}
+                <span class="fl-desc">{{ L.description | strip_html | escape }}</span>
+              {%- endif -%}
+
+              {%- if L.email or L.rss -%}
+                <span class="fl-meta">
+                  {%- comment -%} 底部小图标行：只在填了邮箱/RSS 时出现，没有就不占位。 {%- endcomment -%}
+                  {%- if L.email and L.email != '' -%}
+                    <a href="mailto:{{ L.email | escape }}" title="发送邮件：{{ L.email | escape }}" onclick="event.stopPropagation();">
+                      <i class="fas fa-envelope fa-fw" aria-hidden="true"></i>
+                      <span class="visually-hidden">邮件联系</span>
+                    </a>
+                  {%- endif -%}
+                  {%- if L.rss and L.rss != '' -%}
+                    <a href="{{ L.rss | escape }}" title="RSS 订阅" target="_blank" rel="noopener noreferrer"
+                       onclick="event.stopPropagation();">
+                      <i class="fas fa-rss fa-fw" aria-hidden="true"></i>
+                      <span class="visually-hidden">RSS 订阅</span>
+                    </a>
+                  {%- endif -%}
+                </span>
+              {%- endif -%}
+            </span>
+          </a>
+        {%- endfor -%}
+      </div>
+
+      {%- else -%}
+      {%- comment -%} ========== 兜底：一条友链都没有时的友好提示 ==========
+         不留空白、不报错，页面上明确告诉访客"还没开放"（但下面仍可提交申请）。 {%- endcomment -%}
+      <p class="fl-subtitle mt-2">
+        <i class="fas fa-link me-1" aria-hidden="true"></i>友链暂未开放，欢迎在下方提交申请。
+      </p>
+    {%- endif -%}
+
+    {%- comment -%} ============ 读者自助申请区 ============
+         放在 if/else 之外 —— 这样即便当前一条友链都没有，读者依然可以提交申请。
+         两种模式可在 _data/links.yml 用 apply.mode 随时切换：
+           form    —— 读者填写表单，提交后自动唤起邮件客户端，内容已按模板排好
+           comment —— 读者在评论区留言，页面提供可一键复制的留言模板
+         详见 _includes/friend-links-apply.html。 {%- endcomment -%}
+    {%- if FL_APPLY -%}
+      {% include friend-links-apply.html -%}
+    {%- endif -%}
+  </section>
+
+  {%- comment -%} 引入本板块的样式表（文件：assets/css/friend-links.css）。
+     只引入一次：若页面上已出现过本组件，后续调用会自动跳过，
+     避免同一页面重复加载同一份 CSS。 {%- endcomment -%}
+  {%- unless page.friend_links_css_loaded -%}
+    {%- assign _c = site.data.links -%}
+    {%- if _c.enabled != false -%}
+      {%- capture _fl_css -%}
+        <link rel="stylesheet" href="{{ '/assets/css/friend-links.css' | relative_url }}">
+      {%- endcapture -%}
+      {{ _fl_css }}
+    {%- endif -%}
+  {%- endunless -%}
+{%- endif -%}
