@@ -64,15 +64,3 @@ order: 4
 > 本网站文章仅为一般性法律信息分享，不构成正式法律意见。具体案件的处理需结合个案事实与证据判断，如您遇到法律问题，请携带相关材料咨询执业律师。本网站内容不代表执业机构立场。
 {: .prompt-tip }
 
-{%- comment -%}
-  【分隔设计】关于页正文到此结束。下面用一个独立容器包住友链板块，
-  配合 friend-links.css 里的 .about-fl-wrap 样式，把「个人简介」和
-  「友情链接」两个板块在视觉上明显分开（留白 + 虚线分隔线），
-  避免看起来像连在一起的一页。
-{%- endcomment -%}
-
-<div class="about-fl-wrap">
-
-{% include friend-links.html show_apply=false %}
-
-</div>
