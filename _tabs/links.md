@@ -18,14 +18,26 @@
 #   ③ 想调本页的导航栏图标或排序 → 下面两个字段
 # ============================================================
 
+# title：页面大标题（正文最上面那个最大号的字）。
+# 不写的话Jekyll 会拿文件名 links 当标题，页面上就显示成英文「Links」。
+# 【可DIY修改】改成任何你想显示的中文，例如「友情链接」「我的朋友们」。
+title: 友链
+
 # icon：导航栏里显示的图标（一个"链接"符号）。
-# 【可DIY修改】换成别的 Font Awesome 图标名即可，例如 fas fa-star。
+# 【可DIY修改】换成别的 Font Awesome 图标名即可，例如 fas fa-star.
 icon: fas fa-link
 
 # order：在导航栏里的排序位置，数字越小越靠前。
 # 现有：关于=4、归档=1、分类=2、标签=3，所以友链放 5（排在最后）。
 # 【可DIY修改】可调整数字，注意与其他页面错开。
 order: 5
+
+# comments: true = 本页底部显示评论区。
+# 友链申请已改为「评论区留言」模式（见 _data/links.yml 的 apply.mode: comment），
+# 所以这一页必须开着评论区，否则读者点了「前往评论区」没地方留言。
+# 评论系统是全站统一的（_config.yml 的 comments.provider: giscus），
+# 所以本页的评论区和文章页长得一模一样，不用单独配置。
+comments: true
 ---
 
 {% include friend-links.html %}

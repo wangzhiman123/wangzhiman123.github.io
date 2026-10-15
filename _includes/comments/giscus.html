@@ -1,0 +1,295 @@
+{%- comment -%}
+  ============================================================================
+  【本文件是什么？】
+  Giscus 评论组件（基于 GitHub Discussions）—— 对应_config.yml 的
+  comments.provider: giscus
+  官网与配置生成器：https://giscus.app/
+
+  一句话概括：这段代码在页面底部"长出"一个评论区，
+  读者用 GitHub 账号登录即可留言，评论数据存在 GitHub Discussions 里。
+
+  【为什么自己写一份而不直接用主题自带的？】
+  为了和同目录下的 artalk.html 保持完全一致的设计约定（懒加载、
+  未启用不渲染、跟随主题明暗、超时兜底），并且能精确控制容器 id
+  （友链页的"前往评论区"按钮要跳到它）。
+
+  ⚠️ 换评论系统时必须同步改两处，否则按钮会跳到页面顶部：
+     ① 本文件的 $container.id
+     ② _data/links.yml 的 apply.comment_anchor
+
+  ============================================================================
+  ⚠️ 四个刻意做的设计
+  ----------------------------------------------------------------------------
+  1. 【前置条件探测】Giscus 需要仓库开启 Discussions 并安装 giscus app。
+     配置项（repo/repo_id/category…）填了不代表能用，所以这里统一以
+     repo + repo_id + category_id 三项齐全为准，缺一项就不渲染，
+     避免读者看到一个空白的评论区。
+
+  2. 【懒加载】滚动到附近才下载 client.js（省首屏流量）。
+     另外给 iframe 加 loading="lazy"，让浏览器自己也别急着加载。
+
+  3. 【跟随主题明暗】Giscus 官方支持 postMessage 换主题，
+     这里监听 Chirpy 的深浅色切换消息并转发给 iframe，
+     不会出现"网站黑了、评论区还是白的"。
+
+  4. 【超时兜底 —— 重要】
+     Giscus 的评论界面在一个跨域 iframe 里，加载链路过长时表现为
+     "页面底部一片空白"，读者会以为评论坏了。所以设了超时计时器：
+     到点仍没就绪就显示友好提示 + 邮件入口，绝不留空白。
+
+  ============================================================================
+  【配置方法】_config.yml
+  ----------------------------------------------------------------------------
+    comments:
+      provider: giscus
+      giscus:
+        repo:用户名/仓库名            # 必填，需是公开仓库
+        repo_id: R_kgDOxxxxxxx       # 必填
+        category: Announcements      # 必填，讨论区类别名
+        category_id: DIC_kwDOxxxxxxx  # 必填
+        mapping: pathname            # 页面与讨论的映射方式
+        strict: 0                    # 0=模糊匹配 1=严格匹配
+        input_position: bottom       # 输入框位置 top / bottom
+        lang: zh-CN                  # 界面语言
+        reactions_enabled: 1         # 是否显示表情反应
+
+    【这些值去哪拿？】打开 https://giscus.app/ ，按提示一步步填，
+    页面底部会直接生成对应的配置代码，复制粘贴即可。
+    repo_id 和 category_id 必须从那里拿，手写编不出来。
+
+  ⚠️ 内联脚本禁用 `//` 行注释：_config.yml 开启了 compress_html，
+     正式构建会压掉全部换行，`//` 会把后续代码一并注释掉。
+     一律用 `/* */`，语句以 `;` 结尾，分支加花括号。
+  ============================================================================
+{%- endcomment -%}
+
+
+{%- assign _g_repo = site.comments.giscus.repo | default: '' | strip -%}
+{%- assign _g_repo_id = site.comments.giscus.repo_id | default: '' | strip -%}
+{%- assign _g_cat = site.comments.giscus.category | default: '' | strip -%}
+{%- assign _g_cat_id = site.comments.giscus.category_id | default: '' | strip -%}
+
+{%- if _g_repo != '' and _g_repo_id != '' and _g_cat_id != '' -%}
+{%- comment -%}
+  只有"仓库 + 仓库ID + 分类ID"都填了才输出。
+  缺任何一项说明 giscus 还没配好，这时页面上不出现评论区
+  （友链申请区会同步降级成「改为邮件提交」，不留死按钮）。
+{%- endcomment -%}
+
+  {%- assign _g_mapping = site.comments.giscus.mapping | default: 'pathname' -%}
+  {%- assign _g_strict = site.comments.giscus.strict | default: 0 -%}
+  {%- assign _g_input = site.comments.giscus.input_position | default: 'bottom' -%}
+  {%- assign _g_lang = site.comments.giscus.lang | default: 'zh-CN' -%}
+  {%- assign _g_react = site.comments.giscus.reactions_enabled | default: 1 -%}
+  {%- comment -%} 可选：把Giscus 脚本换成本地/国内镜像。留空用官方地址。 {%- endcomment -%}
+  {%- assign _g_src = site.comments.giscus.src | default: 'https://giscus.app/client.js' | strip -%}
+  {%- comment -%} 超时兜底时长（毫秒）。 {%- endcomment -%}
+  {%- assign _g_timeout = site.comments.giscus.timeout | default: 15000 -%}
+
+<!-- https://giscus.app -->
+<script>
+  (function () {
+    /* 自执行函数：内部变量不污染全局，避免与其他脚本冲突。 */
+
+    /* ---------- Giscus 配置（全部来自 _config.yml）---------- */
+    const CFG = {
+      repo: {{ _g_repo | jsonify }},
+      'repo-id': {{ _g_repo_id | jsonify }},
+      category: {{ _g_cat | jsonify }},
+      'category-id': {{ _g_cat_id | jsonify }},
+      mapping: {{ _g_mapping | jsonify }},
+      strict: {{ _g_strict }},
+      inputPosition: {{ _g_input | jsonify }},
+      reactionsEnabled: {{ _g_react }},
+      lang: {{ _g_lang | jsonify }},
+    };
+
+    /* Giscus 用 iframe 的 URL query 接收主题色，所以换主题需要
+       给 iframe 换一个新的 src。用时间戳做缓存穿透，保证真刷新。 */
+    function buildSrc(theme) {
+      const q = new URLSearchParams(CFG);
+      q.set('theme', theme);
+      q.set('_r', String(Date.now()));
+      return SRC + '?' + q.toString();
+    }
+
+    const SRC = {{ _g_src | jsonify }};
+    /* 评论脚本地址。官方是 https://giscus.app/client.js */
+
+    const TIMEOUT = {{ _g_timeout }};
+    /* 加载超时（毫秒）。到点还没就绪就走友好降级，
+       绝不让读者面对一片空白的评论区。 */
+
+    /* ---------- 评论区容器：插到<footer> 之前，与其它评论组件位置一致 ---------- */
+    const $container = document.createElement('div');
+    $container.id = 'giscus-comments';
+    /* 这个 id 要和 _data/links.yml 的 apply.comment_anchor 对上，
+       否则「前往评论区」按钮会跳到页面顶部。 */
+
+    $container.className = 'giscus text-center text-muted small py-3';
+    /* class 里带 giscus —— Giscus 官方脚本会优先挂载到
+       带 .giscus 类名的元素上，这也是它默认的挂载方式。 */
+
+    $container.textContent = '评论加载中…';
+
+    document.querySelector('footer').insertAdjacentElement('beforebegin', $container);
+
+    /* ---------- 状态标记 ---------- */
+    const STATE = { loaded: false, done: false };
+
+    /* ---------- 超时兜底：这是「不留空白」的关键 ---------- */
+    let $timer = null;
+    function armTimeout() {
+      $timer = setTimeout(function () {
+        if (STATE.loaded) { return; }
+        /* 到点仍未挂载 —— 说明 client.js 没下载成功，
+           或iframe 被网络卡住了。主动给出可操作的提示。 */
+        showFallback('评论暂时没能加载出来');
+      }, TIMEOUT);
+    }
+    function clearArmed() {
+      if ($timer) { clearTimeout($timer); $timer = null; }
+    }
+
+    /* ---------- 友好降级视图 ---------- */
+    function showFallback(msg) {
+      if (STATE.done) { return; }
+      STATE.done = true;
+      clearArmed();
+      $container.textContent = '';
+      if ($container.querySelector('.giscus-fallback')) { return; }
+
+      const box = document.createElement('div');
+      box.className = 'giscus-fallback';
+
+      const icon = document.createElement('i');
+      icon.className = 'fas fa-comment-dots';
+      icon.setAttribute('aria-hidden', 'true');
+
+      const text = document.createElement('p');
+      text.textContent = msg + '，可能是网络波动或 GitHub 暂时不可访问。你可以刷新页面试试，或直接邮件联系我。';
+
+      /* 直接给出联系入口，让「读不到评论」不至于变成死路 */
+      const link = document.createElement('a');
+      link.href = 'mailto:{{ site.email | default: site.social.email | default: "" }}';
+      link.textContent = '邮件联系';
+      if (!link.getAttribute('href') || link.getAttribute('href') === 'mailto:') {
+        link.remove();
+      } else {
+        text.appendChild(document.createTextNode('（'));
+        text.appendChild(link);
+        text.appendChild(document.createTextNode('）'));
+      }
+
+      box.appendChild(icon);
+      box.appendChild(text);
+      $container.appendChild(box);
+    }
+
+    /* ---------- 真正加载 Giscus ---------- */
+    function loadGiscus() {
+      const $script = document.createElement('script');
+      $script.src = SRC;
+      $script.async = true;
+      $script.crossOrigin = 'anonymous';
+
+      Object.keys(CFG).forEach(function (key) {
+        $script.setAttribute('data-' + key.replace(/[A-Z]/g, function (m) {
+          return '-' + m.toLowerCase();
+        }), CFG[key]);
+      });
+
+      /* 初始主题跟随网站当前的深浅色 */
+      $script.setAttribute('data-theme', Theme.isDark ? 'dark' : 'light');
+      /* 让浏览器自己也延迟加载 iframe，减少首屏压力 */
+      $script.setAttribute('loading', 'lazy');
+
+      $script.onload = function () {
+        /* client.js 是异步加载的，它内部还会再插一个 iframe。
+           这里再等一小会儿确认 iframe 真的挂上了，才算就绪。 */
+        setTimeout(function () {
+          const ok = $container.querySelector('iframe.giscus-frame, iframe');
+          if (ok) {
+            STATE.loaded = true;
+            clearArmed();
+            $container.textContent = '';
+          } else {
+            showFallback('评论暂时没能加载出来');
+          }
+        }, 1200);
+      };
+
+      $script.onerror = function () {
+        /* 脚本下载失败（网络问题/被拦截）—— 立刻降级，不空等 */
+        $script.remove();
+        showFallback('评论暂时没能加载出来');
+      };
+
+      document.body.appendChild($script);
+    }
+
+    /* ---------- 跟随主题深浅色切换 ---------- */
+    addEventListener('message', function (event) {
+      /* Chirpy 主题切换深浅色时会发一则内部消息 */
+      if (event.source !== window || !event.data || event.data.id !== Theme.eventId) { return; }
+
+      const $frame = $container.querySelector('iframe');
+      if (!$frame) { return; }
+
+      /* 首选：Giscus 官方的 postMessage 通道，无需重新加载 iframe */
+      try {
+        $frame.contentWindow.postMessage(
+          { giscus: { setConfig: { theme: Theme.isDark ? 'dark' : 'light' } } },
+          'https://giscus.app'
+        );
+      } catch (err) {
+        /* 跨域拿不到 contentWindow 是正常情况，退回到「换src 重载」*/
+      }
+
+      /* 兜底：直接给 iframe 换一个新 src（带上新的 theme 与时间戳），
+         效果一样，代价是重新加载一次。 */
+      const theme = Theme.isDark ? 'dark' : 'light';
+      const next = buildSrc(theme);
+      if ($frame.src !== next) {
+        const cur = $frame.src;
+        /* 避免和上一条 postMessage 重复触发重载 */
+        if (cur.indexOf('theme=' + theme) === -1) {
+          $frame.src = next;
+        }
+      }
+    });
+
+    /* ---------- 懒加载：滚动到附近才开始下载 ---------- */
+    const observer = new IntersectionObserver(
+      function (entries) {
+        if (!entries[0].isIntersecting) { return; }
+        observer.disconnect();
+        armTimeout();
+        loadGiscus();
+      },
+      { threshold: [0] }
+    );
+    observer.observe($container);
+  })();
+</script>
+
+  {%- comment -%} 加载中 / 降级提示的样式（很轻，不影响首屏）{%- endcomment -%}
+  <style>
+    .giscus,
+    .giscus-fallback {
+      padding: 1.4rem 1rem;
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--fg-color);
+      opacity: 0.6;
+    }
+    .giscus-fallback i {
+      font-size: 1.3rem;
+      opacity: 0.5;
+      margin-bottom: 0.5rem;
+      display: block;
+    }
+    .giscus-fallback p { margin: 0; line-height: 1.7; }
+    .giscus-fallback a { color: var(--link-color, currentColor); }
+  </style>
+{%- endif -%}

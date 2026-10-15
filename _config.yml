@@ -1,4 +1,4 @@
-# ============================================================================
+﻿# ============================================================================
 # 本文件是什么？
 # ----------------------------------------------------------------------------
 # 这是整个博客网站的「总配置清单」，相当于一台机器的总控制台。
@@ -226,9 +226,11 @@ actions:
 # ----------------------------- 六、评论系统 -----------------------------
 # 这一段决定「读者能不能在文章下面留言、用哪家评论服务」。
 comments:
-  # 全局评论开关。这里填的是当前实际启用的评论服务名字：artalk。
+  # 全局评论开关。这里填的是当前实际启用的评论服务名字：giscus。
   # 而且，这个值不能为空，为空就代表「全站关闭评论」。
-  provider: artalk
+  # 【可DIY修改】换成别的服务名时，要同时把下面那个服务的配置填好。
+  # 全站共用这一套配置：文章页、友链页都用同一个评论服务，保持一致的观感。
+  provider: giscus
   # 以下各家评论服务，只有 provider 里指定的那一家会生效，其余留空即可。
 
   # Disqus 评论（国外服务），不用就留空。
@@ -240,19 +242,47 @@ comments:
     repo: wangzhiman123/wangzhiman123.github.io
     issue_term: # < url | pathname | title | ...>
 
-  # Giscus 评论（基于 GitHub Discussions），不用就留空。
+  # Giscus 评论（基于 GitHub Discussions，当前正在使用）—— 全站统一用这一套。
+  # 官网与配置生成器：https://giscus.app/
+  #
+  # 【为什么选它】评论数据直接存在 GitHub Discussions里，
+  # 不需要服务器、不需要数据库、不需要备案，永久免费，
+  # 而且你已经有 GitHub 仓库了，开箱即用。
+  #
+  # 【⚠️ 三个前提，缺一个评论都不出来】
+  #   ① 仓库必须是【公开】的，否则访客看不到讨论区
+  #   ② 仓库要开启 Discussions：Settings → General → Features → Discussions
+  #   ③ 仓库要安装 giscus app：https://github.com/apps/giscus
+  # 装好后打开 https://giscus.app/ 按提示一步步填，页面底部会生成配置代码。
+  #【可DIY修改】下面这些值就来自那里，repo_id / category_id 必须从那儿拿，
+  #     手写编不出来。
   giscus:
+    # 仓库（用户名/仓库名）
     repo: wangzhiman123/wangzhiman123.github.io
+    # 仓库 ID（在 giscus.app 上填完仓库后自动给出）
     repo_id: R_kgDOUx9AFg
+    # 讨论区类别名。建议用 Announcements 类型，这样只有你和 giscus 能新建讨论。
     category: Announcements
+    # 讨论区类别 ID（同上，从 giscus.app 拿）
     category_id: DIC_kwDOUx9AFs4DGqrB
+    # 页面与讨论的映射方式：pathname（用网址）/ url / title / og:title / specific
+    #【可DIY修改】建议保持 pathname。改了会导致历史评论对不上，不建议。
     mapping: pathname
+    # 严格匹配：0 = 模糊匹配（默认）/ 1 = 严格匹配
+    # 【可DIY修改】如果你有很多路径相似的页面，改成 1 更不容易串评论。
     strict: 0
+    # 输入框位置：bottom（评论下方，默认）/ top（评论上方，不用滚到底部就能留言）
     input_position: bottom
+    # 界面语言
     lang: zh-CN
+    # 是否显示表情反应（👍❤️等）：1 = 开/ 0 = 关
     reactions_enabled: 1
+    # 加载超时（毫秒，可选）。到点仍未就绪就显示友好提示 + 邮件联系入口，
+    # 而不是让读者面对一片空白的评论区。
+    # 【可DIY修改】网络较慢可以调大，例如 20000。
+    timeout: 15000
 
-  # Artalk 评论（自托管，当前正在使用）。
+  # Artalk 评论（自托管，当前未启用 —— 需要时把上面 provider 改成 artalk 即可）。
   # 自托管 = 评论数据存在自己的服务器上，不受第三方平台限制。
   # 需要先在服务器上部署 Artalk 服务端，部署与配置见 DEPLOY.md 第十节。
   artalk:

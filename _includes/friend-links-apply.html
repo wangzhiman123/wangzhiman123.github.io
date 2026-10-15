@@ -57,6 +57,46 @@
      邮箱为空时静默不渲染申请区——否则读者点了提交也不知道发去哪，会更困惑。 {%- endcomment -%}
 
   {%- assign _intro = _ap.intro | default: _cfg.apply_text | default: '欢迎与本站交换友情链接。请按下方要求填写申请，审核通过后将展示在友链列表中。' -%}
+  {%- assign _pref = _ap.prefer -%}
+
+  {%- comment -%}
+    ============ 评论区是否真的可用？============
+    配了评论系统 ≠ 评论区真的会显示。必须同时满足两个条件：
+      ① 必要配置填了（giscus 需 repo/repo_id/category_id；
+         artalk 需 server；giscus 之外的看对应服务的必填项）
+      ② 当前页面开了评论（page.comments）
+    任何一条不满足，主题都不会渲染评论区，读者点「前往评论区」就会扑空。
+    所以先探测，可用才给「前往评论区」按钮；不可用则自动退回邮箱方式，
+    不留死按钮。（本项目全站 provider: giscus，与文章页完全一致。
+      配置齐全，所以页面上显示的是「前往评论区留言」。）
+
+    ⚠️ 换评论系统时记得同步三处：
+       · _config.yml 的 comments.provider
+       · _data/links.yml 的 apply.comment_anchor（跳转锚点）
+       · 下面探测分支里对应服务的那一行
+  {%- endcomment -%}
+  {%- assign _cm = site.comments -%}
+  {%- assign _prov = _cm.provider | default: '' -%}
+  {%- assign _gsc = _cm.giscus | default: empty -%}
+  {%- assign _art = _cm.artalk | default: empty -%}
+  {%- assign _cm_ok = false -%}
+  {%- comment -%}
+    Giscus 比别家多一项要求：repo_id 和 category_id 也必须有值。
+    只填 repo 是没用的 —— 那是 giscus.app 才会给你的一整套参数。
+  {%- endcomment -%}
+  {%- if _prov == 'giscus' and _gsc.repo and _gsc.repo_id and _gsc.category_id -%}
+    {%- assign _cm_ok = true -%}
+  {%- elsif _prov == 'artalk' and _art.server and _art.server != '' -%}
+    {%- assign _cm_ok = true -%}
+  {%- elsif _prov == 'utterances' and _cm.utterances.repo -%}
+    {%- assign _cm_ok = true -%}
+  {%- elsif _prov == 'waline' and _cm.waline.server_url -%}
+    {%- assign _cm_ok = true -%}
+  {%- endif -%}
+  {%- comment -%} 当前页面是否开了评论区 {%- endcomment -%}
+  {%- assign _page_cmt = page.comments -%}
+  {%- assign _show_cmt = false -%}
+  {%- if _cm_ok and _page_cmt -%}{%- assign _show_cmt = true -%}{%- endif -%}
   {%- assign _note = _ap.note | default: '本站仅收录内容健康、已备案、访问正常的站点；纯广告、采集站、跳转页一律不予通过。审核一般 1–3 天，结果会回复到您填写的邮箱。' -%}
 
   <section class="fl-apply-zone" id="friend-links-apply">
@@ -64,37 +104,107 @@
       <i class="fas fa-handshake me-2" aria-hidden="true"></i>申请友链
     </h3>
     <p class="fl-apply-intro">{{ _intro }}</p>
+    {%- unless _show_cmt -%}
+      {%- comment -%} 评论区不可用时明确告诉读者，别让读者找不到留言入口 {%- endcomment -%}
+      <p class="fl-apply-warn">
+        <i class="fas fa-triangle-exclamation me-1" aria-hidden="true"></i>
+        本页评论区暂未启用，可先按下方格式整理好信息，用邮件发给我。
+      </p>
+    {%- endunless -%}
 
     {%- if _ap_mode == 'comment' -%}
-      {%- comment -%} ============ 模式二：评论留言 ============ {%- endcomment -%}
-      <div class="fl-apply-box">
-        <p class="fl-apply-hint">
-          <i class="fas fa-comment-dots me-1" aria-hidden="true"></i>
-          请在本页面下方<strong>评论区</strong>按下面的模板留言申请，站长看到后会与你联系。
-        </p>
+      {%- comment -%}
+        ============ 模式二：评论区留言 ============
+        版式参考常见友链页的「友链格式」卡片：
+          ① 顶部一张本站名片（自己的 Logo/名称/简介）
+          ② 四宫格信息：站点网址/ 站点邮箱 / 站点头像 / 友链页面
+          ③ 两条提示：收录偏好 / 图标说明
+          ④ 一块「推荐格式示例」，读者一键复制后到评论区粘贴修改
+      {%- endcomment -%}
 
-        <div class="fl-template-row">
-          <span class="fl-template-label">留言模板</span>
-          <button type="button" class="fl-btn fl-btn-sm" id="fl-copy-template" data-target="fl-comment-template">
-            <i class="far fa-copy me-1" aria-hidden="true"></i>复制模板
-          </button>
+      {%- comment -%} 本站名片：取第一条友链做示范，读者照着填 {%- endcomment -%}
+      {%- assign _me = _cfg.links | first -%}
+
+      <div class="fl-guide">
+        <div class="fl-guide-head">
+          <h4 class="fl-guide-title">友链格式</h4>
+          <a class="fl-guide-link" href="{{ _ap.anchor_url | default: '/links/' }}">Apply Guide</a>
         </div>
-        <pre class="fl-template" id="fl-comment-template" tabindex="0">【友链申请】
+
+        {%- if _me -%}
+        <div class="fl-card-sample">
+          <span class="fl-logo" style="background-color:#3b6ea5;{% if _me.logo and _me.logo != '' %}background-image:url('{{ _me.logo | escape }}');{% endif %}" aria-hidden="true">{{ _me.name | strip | slice: 0 | escape }}</span>
+          <span class="fl-card-sample-body">
+            <span class="fl-card-sample-name">{{ _me.name | escape }}</span>
+            <span class="fl-card-sample-desc">{{ _me.description | default: '欢迎与本站交换友情链接' | escape }}</span>
+          </span>
+        </div>
+        {%- endif -%}
+
+        <div class="fl-info-grid">
+          <div class="fl-info-cell">
+            <span class="fl-info-label">站点网址</span>
+            <a class="fl-info-value" href="{{ _me.url | escape }}" target="_blank" rel="noopener noreferrer nofollow">{{ _me.url | escape }}</a>
+          </div>
+          <div class="fl-info-cell">
+            <span class="fl-info-label">站点邮箱</span>
+            <a class="fl-info-value" href="mailto:{{ _ap_email | escape }}">{{ _ap_email | escape }}</a>
+          </div>
+          <div class="fl-info-cell">
+            <span class="fl-info-label">站点头像</span>
+            <span class="fl-info-value">{{ _me.logo | default: '（本站使用首字图标）' | escape }}</span>
+          </div>
+          <div class="fl-info-cell">
+            <span class="fl-info-label">友链页面</span>
+            <a class="fl-info-value" href="{{ _ap.anchor_url | default: '/links/' }}">{{ _ap.anchor_url | default: '/links/' | escape }}</a>
+          </div>
+        </div>
+
+        <div class="fl-info-grid">
+          <div class="fl-info-cell">
+            <span class="fl-info-label">收录偏好</span>
+            <span class="fl-info-text">{{ _pref | default: '优先原创内容、长期更新、风格稳定的博客或小众站点' | escape }}</span>
+          </div>
+          <div class="fl-info-cell">
+            <span class="fl-info-label">图标说明</span>
+            <span class="fl-info-text">没有头像或图标无法访问时，会自动使用默认图标</span>
+          </div>
+        </div>
+
+        <div class="fl-guide-block">
+          <div class="fl-guide-block-head">
+            <span class="fl-guide-block-title">推荐格式示例</span>
+            <button type="button" class="fl-copy-btn" id="fl-copy-template">
+              <i class="far fa-copy me-1" aria-hidden="true"></i>复制
+            </button>
+          </div>
+          <pre class="fl-template" id="fl-comment-template" tabindex="0">【友链申请】
 站点名称：
 站点网址：
-站点简介：
-头像地址：（没有可留空）
-联系方式：
-补充说明：（可留空）</pre>
+站点头像URL：（没有可留空）
+站点描述：
+能看到友链申请的地址：</pre>
+          <p class="fl-tip" id="fl-copy-result" role="status" aria-live="polite"></p>
+        </div>
 
-        <p class="fl-apply-note">
-          <i class="fas fa-circle-info me-1" aria-hidden="true"></i>{{ _note }}
-        </p>
-
-        <a class="fl-btn fl-btn-primary" href="{{ _ap.comment_anchor | default: '#artalk-comments' }}">
-          <i class="fas fa-arrow-down me-1" aria-hidden="true"></i>前往评论区留言
-        </a>
-        <p class="fl-tip" id="fl-copy-result" role="status" aria-live="polite"></p>
+        <div class="fl-guide-foot">
+          <p class="fl-apply-note">
+            <i class="fas fa-circle-info me-1" aria-hidden="true"></i>{{ _note }}
+          </p>
+          {%- if _show_cmt -%}
+            <a class="fl-btn fl-btn-primary" href="{{ _ap.comment_anchor | default: '#giscus-comments' }}">
+              <i class="fas fa-arrow-down me-1" aria-hidden="true"></i>前往评论区留言
+            </a>
+          {%- else -%}
+            {%- comment -%}
+              评论区不可用（服务端未配置或本页未开启）时，不给死按钮，
+              直接给出能用的邮箱方案——静态站最可靠的兜底。
+            {%- endcomment -%}
+            <a class="fl-btn fl-btn-primary" href="mailto:{{ _ap_email | escape }}?subject={{ '友链申请' | uri_escape }}&body={{ '请把上面的推荐格式示例粘贴到这里，并把冒号后的内容改成你自己的信息。' | uri_escape }}">
+              <i class="fas fa-envelope me-1" aria-hidden="true"></i>改为邮件提交
+            </a>
+          {%- endif -%}
+        </div>
       </div>
 
     {%- else -%}

@@ -306,3 +306,197 @@
   .fl-search input { width: 100%; }
   .fl-head-text { width: 100%; }
 }
+/* ============================================================================
+   「友链格式」卡片（评论申请模式）
+   ----------------------------------------------------------------------------
+   版式参考常见友链页：一张深色卡片，内含
+     ① 顶部标题行（友链格式 + 右侧 Apply Guide 链接）
+     ② 本站名片（自己的 Logo + 名称 + 简介）
+     ③ 四宫格信息格（网址 / 邮箱 / 头像 / 友链页）
+     ④ 两条提示格（收录偏好 / 图标说明）
+     ⑤ 推荐格式示例（代码块 + 复制按钮）
+   ========================================================================== */
+.fl-guide {
+  margin-top: 1.4rem;
+  padding: 1.1rem 1.2rem 1.2rem;
+  border: 1px solid rgba(128, 128, 128, 0.2);
+  border-radius: 14px;
+  background-color: var(--bg-color);
+}
+
+/* 顶部标题行 */
+.fl-guide-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+.fl-guide-title {
+  font-size: 1.02rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--fg-color);
+}
+.fl-guide-link {
+  font-size: 0.78rem;
+  color: var(--fg-color);
+  opacity: 0.55;
+  text-decoration: none;
+  transition: opacity 0.16s ease, color 0.16s ease;
+}
+.fl-guide-link:hover,
+.fl-guide-link:focus-visible {
+  opacity: 1;
+  color: var(--link-color, var(--fg-color));
+}
+
+/* 本站名片：复用 .fl-logo 的视觉（46px 方块），但这里不做背景图时的空白处理 */
+.fl-card-sample {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.8rem 0.9rem;
+  border-radius: 11px;
+  background-color: rgba(128, 128, 128, 0.07);
+  margin-bottom: 0.85rem;
+}
+.fl-card-sample-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+.fl-card-sample-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+.fl-card-sample-desc {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  opacity: 0.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+/* 四宫格信息格：auto-fit 让宽屏两列、窄屏一列，无需媒体查询 */
+.fl-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+.fl-info-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 11px;
+  background-color: rgba(128, 128, 128, 0.07);
+  min-width: 0;
+}
+.fl-info-label {
+  font-size: 0.72rem;
+  opacity: 0.55;
+  color: var(--fg-color);
+}
+/* 值：链接与纯文本都用同一套样式，链接只是多了主题色 */
+.fl-info-value,
+.fl-info-text {
+  font-size: 0.85rem;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--link-color, var(--fg-color));
+  text-decoration: none;
+  word-break: break-all;          /* 长 URL 不撑破格子 */
+  overflow-wrap: anywhere;
+}
+.fl-info-text {
+  color: var(--fg-color);
+  font-weight: 400;
+  opacity: 0.82;
+}
+a.fl-info-value:hover,
+a.fl-info-value:focus-visible {
+  text-decoration: underline;
+}
+
+/* 推荐格式示例块 */
+.fl-guide-block {
+  margin-top: 1rem;
+  padding: 0.85rem 0.95rem 0.95rem;
+  border: 1px dashed rgba(128, 128, 128, 0.28);
+  border-radius: 11px;
+}
+.fl-guide-block-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+.fl-guide-block-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--fg-color);
+}
+.fl-copy-btn {
+  font-size: 0.75rem;
+  font-family: inherit;
+  padding: 0.2rem 0.65rem;
+  border-radius: 7px;
+  color: var(--fg-color);
+  background-color: rgba(128, 128, 128, 0.12);
+  border: 1px solid rgba(128, 128, 128, 0.2);
+  cursor: pointer;
+  transition: background-color 0.16s ease, border-color 0.16s ease;
+}
+.fl-copy-btn:hover,
+.fl-copy-btn:focus-visible {
+  background-color: rgba(128, 128, 128, 0.22);
+  border-color: rgba(128, 128, 128, 0.4);
+}
+
+/* 底部：审核须知 + 前往评论区按钮 */
+.fl-guide-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(128, 128, 128, 0.14);
+}
+.fl-guide-foot .fl-apply-note {
+  margin: 0;
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+/* 窄屏：让信息格单列，按钮撑满 */
+@media (max-width: 480px) {
+  .fl-guide { padding: 0.95rem 0.85rem 1rem; }
+  .fl-info-grid { grid-template-columns: 1fr; }
+  .fl-guide-foot { flex-direction: column; align-items: stretch; }
+  .fl-guide-foot .fl-btn { width: 100%; justify-content: center; }
+}
+
+/* 评论区不可用时的提示条（黄色警示，克制不抢眼） */
+.fl-apply-warn {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.15rem;
+  margin: 0.6rem 0 0;
+  padding: 0.55rem 0.8rem;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  border-radius: 9px;
+  color: var(--fg-color);
+  background-color: rgba(232, 163, 61, 0.13);
+  border: 1px solid rgba(232, 163, 61, 0.32);
+}
