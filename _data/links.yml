@@ -42,8 +42,13 @@ apply:
   # 本站的友链申请页地址（读者填写"能看到申请的地址"时用）
   anchor_url: "https://2019527.xyz/links/"
   # 「前往评论区」按钮的跳转锚点。
-  # 必须与评论区容器的 id 一致 —— 本项目 Giscus 组件用的是 #giscus-comments，
-  # 改评论系统时记得同步改这里，否则按钮会跳到页面顶部。
+  # 必须与评论区容器的 id 一致 —— 本项目 Giscus 组件用的是 #giscus-comments。
+  # 【⚠️ 换评论系统时必须同步改这里】对应关系：
+  #   Artalk  → #artalk-comments
+  #   giscus  → #giscus-comments
+  #   Twikoo  → #twikoo-comments
+  #   Waline   → #waline-comments
+  # 不改的后果：按钮点了会跳到页面顶部（读者以为没反应）。
   comment_anchor: "#giscus-comments"
 
 # ---------- 友链清单（仅含已审核通过的链接）----------

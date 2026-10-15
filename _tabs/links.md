@@ -37,6 +37,11 @@ order: 5
 # 所以这一页必须开着评论区，否则读者点了「前往评论区」没地方留言。
 # 评论系统是全站统一的（_config.yml 的 comments.provider: giscus），
 # 所以本页的评论区和文章页长得一模一样，不用单独配置。
+#
+# ⚠️ 一个容易踩的坑：光在这里写 comments: true 是不够的。
+#   主题自带的 _layouts/page.html 里没有 script_includes: [comment]，
+#   评论组件根本不会被加载。本项目已在 _layouts/page.html 中补上该项，
+#   所以本页才能正常显示评论区。升级主题时请记得重新同步那个文件。
 comments: true
 ---
 

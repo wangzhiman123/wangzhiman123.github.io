@@ -226,14 +226,53 @@ actions:
 # ----------------------------- 六、评论系统 -----------------------------
 # 这一段决定「读者能不能在文章下面留言、用哪家评论服务」。
 comments:
-  # 全局评论开关。这里填的是当前实际启用的评论服务名字：giscus。
-  # 而且，这个值不能为空，为空就代表「全站关闭评论」。
-  # 【可DIY修改】换成别的服务名时，要同时把下面那个服务的配置填好。
-  # 全站共用这一套配置：文章页、友链页都用同一个评论服务，保持一致的观感。
+  # ==========================================================================
+  # 【全站评论系统总开关】这一行决定用哪家评论服务，改这一个值即可全站切换。
+  #
+  #   当前启用：giscus（评论数据存在 GitHub Discussions）
+  #
+  # 【为什么选它】
+  #   ① 零服务器、零数据库、零成本：不需要买服务器、不需要备案、不需要运维，
+  #      评论数据在你自己的 GitHub 仓库里，随时可导出、可备份、可迁移。
+  #   ② 不碰任何被墙的域名：Disqus、Hyvor 在大陆打不开，giscus 只用 GitHub
+  #      一个域名，不存在多点被墙的问题。
+  #   ③ 天然具备需求 3 的全部能力：GitHub Discussions 本身就支持
+  #      嵌套回复（无限层级）、点赞表情、评论计数，
+  #      以及后台管理（删除、屏蔽、锁定讨论区、管理员审核都在 GitHub 界面完成）。
+  #   ④ 安全性由 GitHub 兜底：评论渲染在 GitHub 的跨域 iframe 沙箱里，
+  #      XSS 攻击碰不到你的博客页面。
+  #
+  # 【必须知道的两个代价】（请务必了解，避免上线后才发现）
+  #   ⚠️ 读者必须登录 GitHub 账号才能留言。
+  #      这意味着：懂技术的读者很乐意，**普通访客可能直接放弃**。
+  #      法律行业的读者群体里有相当比例不使用 GitHub，
+  #      所以站点内必须同时保留邮件联系入口（本项目已在评论区降级提示里放了）。
+  #   ⚠️ 评论内容无法被搜索引擎抓取。
+  #      Giscus 界面在跨域 iframe 里，静态网页产物中不含评论正文，
+  #      搜索引擎只能看到评论区容器。本组件已尽力做了语义标签与
+  #      结构化数据（见 _includes/comments/giscus.html 文末「SEO 说明」）。
+  #      若将来评论正文收录确有需要，可另加「构建期快照」方案。
+  #
+  # 【⚠️ 三个前提，缺一个评论区都不出来】
+  #   ① 仓库必须是【公开】的，否则访客看不到讨论区
+  #   ② 仓库要开启 Discussions：Settings → General → Features → Discussions
+  #   ③ 仓库要安装 giscus app：https://github.com/apps/giscus
+  # 装好后打开 https://giscus.app/ 按提示一步步填，
+  # 页面底部会直接生成配置代码，把里面的值抄到下面 giscus 段即可。
+  #
+  # 【giscus.app 是配置生成器，不是运行依赖】
+  #   网站运行时只请求 giscus.app/client.js 与 giscus 的 iframe，
+  #   不会请求 giscus.app 以外的配置接口。
+  #
+  # 【想换成自托管评论（Artalk）时怎么办】
+  #   ① 把 provider 改成 artalk，填好下面 artalk.server
+  #      （服务器上执行 deploy/05-install-artalk.sh 一键部署）
+  #   ② 把 _data/links.yml 的 apply.comment_anchor 改成 "#artalk-comments"
+  #   ③ 组件代码 _includes/comments/artalk.html 已经在仓库里，不用重新写
   provider: giscus
   # 以下各家评论服务，只有 provider 里指定的那一家会生效，其余留空即可。
 
-  # Disqus 评论（国外服务），不用就留空。
+  # Disqus 评论（国外服务，国内被墙），不用就留空。
   disqus:
     shortname: # fill with the Disqus shortname. › https://help.disqus.com/en/articles/1717111-what-s-a-shortname
 
@@ -241,21 +280,7 @@ comments:
   utterances:
     repo: wangzhiman123/wangzhiman123.github.io
     issue_term: # < url | pathname | title | ...>
-
-  # Giscus 评论（基于 GitHub Discussions，当前正在使用）—— 全站统一用这一套。
-  # 官网与配置生成器：https://giscus.app/
-  #
-  # 【为什么选它】评论数据直接存在 GitHub Discussions里，
-  # 不需要服务器、不需要数据库、不需要备案，永久免费，
-  # 而且你已经有 GitHub 仓库了，开箱即用。
-  #
-  # 【⚠️ 三个前提，缺一个评论都不出来】
-  #   ① 仓库必须是【公开】的，否则访客看不到讨论区
-  #   ② 仓库要开启 Discussions：Settings → General → Features → Discussions
-  #   ③ 仓库要安装 giscus app：https://github.com/apps/giscus
-  # 装好后打开 https://giscus.app/ 按提示一步步填，页面底部会生成配置代码。
-  #【可DIY修改】下面这些值就来自那里，repo_id / category_id 必须从那儿拿，
-  #     手写编不出来。
+  # 配置保留是为了随时可切回，代码组件 _includes/comments/giscus.html 也还在。
   giscus:
     # 仓库（用户名/仓库名）
     repo: wangzhiman123/wangzhiman123.github.io
@@ -271,8 +296,10 @@ comments:
     # 严格匹配：0 = 模糊匹配（默认）/ 1 = 严格匹配
     # 【可DIY修改】如果你有很多路径相似的页面，改成 1 更不容易串评论。
     strict: 0
-    # 输入框位置：bottom（评论下方，默认）/ top（评论上方，不用滚到底部就能留言）
-    input_position: bottom
+    # 输入框位置：bottom（评论列表下方，默认）/ top（评论列表上方）
+    # 【可DIY修改】你的文章普遍较长，建议改成 top ——
+    #   读者滚到底部就能直接开写，不用再往下翻一屏。
+    input_position: top
     # 界面语言
     lang: zh-CN
     # 是否显示表情反应（👍❤️等）：1 = 开/ 0 = 关
@@ -281,24 +308,63 @@ comments:
     # 而不是让读者面对一片空白的评论区。
     # 【可DIY修改】网络较慢可以调大，例如 20000。
     timeout: 15000
+    # 加载失败/未就绪时，降级提示里显示的联系方式。留空则自动取
+    # _config.yml 里的 social.email。
+    contact_email:
+    # 评论区标题（显示在评论区顶部）。
+    # 【可DIY修改】改成「留言讨论」「评论」等都行；留空则不显示标题。
+    title: 评论与交流
+    # 是否显示「N 条评论」徽章：1 = 开 / 0 = 关。
+    # 说明：giscus 的界面在跨域 iframe 里，宿主页读不到里面的评论数，
+    #   所以徽章的数字是单独查一次 GitHub 接口得到的（读者滚动到评论区时才查，
+    #   同一会话内只查一次）。查不到就自动隐藏，绝不影响读者留言。
+    # ⚠️ 未登录状态下 GitHub 接口限 60 次/小时/IP。个人博客通常远低于此量，
+    #   若你担心被限流，可以直接设成 0（关闭后完全不发起这个请求）。
+    show_count: 1
 
   # Artalk 评论（自托管，当前未启用 —— 需要时把上面 provider 改成 artalk 即可）。
-  # 自托管 = 评论数据存在自己的服务器上，不受第三方平台限制。
-  # 需要先在服务器上部署 Artalk 服务端，部署与配置见 DEPLOY.md 第十节。
+  # 自托管 = 评论服务是跑在你自己服务器上的一个程序，数据存在你自己的磁盘上。
+  # 相比 giscus 的优势：读者可用昵称匿名留言（无需 GitHub 账号）、数据完全自主、
+  #   国内访问速度与本站一致。
+  # 代价：需要一台已备案的服务器（你已有），
+  #   在服务器上执行 deploy/05-install-artalk.sh 即可一键部署。
+  # 官方文档：https://artalk.js.org/
   artalk:
-    # ⚠️ 必填：Artalk 服务端（后端 API）地址。要求公网可访问、使用 https、结尾不带 "/"。
-    #    留空 = 评论功能整体关闭：页面不会渲染评论容器，也不会报错（站点照常构建）。
-    #    例：https://artalk.2019527.xyz
-    # 【可DIY修改】部署好 Artalk 后，把服务地址填在这一行（现在是空的，所以评论实际上还没启用）。
+    # ⚠️ 必填：Artalk 服务端（后端 API）地址。要求公网可访问、使用 https、结尾不带"/"。
+    #    留空 = 评论功能整体关闭：页面不会渲染评论容器，也不会报错（站点照常构建），
+    #    友链申请区会自动降级为「改为邮件提交」，不留点不动的死按钮。
+    #    例：https://comment.2019527.xyz
+    # 【可DIY修改】部署好之后，把服务地址填在这一行，评论功能即刻生效，无需改任何代码。
     server:
     # 站点名称，用于 Artalk 多站点隔离（对应后台「站点管理」里的名称）。
     # 同一个 Artalk 服务端可以给多个网站用，靠这个名称区分数据，别填错。
+    # ⚠️ 一旦有了评论数据，这个值就不能再改——改了等于换了一个新站点，历史评论会"消失"。
     site: 王志满律师
     # 前端静态资源地址（可选）：留空时自动取「server + /dist」。
-    #    若想改用公共 CDN，可改为：https://cdn.jsdelivr.net/npm/artalk@2/dist
+    #    【强烈建议留空】这样 JS/CSS 从你自己的域名加载，完全不依赖任何境外 CDN。
     assets_url:
     # 界面语言：auto（跟随浏览器）/ zh-CN / en
-    locale: auto
+    locale: zh-CN
+
+    # ---------- 以下是体验与性能相关项，均有合理默认值，不懂就别改 ----------
+    # 加载超时（毫秒）：到点仍未就绪就显示友好提示 + 邮件入口，绝不留空白。
+    timeout: 15000
+    # 头像来源镜像。Artalk 默认用 Gravatar（www.gravatar.com），该域名在大陆访问
+    # 很不稳定，读者头像会大面积裂图。下面已默认改成国内可访问的镜像。
+    gravatar_mirror: https://cravatar.cn/avatar/
+    # 允许嵌套回复的最大层级：2 = 主评论 + 两层回复。
+    # 【可DIY修改】改成 3 可以更深，但超过 3 层手机上会挤成一条，建议不超过 3。
+    nest_max: 2
+    # 嵌套回复的排序：DATE_ASC（按时间正序，像论坛，从上往下读）
+    #   DATE_DESC（按时间倒序，最新回复在最上）。下面默认正序，更符合论坛阅读习惯。
+    nest_sort: DATE_ASC
+    # 每页拉取的评论条数（性能相关，见部署文档「加载性能」一节）。
+    page_size: 20
+    # 是否显示读者的浏览器（UA）徽章。律师站的读者是普通访客，建议关掉，
+    # 少收集一点浏览器指纹信息，也显得更干净。
+    ua_badge: false
+    # 是否开启图片上传。开启后读者可直接贴图（文件存 Artalk 服务器）。
+    # 【可DIY修改】法律专业内容站，为免被贴广告图，建议保持 false。
 
 # --------------------- 七、静态资源自托管（进阶，可选） ---------------------
 # 主题默认从公共 CDN（比如 jsdelivr）下载字体、图标等资源。

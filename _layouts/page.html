@@ -1,0 +1,57 @@
+---
+# ============================================================================
+# 本文件是什么？
+# ----------------------------------------------------------------------------
+# 这是「独立标签页」的排版模板 —— 关于/ 归档 / 分类 / 标签 / 友链 这些页面用它。
+#
+# 【为什么项目里要自己写一份，而不用主题自带的】
+#   主题原版 _layouts/page.html 的front matter 里**没有** script_includes，
+#   而主题的 default.html 是靠layout.script_includes 这个清单来
+#   加载评论组件的。结果就是：
+#     文章页能用评论区（post.html 里有 script_includes: [comment]）
+#     友链页 /links/ 明明写了 comments: true，却**从来没有渲染过评论区**
+#     → 页面上点了「前往评论区留言」会扑空。
+#   所以本文件在原版基础上补上 script_includes: [comment]，
+#   让所有「页面型」内容也能显示评论区。
+#
+#   是否真的显示，仍由每个页面自己决定：
+#     页面写了 comments: true  → 显示
+#     没写 / 写了 false          → 不显示（_config.yml 的 artalk 组件会判空）
+#   目前只有 _tabs/links.md 设了 comments: true（友链申请走评论区留言），
+#   其余页面（关于/归档/分类/标签）未设置，因此不会出现多余评论区。
+#
+# ⚠️ 主题升级后，请对照新版 _layouts/page.html 重新同步本文件，
+#    唯一需要保留的差异就是 front matter 里的 script_includes。
+# ============================================================================
+layout: default
+# 套用 default 基础框架模板（导航栏、侧边栏、页脚由它负责）。
+
+script_includes:
+# 本页面需要额外加载的脚本。主题的 default.html 会遍历这个清单并 include。
+# - comment 对应 _includes/comment.html（评论切换器），
+#   它再去 include _includes/comments/<provider>.html（当前是 artalk.html）。
+  - comment         # 评论功能（当前 provider: giscus）
+---
+
+{% include lang.html %}
+{%- comment -%} 载入语言包，把界面上的固定文字翻译成网站设置的语言。 {%- endcomment -%}
+
+<article class="px-1">
+  {% if page.layout == 'page' or page.collection == 'tabs' %}
+    {%- comment -%}
+      这是「标签页型」页面（关于/友链等）。
+      tab_key = 页面标题转小写 → 去语言包里找对应的中文名；
+      找不到就用页面自己的标题。
+    {%- endcomment -%}
+    {% assign tab_key = page.title | downcase %}
+    {% assign title = site.data.locales[lang].tabs[tab_key] | default: page.title %}
+    <h1 class="dynamic-title">
+      {{ title }}
+    </h1>
+    <div class="content">
+      {{ content }}
+    </div>
+  {% else %}
+    {{ content }}
+  {% endif %}
+</article>

@@ -1,194 +1,314 @@
 {%- comment -%}
   ============================================================================
   【本文件是什么？】
-  Artalk 评论组件（自托管）—— 对应 _config.yml 的 comments.provider: artalk
-  官网与文档：https://artalk.js.org/
+  Artalk 评论组件（自托管，**备用方案，当前未启用**）
 
-  一句话概括：这段代码负责在文章底部"长出"一个评论区，
-  让读者能留言、回复、按表情，并且评论数据存在您自己的服务器上。
+  当前全站使用的是同目录下的 giscus.html。
+  什么时候该切回本组件？当出现下面任一情况时：
+    · 你希望读者**不登录 GitHub 账号也能留言**（匿名 + 昵称即可）
+    · 你发现大量读者因为「必须登录 GitHub」而放弃留言
+    · 你愿意在自己的服务器上维护一个服务（你已有阿里云服务器）
 
-  什么是"自托管"？就是不依赖第三方评论平台（如多说、Disqus），
-  把评论服务部署在自己的服务器上，数据完全掌握在自己手里，
-  不会因为第三方平台关停而丢失评论。
+  切换方法（三步，详见 _config.yml 第六节的说明）：
+    ① _config.yml：comments.provider 改成 artalk，并填好 comments.artalk.server
+    ② _data/links.yml：apply.comment_anchor 改成 "#artalk-comments"
+    ③ 服务器上执行 deploy/05-install-artalk.sh 部署服务端
 
-  加载方式：主题 _includes/comment.html 的「评论切换器」会按
-  `comments/{{ site.comments.provider }}.html` 动态 include 本文件，
-  因此无需改动任何主题文件。
+  官方文档：https://artalk.js.org/
 
-  设计约定（与同目录下的 giscus / utterances / disqus 保持一致）：
-  · 未启用不渲染：仅当 comments.artalk.server 有值时输出内容；
-    未填写时整段（含容器与脚本）都不输出 —— 不残留空容器、不报错。
-  · 资源动态注入：CSS / JS 用 JS 动态写入；不使用静态 <script src>，
-    避免构建期 html-proofer 去校验「尚未部署」的静态资源而误判失败。
-  · 跟随主题明暗：读取 Theme.isDark，并监听主题切换事件（Theme.eventId），
-    机制与主题内置的 giscus / utterances 组件完全一致。
-  · 懒加载：滚动到评论区附近再请求资源，策略与主题 disqus 组件一致。
+  ============================================================================
+  为什么本项目没有选 Artalk 作为默认方案（供未来决策参考）
+  ============================================================================
+    优点（都是真实的）：
+      · 读者匿名留言，无需任何第三方账号；
+      · 评论数据是自己服务器上的一个 SQLite 文件，完全自主、可打包备份；
+      · 国内访问速度与访问本站一致；
+      · 后台功能比 giscus 完整：待审核模式、封禁 IP、关键词过滤、邮件通知。
+    代价（为什么默认还是选 giscus）：
+      · 需要一台已备案服务器并持续运维（升级、备份、监控）；
+      · 多了一套东西会坏，giscus 则是零运维。
 
-  ⚠️ 内联脚本禁用 `//` 行注释：_config.yml 开启了 compress_html，正式构建会
-     压掉全部换行，`//` 会把后续代码一并注释掉。一律用 `/* */`，
-     语句以 `;` 结尾，分支加花括号（详见 DEPLOY.md 第五节）。
+  ============================================================================
+  设计约定（与 giscus.html 保持同一套思路）
+  ============================================================================
+    · 未启用不渲染：仅当 comments.artalk.server 有值时才输出任何内容。
+      未填写时整段（含容器与脚本）都不输出 —— 不残留空容器、不报错，
+      站点照常构建。这也是友链申请区判断「评论区是否可用」的依据。
+    · 资源动态注入：CSS / JS 用 JS 动态写入，而不是静态 <script src>。
+      原因：构建期 html-proofer 会校验静态资源地址，服务端还没部署时
+      会被误判为死链，导致整个构建失败。
+    · 跟随主题明暗：读取 Theme.isDark，并监听 Theme.eventId 的切换消息。
+    · 懒加载：IntersectionObserver 滚动到附近才请求资源。
+    · 超时兜底：到 timeout 毫秒仍未挂载 → 显示友好提示 + 邮件入口，绝不留空白。
+
+  ============================================================================
+  ⚠️ 内联脚本禁用 `//` 行注释
+  ----------------------------------------------------------------------------
+  _config.yml 开启了 compress_html，正式构建会压掉全部换行，
+  `//` 会把后续代码一并注释掉导致整页 JS 报错。
+  一律使用 /* 星号斜杠 */，语句以 `;` 结尾，分支加花括号。
   ============================================================================
 {%- endcomment -%}
 
 
 {%- assign _artalk_server = site.comments.artalk.server | default: '' | strip -%}
-{%- comment -%} 读出 Artalk 服务端的地址（在 _config.yml 里配置）。
-   default: '' 兜底防止报错；strip 去掉可能误打的空格。 {%- endcomment -%}
 
 {%- if _artalk_server != '' -%}
-{%- comment -%} 只有服务端地址确实填了，才输出评论代码。
-   现在 _config.yml 里这一项是空的，所以整段都不会生成、页面上也就没有评论区。
-   以后部署好 Artalk 服务端、把地址填上，评论功能就自动生效了，不必回来改代码。 {%- endcomment -%}
 
   {%- assign _artalk_assets = site.comments.artalk.assets_url | default: '' | strip -%}
-  {%- comment -%} 读出"评论前端文件（外观和逻辑）从哪里下载"的地址。 {%- endcomment -%}
-
   {%- if _artalk_assets == '' -%}
     {%- assign _artalk_assets = _artalk_server | append: '/dist' -%}
   {%- endif -%}
-  {%- comment -%} 如果没单独配置这个地址，就自动用"服务端地址 + /dist"作为默认值。
-     这样大多数情况下只要填一次服务端地址就够了，省事。 {%- endcomment -%}
+  {%- comment -%}
+    assets_url 留空时自动用「服务端地址 + /dist」，
+    这样大多数情况下只要填一次服务端地址就够了；
+    且资源同源，不依赖任何第三方 CDN。
+  {%- endcomment -%}
+
+  {%- assign _at_locale  = site.comments.artalk.locale | default: 'zh-CN' -%}
+  {%- assign _at_timeout = site.comments.artalk.timeout | default: 15000 -%}
+  {%- assign _at_nestmax = site.comments.artalk.nest_max | default: 2 -%}
+  {%- assign _at_nestsrt = site.comments.artalk.nest_sort | default: 'DATE_ASC' -%}
+  {%- assign _at_pagesz  = site.comments.artalk.page_size | default: 20 -%}
+  {%- assign _at_uabadge = site.comments.artalk.ua_badge | default: false -%}
+  {%- assign _at_imgupl  = site.comments.artalk.img_upload | default: false -%}
+  {%- assign _at_gravatr = site.comments.artalk.gravatar_mirror | default: '' | strip -%}
+  {%- assign _at_site    = site.comments.artalk.site | default: site.title -%}
+  {%- assign _at_site    = _at_site | default: site.title -%}
+  {%- assign _at_key     = page.url | default: '/' -%}
+  {%- assign _at_title   = page.title | default: site.title -%}
+  {%- assign _at_absurl  = page.url | replace: 'index.html', '' | absolute_url -%}
 
 <!-- https://artalk.js.org/ -->
 <script>
   (function () {
-    /* 自执行函数：立即运行，内部变量不会污染外部，避免和其他脚本打架。 */
+    /* 自执行函数：内部变量不会污染外部，避免和其他脚本打架。 */
 
-    const server = '{{ _artalk_server }}';
-    /* 把上面读到的服务端地址写进 JavaScript（会被替换成真实地址）。 */
+    const SERVER = {{ _artalk_server | jsonify }};
+    const ASSETS = {{ _artalk_assets | jsonify }};
+    const TIMEOUT = {{ _at_timeout }};
 
-    const assetsURL = '{{ _artalk_assets }}';
-    /* 把评论前端文件地址写进 JavaScript。 */
+    /* ---------- 评论区容器 ----------
+       先输出静态占位块再由 JS 接管，好处有两个：
+         ① <noscript> 里的文字能被搜索引擎抓取；
+         ② 读者即使禁用 JS 也能看到明确说明，而不是一片空白。 */
+    const HTML = [
+      '<section class="atk-seo-block">',
+      '<h2 class="atk-seo-title">评论（需开启 JavaScript）</h2>',
+      '<noscript>',
+      '<p>本页评论区需要浏览器启用 JavaScript 才能显示。</p>',
+      '</noscript>',
+      '<div id="artalk-comments"></div>',
+      '</section>'
+    ].join('');
 
-    const locale = {{ site.comments.artalk.locale | default: 'auto' | jsonify }};
-    /* 评论区界面的语言。
-       auto 表示"自动跟随访客浏览器的语言"。
-       jsonify 的作用是把这段文字安全地转成 JavaScript 里的字符串格式
-       （自动加上引号并转义特殊符号），防止文字里的符号破坏代码。 */
+    const $tpl = document.createElement('div');
+    $tpl.innerHTML = HTML;
+    const $section = $tpl.firstElementChild;
+    $section.id = 'artalk-comments-section';
 
-    /* 评论区容器：插到 <footer> 之前，与主题其它评论组件的位置保持一致 */
-    const $container = document.createElement('div');
-    /* 新建一个空盒子，用来装评论区。 */
+    const $footer = document.querySelector('footer');
+    if ($footer) {
+      $footer.parentNode.insertBefore($section, $footer);
+    } else {
+      document.body.appendChild($section);
+    }
 
-    $container.id = 'artalk-comments';
-    /* 给它起个 id，方便 Artalk 知道"把评论区画在哪里"。 */
+    const $container = document.getElementById('artalk-comments');
+    const STATE = { mounted: false, closed: false };
+    let artalk = null;
 
-    $container.className = 'text-center text-muted small py-3';
-    /* 加一些样式类：居中、灰色、小字、上下留白。
-       这样在评论还没加载出来时，那句"评论加载中…"看着也整齐。 */
+    /* ---------- SEO 结构化数据 ---------- */
+    const $ld = document.createElement('script');
+    $ld.type = 'application/ld+json';
+    $ld.textContent = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'DiscussionForumPosting',
+      headline: {{ _at_title | jsonify }},
+      url: {{ _at_absurl | jsonify }}
+    });
+    document.head.appendChild($ld);
 
-    $container.textContent = '评论加载中…';
-    /* 先放上一句提示文字，让访客知道这里将来是评论区。
-       【可DIY修改】想换成"正在加载评论"等说法，直接改这行引号里的文字。 */
+    function dropSeoBlock() {
+      const $blk = $section.querySelector('.atk-seo-block');
+      if ($blk) { $blk.parentNode.removeChild($blk); }
+    }
 
-    document.querySelector('footer').insertAdjacentElement('beforebegin', $container);
-    /* 把这个盒子插到网页底部（footer）的前面，也就是正文的下面。
-       beforebegin 表示"插在目标元素的前面"。 */
+    /* ---------- 友好降级：任何失败路径都要给出可操作的下一步 ---------- */
+    function showFallback(msg) {
+      if (STATE.closed) { return; }
+      STATE.closed = true;
+      const $box = document.createElement('div');
+      $box.className = 'atk-fallback';
+      const $icon = document.createElement('i');
+      $icon.className = 'fas fa-comment-dots';
+      $icon.setAttribute('aria-hidden', 'true');
+      const $text = document.createElement('p');
+      $text.textContent = msg + '，可能是网络波动或评论服务暂时不可用。您可以刷新页面试试，或直接邮件联系我。';
+      const mail = {{ site.email | default: site.social.email | default: "" | jsonify }};
+      if (mail) {
+        $text.appendChild(document.createTextNode('（'));
+        const $a = document.createElement('a');
+        $a.href = 'mailto:' + mail;
+        $a.textContent = '邮件联系';
+        $text.appendChild($a);
+        $text.appendChild(document.createTextNode('）'));
+      }
+      $box.appendChild($icon);
+      $box.appendChild($text);
+      $container.appendChild($box);
+    }
 
-    let artalk;
-    /* 声明一个变量，用来存"评论区对象"，方便后面控制它（比如切换深色模式）。 */
+    let $timer = null;
+    function armTimeout() {
+      $timer = setTimeout(function () {
+        if (!STATE.mounted) { showFallback('评论暂时没能加载出来'); }
+      }, TIMEOUT);
+    }
 
+    /* ---------- 真正把评论区建起来 ---------- */
     function initArtalk() {
-      /* 这个函数负责"真正把评论区建起来"。 */
       if (!window.Artalk) {
+        showFallback('评论暂时没能加载出来');
         return;
       }
-      /* 检查 Artalk 的主程序是否已经下载并加载好了；
-         没有的话就先不建，直接返回（因为下面的 Artalk.init 必须靠它）。
-         这是一道保险，避免下载慢的时候报错。 */
 
-      $container.textContent = '';
-      /* 清空"评论加载中…"这句提示，准备换上真正的评论区。 */
-
-      artalk = Artalk.init({
-        /* 告诉 Artalk 怎么工作，下面这些是它的配置项。 */
+      const CONF = {
         el: '#artalk-comments',
-        /* 评论区画在哪个盒子里（对应上面起的 id）。 */
-        server: server,
-        /* 评论数据存到哪个服务端。 */
-        site: {{ site.comments.artalk.site | default: site.title | jsonify }},
-        /* 站点名称。同一个 Artalk 服务端可以给多个网站共用，
-           靠这个名称把各网站的评论数据分开，避免串台。
-           没单独配置就用网站标题兜底。 */
-        pageKey: {{ page.url | jsonify }},
-        /* 页面标识：用网页地址区分"这是哪一篇文章的评论"。
-           必须保证同一篇文章每次生成的地址都一样，否则评论会对不上。 */
-        pageTitle: {{ page.title | jsonify }},
-        /* 页面标题，评论后台列表里会显示它，方便您快速认出是哪个页面。 */
-        locale: locale,
-        /* 界面语言（见上文）。 */
-        darkMode: Theme.isDark
-        /* 评论区是否用深色主题。
-           Theme.isDark 是主题提供的一个开关：访客当前看的是深色模式就为 true，
-           这样评论区能跟着网站一起变黑，不会出现"网站黑了、评论区还是白的"。 */
-      });
+        server: SERVER,
+        site: {{ _at_site | jsonify }},
+        pageKey: {{ _at_key | jsonify }},
+        pageTitle: {{ _at_title | jsonify }},
+        locale: {{ _at_locale | jsonify }},
+        placeholder: '友善的评论是交流的开始，请遵守法律法规，不要发布违法内容。',
+        noComment: '还没有评论，来做第一个留言的人吧。',
+        sendBtn: '发送',
+        darkMode: Theme.isDark,
+        nestMax: {{ _at_nestmax }},
+        nestSort: {{ _at_nestsrt | jsonify }},
+        vote: true,
+        voteDown: false,
+        pagination: { pageSize: {{ _at_pagesz }}, readMore: false, autoLoad: true },
+        uaBadge: {{ _at_uabadge }},
+        imgUpload: {{ _at_imgupl }},
+        heightLimit: { content: 300, children: 200, scrollable: true }
+      };
+
+      {%- if _at_gravatr != '' %}
+      /* Artalk 默认用 www.gravatar.com 取头像，该域名在大陆访问极不稳定，
+         读者头像会大面积裂图，所以改成国内可访问的镜像。 */
+      CONF.gravatar = { mirror: {{ _at_gravatr | jsonify }}, params: 'sha256=1&d=mp&s=240' };
+      {%- endif %}
+
+      try {
+        artalk = Artalk.init(CONF);
+      } catch (err) {
+        showFallback('评论暂时没能加载出来');
+        return;
+      }
+
+      setTimeout(function () {
+        const $box = $container.querySelector('.atk-comment-list, .atk-list, .atk-editor');
+        if ($box) {
+          STATE.mounted = true;
+          if ($timer) { clearTimeout($timer); $timer = null; }
+          dropSeoBlock();
+        } else {
+          showFallback('评论暂时没能加载出来');
+        }
+      }, 1500);
     }
 
+    /* ---------- 下载评论前端资源 ---------- */
     function loadArtalk() {
-      /* 这个函数负责"把评论需要的文件下载下来"。 */
-
       const $style = document.createElement('link');
-      /* 创建一个 <link> 标签，用来加载评论区的样式（外观）。 */
       $style.rel = 'stylesheet';
-      /* 声明这是一个样式文件。 */
-      $style.href = assetsURL + '/Artalk.css';
-      /* 指向样式文件的地址。 */
+      $style.href = ASSETS + '/Artalk.css';
       document.head.appendChild($style);
-      /* 挂到网页头部，浏览器就会去下载它。 */
 
       const $script = document.createElement('script');
-      /* 再创建一个 <script> 标签，用来加载评论区的主程序。 */
-      $script.src = assetsURL + '/Artalk.js';
-      /* 主程序地址。 */
+      $script.src = ASSETS + '/Artalk.js';
       $script.async = true;
-      /* 异步下载，不挡着页面其他内容，保证打开速度。 */
       $script.onload = initArtalk;
-      /* 【关键衔接】主程序下载完成后，自动调用上面的 initArtalk 把评论区建起来。
-         这样就不用去猜"什么时候下载完"，交给浏览器通知我们。 */
+      $script.onerror = function () { showFallback('评论暂时没能加载出来'); };
       document.head.appendChild($script);
-      /* 挂到网页头部，开始下载。 */
     }
 
-    /* 跟随主题的明暗切换（与主题内置评论组件同一套机制） */
-    addEventListener('message', (event) => {
-      /* 监听网站内部发出的"消息"。当访客点击左下角的太阳/月亮按钮切换深浅色时，
-         主题会发出这样一则消息。 */
-
+    /* ---------- 跟随主题明暗切换 ---------- */
+    addEventListener('message', function (event) {
       if (event.source !== window || !event.data || event.data.id !== Theme.eventId || !artalk) {
         return;
       }
-      /* 四重过滤，确认这确实是"我们自己网站发出来的、且是主题的切换通知"：
-         ① 消息来源必须是本页面（挡掉别人的消息，避免被干扰）；
-         ② 消息里得有内容；
-         ③ 消息的编号要和主题约定的编号一致；
-         ④ 评论区必须已经建好了（还没建好就不用切了）。
-         任一条不满足就直接返回，不做任何处理。 */
-
       artalk.setDarkMode(Theme.isDark);
-      /* 通知评论区："现在该换成深色/浅色了"，让评论区跟网站保持一致的观感。 */
     });
 
-    /* 懒加载：滚动到评论区附近才开始请求资源 */
-    /* 懒加载是什么意思？就是"不到需要的时候不下载"。
-       访客如果只看文章、根本没往下翻到评论区，那就完全不下载评论相关文件，
-       省流量、页面也更快。 */
+    /* ---------- 懒加载 ---------- */
     const observer = new IntersectionObserver(
-      /* IntersectionObserver 是浏览器自带的一个"监视元素是否进入视野"的工具。 */
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          loadArtalk();
-          /* 一旦评论区进入或接近可视区域，才开始下载评论资源。 */
-          observer.disconnect();
-          /* 下载过就不再监视了，避免重复触发浪费性能。 */
-        }
+      function (entries) {
+        if (!entries[0].isIntersecting) { return; }
+        observer.disconnect();
+        armTimeout();
+        loadArtalk();
       },
       { threshold: [0] }
-      /* threshold: [0] 表示"刚碰到可见区域边缘就算进入"，
-         这样访客快滚到评论区时就能提前开始加载，体验更顺滑。 */
     );
-    observer.observe($container);
-    /* 开始监视前面创建的那个评论区盒子。 */
+    observer.observe($section);
   })();
-
 </script>
+
+  <style>
+    #artalk-comments-section {
+      margin-top: 2.5rem;
+      padding: 0 0.25rem;
+      padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+    .atk-seo-block { margin-bottom: 1rem; }
+    .atk-seo-title { font-size: 1.15rem; font-weight: 600; margin-bottom: 0.5rem; }
+    .atk-fallback {
+      padding: 1.6rem 1rem;
+      text-align: center;
+      font-size: 0.88rem;
+      line-height: 1.8;
+      color: var(--fg-color);
+      opacity: 0.65;
+      border: 1px dashed var(--border-color, rgba(128, 128, 128, 0.35));
+      border-radius: 0.6rem;
+    }
+    .atk-fallback i { font-size: 1.5rem; opacity: 0.5; margin-bottom: 0.5rem; display: block; }
+    .atk-fallback p { margin: 0; }
+    .atk-fallback a { color: var(--link-color, currentColor); text-decoration: underline; }
+
+    /* ---------- 移动端适配 ----------
+       Artalk 自带样式在窄屏上点击区域偏小，这里放大到 32px，
+       避免手机上一个操作点不准就点到别的按钮上。 */
+    @media screen and (max-width: 600px) {
+      #artalk-comments-section { margin-top: 1.75rem; }
+      #artalk-comments .atk-comment,
+      #artalk-comments .atk-comment-list { padding-left: 0; padding-right: 0; }
+      #artalk-comments .atk-avatar { width: 32px; height: 32px; }
+      #artalk-comments .atk-comment-actions button,
+      #artalk-comments .atk-action-btn { min-height: 32px; padding: 0 0.5rem; }
+      /* 昵称过长时截断，不换行把布局撑破 */
+      #artalk-comments .atk-comment-name {
+        max-width: 42vw;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      /* 输入框字号必须 ≥16px，否则 iOS Safari 聚焦时页面会被强制放大 */
+      #artalk-comments .atk-editor textarea,
+      #artalk-comments .atk-editor input { font-size: 16px; }
+      /* 深层回复的缩进在窄屏要收敛，否则内容被挤到没地方显示 */
+      #artalk-comments .atk-comment[data-nest='2'] { padding-left: 1.5rem; }
+      #artalk-comments .atk-comment[data-nest='3'] { padding-left: 2.5rem; }
+    }
+    /* ---------- 无障碍：键盘聚焦要有清晰轮廓（不要 outline: none）---------- */
+    #artalk-comments button:focus-visible,
+    #artalk-comments a:focus-visible,
+    #artalk-comments textarea:focus-visible {
+      outline: 2px solid var(--link-color, #4a90d9);
+      outline-offset: 2px;
+      border-radius: 3px;
+    }
+  </style>
 {%- endif -%}
