@@ -205,22 +205,16 @@
           {%- if _logo != '' -%}{%- assign _has_logo = true -%}{%- endif -%}
 
           {%- comment -%}
-            ---邮件 / RSS 同样先归一化 ---
-            ⚠️ 不要写 `L.email != ''`：L 里压根没有 email 字段时它的值是 nil，
-               而 `nil != ''` 在 Liquid 里为真 —— 会给每张卡片都渲染一个空邮件按钮。
-               所以统一 strip 后再判空。
+            ※ 卡片的邮件 / RSS 入口已于 2026-10-15 移除。
+              _data/links.yml 里的 email / rss 字段仍保留（管理台要用），
+              只是前台不再渲染 —— 不要再从 _has_email / _has_rss 把入口加回来。
           {%- endcomment -%}
-          {%- assign _email = L.email | default: '' | strip -%}
-          {%- assign _rss   = L.rss   | default: '' | strip -%}
-          {%- assign _has_email = false -%}
-          {%- if _email != '' -%}{%- assign _has_email = true -%}{%- endif -%}
-          {%- assign _has_rss = false -%}
-          {%- if _rss != '' -%}{%- assign _has_rss = true -%}{%- endif -%}
 
           {%- comment -%}
             ========== 卡片本体：<div>，不是 <a>（详见文件头铁律一）==========
-            邮件 / RSS 是卡片内部的并列链接，必须与卡片容器分开，
-            否则会构成 <a> 套 <a> 的非法嵌套，浏览器会把它们拆到卡片外。
+            卡片内含"站点名"这一个真链接，用 ::after 铺满整卡实现整卡可点。
+            容器必须是 <div>：万一以后要往卡片里加第二个链接，
+            <a> 套 <a> 是非法嵌套，浏览器会把内层链接拆到卡片外面。
           {%- endcomment -%}
           <div class="fl-card"
                data-name="{{ L.name | escape }}"
@@ -254,38 +248,13 @@
                 <span class="fl-desc">{{ L.description | strip_html | escape }}</span>
               {%- endif -%}
 
-              {%- if _tags.size > 0 or _has_email or _has_rss -%}
+              {%- if _tags.size > 0 -%}
                 <span class="fl-foot">
-                  {%- if _tags.size > 0 -%}
-                    <span class="fl-tags">
-                      {%- for tg in _tags -%}
-                        <span class="fl-tag">{{ tg | escape }}</span>
-                      {%- endfor -%}
-                    </span>
-                  {%- endif -%}
-
-                  {%- comment -%}
-                    邮件 / RSS：卡片内的独立入口。
-                    这两个之前是被甩到卡片外面的（见铁律一），现在回到卡片里，
-                    与标签同一行排布；.fl-acts 用 z-index 压在铺底链接之上，
-                    保证点它们不会误触发「打开站点」。
-                  {%- endcomment -%}
-                  {%- if _has_email -%}
-                    <span class="fl-acts">
-                      <a class="fl-ico" href="mailto:{{ _email | escape }}" title="邮件联系：{{ _email | escape }}">
-                        <i class="fas fa-envelope" aria-hidden="true"></i>
-                        <span class="visually-hidden">邮件联系 {{ L.name | escape }}</span>
-                      </a>
-                    </span>
-                  {%- endif -%}
-                  {%- if _has_rss -%}
-                    <span class="fl-acts">
-                      <a class="fl-ico" href="{{ _rss | escape }}" title="RSS 订阅：{{ L.name | escape }}" target="_blank" rel="noopener noreferrer">
-                        <i class="fas fa-rss" aria-hidden="true"></i>
-                        <span class="visually-hidden">RSS 订阅 {{ L.name | escape }}</span>
-                      </a>
-                    </span>
-                  {%- endif -%}
+                  <span class="fl-tags">
+                    {%- for tg in _tags -%}
+                      <span class="fl-tag">{{ tg | escape }}</span>
+                    {%- endfor -%}
+                  </span>
                 </span>
               {%- endif -%}
             </span>

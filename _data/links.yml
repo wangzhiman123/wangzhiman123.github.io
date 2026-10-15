@@ -128,7 +128,7 @@ links:
     url: "https://blog.msglbo.cn"
     description: 只有坏掉的东西才会停下来
     logo: "https://q1.qlogo.cn/g?b=qq&nk=24130801&s=100"
-    email: "24130801@qq.com"
+    email: ""
     rss: ""
     tags:
       - 好朋友
@@ -153,7 +153,7 @@ links:
     description: 记录生活，晒娃做菜、午饭和远方
     logo: "https://avatars.githubusercontent.com/u/204972114"
     email: ""
-    rss: "https://jiangcl.com/feed"
+    rss: ""
     tags:
       - 好朋友
     order: 62
@@ -164,8 +164,8 @@ links:
     url: "https://xingbianren.cn/"
     description: 记录生活、居住美好，喜欢诗和远方
     logo: "https://xingbianren.cn/zb_users/upload/2023/05/202305231684818664504571.png"
-    email: "liuchen8916@foxmail.com"
-    rss: "https://xingbianren.cn/feed.php"
+    email: ""
+    rss: ""
     tags:
       - 好朋友
     order: 63

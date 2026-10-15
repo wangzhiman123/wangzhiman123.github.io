@@ -51,25 +51,28 @@ order: 4
 - 预约咨询：请发邮件或扫描下方律师个人微信二维码
 
 ![微信二维码](/assets/2026-09-29-wx.jpg)
-
 {: w="150" h="150" }
 
 ### 品牌矩阵
 
 - 个人网站：[王志满律师网 www.2019527.xyz](https://2019527.xyz)
-- 微信公众号：[王志满律师,公众号ID:www2019527xyz](https://mp.weixin.qq.com/s/60l8EQT2kyGSKww-yNw06A)
-- 小红书：[王志满律师，小红书号：3838565289](https://xhslink.cn/o/4cNvEm7Bclh)
+- 微信公众号：[王志满律师（公众号 ID：www2019527xyz）](https://mp.weixin.qq.com/s/60l8EQT2kyGSKww-yNw06A)
+- 小红书：[王志满律师（小红书号：3838565289）](https://xhslink.cn/o/4cNvEm7Bclh)
 - 知乎：[王志满律师](https://www.zhihu.com/people/pxpiloveu)
 - 哔哩哔哩：[王志满律师](https://space.bilibili.com/35768392)
 
-> 本网站文章仅为一般性法律信息分享，不构成正式法律意见。
-
-> 具体案件的处理需结合个案事实与证据判断，如您遇到法律问题，
-
-> 请携带相关材料咨询执业律师。本网站内容不代表执业机构立场。
-
+> 本网站文章仅为一般性法律信息分享，不构成正式法律意见。具体案件的处理需结合个案事实与证据判断，如您遇到法律问题，请携带相关材料咨询执业律师。本网站内容不代表执业机构立场。
 {: .prompt-tip }
 
-## 友情链接
+{%- comment -%}
+  【分隔设计】关于页正文到此结束。下面用一个独立容器包住友链板块，
+  配合 friend-links.css 里的 .about-fl-wrap 样式，把「个人简介」和
+  「友情链接」两个板块在视觉上明显分开（留白 + 虚线分隔线），
+  避免看起来像连在一起的一页。
+{%- endcomment -%}
+
+<div class="about-fl-wrap">
 
 {% include friend-links.html show_apply=false %}
+
+</div>

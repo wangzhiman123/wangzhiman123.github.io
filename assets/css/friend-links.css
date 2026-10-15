@@ -26,6 +26,29 @@
   margin-top: 1.75rem;
 }
 
+/* ----------------------------------------------------------------------------
+   「关于」页内嵌的友情链接板块（_tabs/about.md 用 .about-fl-wrap 包裹）
+   作用：与上方「个人简介」正文拉开明显距离，并加一条浅色虚线分隔，
+   让两个独立板块在视觉上清晰分开，而不是连成一页。
+   颜色仍走主题变量，深浅色模式自动适配。
+---------------------------------------------------------------------------- */
+.about-fl-wrap {
+  position: relative;
+  margin-top: 3.5rem;   /* 与上方正文拉开大段留白 */
+  padding-top: 2rem;    /* 分隔线与板块标题之间留出呼吸空间 */
+}
+
+/* 浅色虚线分隔线：用 ::before 画，不影响内部文字透明度 */
+.about-fl-wrap::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed var(--fg-color);
+  opacity: 0.3;
+}
+
 /* 标题区：文字在左、搜索框在右；窄屏自动换行堆叠 */
 .fl-head {
   display: flex;
