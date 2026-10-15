@@ -10,11 +10,10 @@
    ① 一切颜色都用 Chirpy 的 CSS 变量（--fg-color / --bg-color / --alt-bg-color），
       浅色深色模式自动跟随，不要写死 #fff / #000 做背景。
    ② 图标是 <span> 不是 <img>。Chirpy v7.6 会在构建时把页面里的 <img>
-      自动包成 <a class="popup img-link shimmer">，而我们的卡片本身是 <a>，
-      套在一起就是非法嵌套，浏览器会把布局拆乱（Logo 变灰块、文字跑出卡片）。
-      所以这里绝对不要再出现 .fl-logo img 或针对 img 的规则。
-   ③ shimmer 的骨架屏会让失败的图片「一直加载中」。图标改用 background-image
-      后，加载失败就露出下面的 background-color（首字色块），永远不会卡住。
+      自动包成 <a class="popup img-link shimmer">，造成非法嵌套与骨架屏卡死。
+   ③ 卡片本体是 <div> 不是 <a>。卡片内要放邮件 / RSS 两个独立链接，
+      <a> 套 <a> 是非法嵌套，浏览器会把内层链接拆到卡片外面去。
+      整卡可点靠 .fl-card-link::after 铺满实现，不要"图方便"改回 <a>。
 
    【想改哪里？】
      · 卡片圆角/内边距 → .fl-card
@@ -142,7 +141,12 @@
 }
 
 /* --------------------------------- 卡片本体 ------------------------------- */
+/* ⚠️ 卡片是 <div> 不是 <a>：内部要放邮件 / RSS 两个独立链接，
+   <a> 套 <a> 是非法嵌套，浏览器会把内层链接拆到卡片外面去。
+   「整卡可点」由 .fl-card-link 的 ::after 伪元素铺满实现（stretched link），
+   语义上仍然是真正的 <a>，键盘 Tab 与右键新窗口都正常。 */
 .fl-card {
+  position: relative;          /* 铺底链接的定位上下文，缺它 ::after 会跑飞 */
   display: flex;
   align-items: flex-start;
   gap: 0.8rem;
@@ -157,16 +161,31 @@
 }
 
 .fl-card:hover,
-.fl-card:focus-visible {
+.fl-card:focus-within {
   transform: translateY(-2px);
   border-color: rgba(128, 128, 128, 0.42);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.14);
   color: var(--fg-color);
 }
 
-.fl-card:focus-visible {
+/* 铺满整卡的透明点击层。z-index 0，处于卡片内容之下，
+   所以不会挡住下面 z-index:1 的邮件 / RSS 按钮。 */
+.fl-card-link {
+  color: inherit;
+  text-decoration: none;
+}
+.fl-card-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;                 /* 四边贴齐卡片内边距盒，即整张卡片 */
+  z-index: 0;
+  border-radius: inherit;
+}
+/* 键盘焦点圈画在铺底链接上（画在卡片上会因为伪元素而错位） */
+.fl-card-link:focus-visible {
   outline: 2px solid var(--link-color, currentColor);
-  outline-offset: 2px;
+  outline-offset: 3px;
+  border-radius: 4px;
 }
 
 /* 被搜索隐藏的卡片。JS 设置 hidden 属性，这里兜底一下，
@@ -174,10 +193,11 @@
 .fl-card[hidden] { display: none !important; }
 
 /* --------------------------------- Logo 区 ------------------------------- */
-/* 注意：这是 <span>，不是 <img>。背景色 = 首字色块（永远可见），
-   背景图 = 站点 Logo（加载成功则盖住色块）。
-   图片加载失败时浏览器只是不画背景图，色块自然透出来 —— 无需 JS 兜底，
-   也就不存在「一直加载中」的状态。 */
+/* 注意：这是 <span>，不是 <img>。两种状态互斥，绝不同时出现文字与图片：
+     .fl-logo        纯文字（无自定义图标时的默认态）
+     .fl-logo--img   纯图片（配了自定义图标时的状态，内部无文字）
+   background-color 是两种状态共有的底色：图片是 PNG/SVG 且加载失败时，
+   底色透出来表现为一个纯色方块，绝不会是空白或骨架屏。 */
 .fl-logo {
   flex: 0 0 auto;
   display: flex;
@@ -188,7 +208,6 @@
   border-radius: 11px;
   background-repeat: no-repeat;
   background-position: center;
-  background-size: 76%;      /* Logo 比底色块略小一点，留一圈白边更好看 */
   color: #fff;
   font-weight: 700;
   font-size: 1.2rem;
@@ -196,6 +215,11 @@
   user-select: none;
   overflow: hidden;
   /* 不写 border：加了边框在深色模式下会显得卡片内部多一条线 */
+}
+
+/* 自定义图标态：只画图，没有文字。图片略小于底色块，留一圈边更好看。 */
+.fl-logo--img {
+  background-size: 76%;
 }
 
 /* --------------------------------- 文字区 -------------------------------- */
@@ -212,6 +236,12 @@
   font-size: 0.98rem;
   line-height: 1.35;
   color: var(--fg-color);
+}
+/* 悬停整卡时把标题染成主题色，提示「这一整块可点」。
+   颜色写在 .fl-name 上而不是 <a> 上，避免主题默认的链接下划线爬到标题上。 */
+.fl-card:hover .fl-name,
+.fl-card:focus-within .fl-name {
+  color: var(--link-color, var(--fg-color));
 }
 
 /* 描述：最多两行，超出省略。用 -webkit-line-clamp 是因为它在
@@ -251,17 +281,37 @@
   background-color: rgba(128, 128, 128, 0.13);
   white-space: nowrap;
 }
-/* 邮箱 / RSS 小图标 */
+/* 邮件 / RSS 小图标：卡片内的独立入口。
+   .fl-acts 是一层包装，作用是统一 z-index，把它们压在「铺满整卡的
+   .fl-card-link::after」之上 —— 否则点邮件按钮会被卡片主链接截走。 */
+.fl-acts {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.15rem;
+  position: relative;
+  z-index: 1;              /* > .fl-card-link::after 的 0，保证可点击 */
+}
 .fl-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 6px;
   font-size: 0.8rem;
   opacity: 0.6;
   text-decoration: none;
-  transition: opacity 0.16s ease, color 0.16s ease;
+  transition: opacity 0.16s ease, color 0.16s ease, background-color 0.16s ease;
 }
 .fl-ico:hover,
 .fl-ico:focus-visible {
   opacity: 1;
   color: var(--link-color, var(--fg-color));
+  background-color: rgba(128, 128, 128, 0.16);
+}
+.fl-ico:focus-visible {
+  outline: 2px solid var(--link-color, currentColor);
+  outline-offset: 1px;
 }
 
 /* ------------------------------- 空态 / 无结果 ---------------------------- */
@@ -293,9 +343,15 @@
     transition: none !important;
   }
   .fl-card:hover,
-  .fl-card:focus-visible {
+  .fl-card:focus-within {
     transform: none;
   }
+}
+
+/* 触屏设备没有 hover：把邮件 / RSS 的默认透明度提上来，
+   否则在手机上它们会一直停在 0.6 的"灰掉"状态，看着像不可点。 */
+@media (hover: none) {
+  .fl-ico { opacity: 0.85; }
 }
 
 /* 窄屏微调：手机上卡片内边距略收一点，让内容更宽松 */
@@ -310,7 +366,7 @@
    「友链格式」卡片（评论申请模式）
    ----------------------------------------------------------------------------
    版式参考常见友链页：一张深色卡片，内含
-     ① 顶部标题行（友链格式 + 右侧 Apply Guide 链接）
+     ① 顶部标题行（友链格式 + 右侧「参考示例」链接）
      ② 本站名片（自己的 Logo + 名称 + 简介）
      ③ 四宫格信息格（网址 / 邮箱 / 头像 / 友链页）
      ④ 两条提示格（收录偏好 / 图标说明）

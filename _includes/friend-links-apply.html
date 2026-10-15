@@ -155,13 +155,22 @@
       <div class="fl-guide">
         <div class="fl-guide-head">
           <h4 class="fl-guide-title">友链格式</h4>
-          <a class="fl-guide-link" href="{{ _ap.anchor_url | default: '/links/' }}">Apply Guide</a>
+          <a class="fl-guide-link" href="{{ _ap.anchor_url | default: '/links/' }}">参考示例</a>
         </div>
 
-        {%- comment -%} 本站名片（你自己的站点信息，读者照着填） {%- endcomment -%}
+        {%- comment -%}
+          本站名片（你自己的站点信息，读者照着填）。
+          没有站点名就不渲染名片，只显示下面的四宫格信息。
+        {%- endcomment -%}
         {%- if _me_name != '' -%}
+        {%- comment -%}
+          名片图标：与友链列表卡片完全同一套规则（详见 friend-links.html 铁律二）。
+          有自定义 logo → 只画图、不输出首字；没有 → 只输出首字。
+          两层同时出现会导致 PNG 透明处透出文字，图标和字重影。
+        {%- endcomment -%}
+        {%- if _me_logo != '' -%}
         <div class="fl-card-sample">
-          <span class="fl-logo" style="background-color:{{ _me_color | escape }};{% if _me_logo != '' %}background-image:url('{{ _me_logo | escape }}');{% endif %}" aria-hidden="true">{{ _me_name | slice: 0 | escape }}</span>
+          <span class="fl-logo fl-logo--img" style="background-color:{{ _me_color | escape }};background-image:url('{{ _me_logo | escape }}');" aria-hidden="true"></span>
           <span class="fl-card-sample-body">
             <span class="fl-card-sample-name">{{ _me_name | escape }}</span>
             {%- if _me_desc != '' -%}
@@ -169,6 +178,18 @@
             {%- endif -%}
           </span>
         </div>
+        {%- else -%}
+        {%- comment -%} 无自定义 logo：纯首字图标 {%- endcomment -%}
+        <div class="fl-card-sample">
+          <span class="fl-logo" style="background-color:{{ _me_color | escape }};" aria-hidden="true">{{ _me_name | slice: 0 | escape }}</span>
+          <span class="fl-card-sample-body">
+            <span class="fl-card-sample-name">{{ _me_name | escape }}</span>
+            {%- if _me_desc != '' -%}
+              <span class="fl-card-sample-desc">{{ _me_desc | escape }}</span>
+            {%- endif -%}
+          </span>
+        </div>
+        {%- endif -%}
         {%- endif -%}
 
         <div class="fl-info-grid">

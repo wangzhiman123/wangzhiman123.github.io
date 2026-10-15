@@ -9,19 +9,44 @@
   · 渲染方式：构建时由 Liquid 静态生成 HTML，前端零请求、零闪烁
 
   ============================================================================
-  ⚠️ 【为什么图标不用 <img> 而用 <span> + 背景图？——踩过的坑，别改回去】
+  ⚠️【铁律一：卡片本体必须是 <div>，绝不能是 <a>】——踩过的坑，别改回去
+  ----------------------------------------------------------------------------
+  早期版本把整张卡片写成 <a class="fl-card">，又在卡片内部放
+  <a class="fl-ico">（邮件联系 / RSS 订阅）。
+  这是 **非法的 <a> 套 <a> 嵌套**：HTML 解析器遇到内层 <a> 就会把外层
+  <a> 提前闭合，于是邮件/RSS 按钮被甩到卡片外面，变成散落在网格里的
+  孤立小条目（而且它们离自己的卡片很远，读者根本不知道是谁的按钮）。
+
+  现在的做法（标准的「stretched link」模式）：
+    · 外层 <div class="fl-card">            —— 只负责排版，不是链接
+    · 卡片名称包一层真链接 <a class="fl-card-link">，
+      用 ::after伪元素铺满整张卡片          —— 整卡可点，语义仍是真链接
+    · 邮件 / RSS 是卡片内的并列 <a>，z-index 高于铺底链接 —— 各自可点
+  这样 DOM 合法、三者都可点、键盘 Tab 顺序也正确。
+
+  ============================================================================
+  ⚠️【铁律二：图标有自定义 logo 时绝不输出首字文字】——别改回去
+  ----------------------------------------------------------------------------
+  <span class="fl-logo"> 里的文字和 background-image 是同一个元素的两层。
+  如果「配了 logo 也照样输出首字」，那么：
+    · PNG/SVG 图标带透明背景时 → 首字从透明处透出来，文字和图标**叠在一起**；
+    · 图标加载失败时 → 文字出现（这本来是我们想要的兜底）；
+  两个目标混在一起，结果就是「图标与文字重复显示」。
+  所以这里用 if/else 二选一：
+    有 logo → 只输出背景图，一个字都不输出；
+    无 logo → 只输出首字文字，不输出 background-image。
+  加载失败时的兜底仍靠 background-color 兜住（不会是空白）。
+
+  ============================================================================
+  ⚠️【铁律三：图标不用 <img>，用 <span> + 背景图】
   ----------------------------------------------------------------------------
   1. jekyll-theme-chirpy v7.6 会在构建时自动把页面里的 <img> 包装成
-     <a class="popup img-link shimmer">…</a>。而我们的每张卡片本身就是一个
-     <a class="fl-card">，于是变成 <a> 套 <a> —— 这是非法嵌套，
-     浏览器解析时会把结构拆乱，表现为 Logo 变成大灰块、简介文字跑到卡片外面。
+     <a class="popup img-link shimmer">…</a>，与卡片布局打架。
   2. shimmer 的 CSS 会给图片设宽高并加骨架屏动画，直接覆盖 .fl-logo 的尺寸。
   3. 图片加载失败时 shimmer 会一直停在骨架屏动画状态 —— 就是"永远加载中"。
 
   所以：图标一律用 <span class="fl-logo" style="background-image:url(…)">
   纯 CSS 背景图实现。主题不碰 <span>，上面三个问题同时消失。
-  兜底的首字色块是同一个元素的 background-color，颜色写在 style 里，
-  所以图片没加载出来时你看到的永远是首字色块，绝不会是空白或骨架屏。
 
   ============================================================================
   【怎么调用（可选参数）】
@@ -171,28 +196,65 @@
           {%- comment -%} --- 标签（可选）--- {%- endcomment -%}
           {%- assign _tags = L.tags | default: empty -%}
 
-          <a class="fl-card"
-             href="{{ L.url | escape }}"
-             title="{{ L.name | escape }}{% if L.description %} — {{ L.description | strip_html | escape }}{% endif %}"
-             data-name="{{ L.name | escape }}"
-             data-desc="{{ L.description | strip_html | escape }}"
-             {%- if FL_NEWTAB %} target="_blank" rel="noopener noreferrer nofollow"{% endif %}>
+          {%- comment -%}--- 自定义图标：先归一化，判断是否真的配了 --- {%- endcomment -%}
+          {%- assign _logo = L.logo | default: '' | strip -%}
+          {%- if _logo == '' or _logo == 'null' or _logo == 'false' -%}
+            {%- assign _logo = '' -%}
+          {%- endif -%}
+          {%- assign _has_logo = false -%}
+          {%- if _logo != '' -%}{%- assign _has_logo = true -%}{%- endif -%}
+
+          {%- comment -%}
+            ---邮件 / RSS 同样先归一化 ---
+            ⚠️ 不要写 `L.email != ''`：L 里压根没有 email 字段时它的值是 nil，
+               而 `nil != ''` 在 Liquid 里为真 —— 会给每张卡片都渲染一个空邮件按钮。
+               所以统一 strip 后再判空。
+          {%- endcomment -%}
+          {%- assign _email = L.email | default: '' | strip -%}
+          {%- assign _rss   = L.rss   | default: '' | strip -%}
+          {%- assign _has_email = false -%}
+          {%- if _email != '' -%}{%- assign _has_email = true -%}{%- endif -%}
+          {%- assign _has_rss = false -%}
+          {%- if _rss != '' -%}{%- assign _has_rss = true -%}{%- endif -%}
+
+          {%- comment -%}
+            ========== 卡片本体：<div>，不是 <a>（详见文件头铁律一）==========
+            邮件 / RSS 是卡片内部的并列链接，必须与卡片容器分开，
+            否则会构成 <a> 套 <a> 的非法嵌套，浏览器会把它们拆到卡片外。
+          {%- endcomment -%}
+          <div class="fl-card"
+               data-name="{{ L.name | escape }}"
+               data-desc="{{ L.description | strip_html | escape }}"
+               data-href="{{ L.url | escape }}">
 
             {%- comment -%}
-              图标：<span> + background-image，不用 <img>。
-              主题的 shimmer 包装与骨架屏因此完全不会作用到它。
-              背景色（首字色块）与背景图（站点 Logo）写在同一个元素上：
-              图片加载成功则盖住色块，失败则色块透出来 —— 天然兜底，无需 JS。
+              图标：<span> + background-image，不用 <img>（铁律三）。
+              ★ 二选一，绝不同时输出（铁律二）：
+                有自定义 logo → 加 .fl-logo--img，只画背景图，不输出首字；
+                没有          → 保留 .fl-logo，只画首字，不输出 background-image。
             {%- endcomment -%}
-            <span class="fl-logo" style="background-color:{{ _bg }};{% if L.logo and L.logo != '' %}background-image:url('{{ L.logo | escape }}');{% endif %}" aria-hidden="true">{{ _ch | escape }}</span>
+            {%- if _has_logo -%}
+              <span class="fl-logo fl-logo--img" style="background-color:{{ _bg }};background-image:url('{{ _logo | escape }}');" aria-hidden="true"></span>
+            {%- else -%}
+              <span class="fl-logo" style="background-color:{{ _bg }};" aria-hidden="true">{{ _ch | escape }}</span>
+            {%- endif -%}
 
             <span class="fl-body">
-              <span class="fl-name">{{ L.name | escape }}</span>
+              {%- comment -%}
+                名称包在真链接里，::after 铺满整卡 → 整卡可点。
+                链接与标题文字分离：hover 时给 .fl-name 上色，而不是给 <a> 上色，
+                这样站点主题的默认链接下划线不会爬到标题上。
+              {%- endcomment -%}
+              <span class="fl-name">
+                <a class="fl-card-link" href="{{ L.url | escape }}"
+                   title="{{ L.name | escape }}{% if L.description %} — {{ L.description | strip_html | escape }}{% endif %}"
+                   {%- if FL_NEWTAB %} target="_blank" rel="noopener noreferrer nofollow"{% endif %}>{{ L.name | escape }}</a>
+              </span>
               {%- if L.description and L.description != '' -%}
                 <span class="fl-desc">{{ L.description | strip_html | escape }}</span>
               {%- endif -%}
 
-              {%- if _tags.size > 0 or L.email != '' or L.rss != '' -%}
+              {%- if _tags.size > 0 or _has_email or _has_rss -%}
                 <span class="fl-foot">
                   {%- if _tags.size > 0 -%}
                     <span class="fl-tags">
@@ -201,22 +263,33 @@
                       {%- endfor -%}
                     </span>
                   {%- endif -%}
-                  {%- if L.email and L.email != '' -%}
-                    <a class="fl-ico" href="mailto:{{ L.email | escape }}" title="发送邮件：{{ L.email | escape }}">
-                      <i class="fas fa-envelope" aria-hidden="true"></i>
-                      <span class="visually-hidden">邮件联系</span>
-                    </a>
+
+                  {%- comment -%}
+                    邮件 / RSS：卡片内的独立入口。
+                    这两个之前是被甩到卡片外面的（见铁律一），现在回到卡片里，
+                    与标签同一行排布；.fl-acts 用 z-index 压在铺底链接之上，
+                    保证点它们不会误触发「打开站点」。
+                  {%- endcomment -%}
+                  {%- if _has_email -%}
+                    <span class="fl-acts">
+                      <a class="fl-ico" href="mailto:{{ _email | escape }}" title="邮件联系：{{ _email | escape }}">
+                        <i class="fas fa-envelope" aria-hidden="true"></i>
+                        <span class="visually-hidden">邮件联系 {{ L.name | escape }}</span>
+                      </a>
+                    </span>
                   {%- endif -%}
-                  {%- if L.rss and L.rss != '' -%}
-                    <a class="fl-ico" href="{{ L.rss | escape }}" title="RSS 订阅" target="_blank" rel="noopener noreferrer">
-                      <i class="fas fa-rss" aria-hidden="true"></i>
-                      <span class="visually-hidden">RSS 订阅</span>
-                    </a>
+                  {%- if _has_rss -%}
+                    <span class="fl-acts">
+                      <a class="fl-ico" href="{{ _rss | escape }}" title="RSS 订阅：{{ L.name | escape }}" target="_blank" rel="noopener noreferrer">
+                        <i class="fas fa-rss" aria-hidden="true"></i>
+                        <span class="visually-hidden">RSS 订阅 {{ L.name | escape }}</span>
+                      </a>
+                    </span>
                   {%- endif -%}
                 </span>
               {%- endif -%}
             </span>
-          </a>
+          </div>
         {%- endfor -%}
       </div>
 
