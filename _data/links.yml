@@ -82,3 +82,13 @@ links:
     rss: ""
     order: 60
     active: true
+
+  # ---------- 「鲁鲁和非人类」----------
+  - name: 鲁鲁和非人类
+    url: "https://www.myhelen.cn/"
+    description: ""
+    logo: ""
+    email: ""
+    rss: ""
+    order: 61
+    active: true
