@@ -201,8 +201,43 @@
           {%- if _logo == '' or _logo == 'null' or _logo == 'false' -%}
             {%- assign _logo = '' -%}
           {%- endif -%}
+
+          {%- comment -%}
+            ★ 路径归一化（2026-10-15 修）：站内相对路径必须补上开头的 "/"。
+            原因：友链页地址是 /links/，若 logo 写 "assets/x.png"（无前导斜杠），
+            浏览器会按当前目录拼成 /links/assets/x.png → 404 → 图标裂成色块。
+            只处理「站内相对路径」，下面几种一律原样放行：
+              · 完整网址（http:// 或 https:// 开头）
+              · 协议相对网址（//cdn.example.com/x.png）
+              · 内联数据（data:image/...）
+              · 根路径（本身就是 / 开头，无需处理）
+          {%- endcomment -%}
+          {%- assign _logo_lc = _logo | downcase -%}
+          {%- if _logo != '' -%}
+            {%- assign _is_abs = false -%}
+            {%- if _logo_lc contains '://' or _logo_lc contains 'data:' or _logo contains '//' -%}
+              {%- assign _is_abs = true -%}
+            {%- endif -%}
+            {%- assign _first_ch = _logo | slice: 0 -%}
+            {%- if _first_ch == '/' -%}{%- assign _is_abs = true -%}{%- endif -%}
+            {%- unless _is_abs -%}
+              {%- assign _logo = '/' | append: _logo -%}
+            {%- endunless -%}
+          {%- endif -%}
+
           {%- assign _has_logo = false -%}
           {%- if _logo != '' -%}{%- assign _has_logo = true -%}{%- endif -%}
+
+          {%- comment -%}
+            ★ 背景色兜底：color 必须是合法的 #RRGGBB（7 位）。
+            写错（如多打两位 alpha 变成 #3b6ea500）浏览器不认，会回退成默认色块 ——
+            就算 logo 图正常，视觉上也像坏了。
+            注意：_bg 在上面已由调色板赋过值，这里**只在合法时才覆盖**，
+            不合法就保留调色板自动分配的颜色，绝不能清空（否则连兜底色都没了）。          {%- endcomment -%}
+          {%- assign _c = L.color | default: '' | strip -%}
+          {%- if _c.size == 7 and _c contains '#' -%}
+            {%- assign _bg = _c -%}
+          {%- endif -%}
 
           {%- comment -%}
             ※ 卡片的邮件 / RSS 入口已于 2026-10-15 移除。
