@@ -304,38 +304,11 @@
   background-color: rgba(128, 128, 128, 0.13);
   white-space: nowrap;
 }
-/* 邮件 / RSS 小图标：卡片内的独立入口。
-   .fl-acts 是一层包装，作用是统一 z-index，把它们压在「铺满整卡的
-   .fl-card-link::after」之上 —— 否则点邮件按钮会被卡片主链接截走。 */
-.fl-acts {
-  display: inline-flex;
-  align-items: center;
-  margin-left: 0.15rem;
-  position: relative;
-  z-index: 1;              /* > .fl-card-link::after 的 0，保证可点击 */
-}
-.fl-ico {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.6rem;
-  height: 1.6rem;
-  border-radius: 6px;
-  font-size: 0.8rem;
-  opacity: 0.6;
-  text-decoration: none;
-  transition: opacity 0.16s ease, color 0.16s ease, background-color 0.16s ease;
-}
-.fl-ico:hover,
-.fl-ico:focus-visible {
-  opacity: 1;
-  color: var(--link-color, var(--fg-color));
-  background-color: rgba(128, 128, 128, 0.16);
-}
-.fl-ico:focus-visible {
-  outline: 2px solid var(--link-color, currentColor);
-  outline-offset: 1px;
-}
+
+/* ★ 2026-10-15：卡片的「邮件联系 / RSS 订阅」入口已移除，
+   .fl-acts / .fl-ico 两条样式随之删除（避免残留死代码）。
+   若日后要加回第二个卡片内链接，记得同时补回 .fl-acts{z-index:1}，
+   否则新链接会被 .fl-card-link::after 的铺底点击层盖住，点了没反应。 */
 
 /* ------------------------------- 空态 / 无结果 ---------------------------- */
 .fl-empty {
@@ -361,20 +334,13 @@
    参考站那种骨架屏 shimmer 动画本项目完全没有，这里保持一致。 */
 @media (prefers-reduced-motion: reduce) {
   .fl-card,
-  .fl-search input,
-  .fl-ico {
+  .fl-search input {
     transition: none !important;
   }
   .fl-card:hover,
   .fl-card:focus-within {
     transform: none;
   }
-}
-
-/* 触屏设备没有 hover：把邮件 / RSS 的默认透明度提上来，
-   否则在手机上它们会一直停在 0.6 的"灰掉"状态，看着像不可点。 */
-@media (hover: none) {
-  .fl-ico { opacity: 0.85; }
 }
 
 /* 窄屏微调：手机上卡片内边距略收一点，让内容更宽松 */
