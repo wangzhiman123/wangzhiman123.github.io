@@ -20,5 +20,10 @@
 {%- assign _c = site.data.links -%}
 {%- if _c.enabled != false and _c.links -%}
   {%- comment -%} 先判断：有数据才挂载，避免侧边栏出现一个空面板。 {%- endcomment -%}
-  {% include friend-links.html max=4 icon=false heading=false title=_c.title show_apply=false layout="list" %}
+  {%- comment -%}
+    search=false —— 侧边栏太窄，不显示搜索框（也省掉那段内联脚本）
+    max=4       —— 侧边栏只放 4 条，完整列表去 /links/ 页
+    layout=list —— 窄栏用紧凑列表式，比卡片式更省横向空间
+  {%- endcomment -%}
+  {% include friend-links.html max=4 icon=false heading=false title=_c.title show_apply=false layout="list" search=false %}
 {%- endif -%}

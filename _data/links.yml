@@ -15,9 +15,13 @@
 enabled: true
 title: 友情链接
 subtitle: 与优秀的站点互相学习、彼此引流
+desc: >-
+  欢迎交换友情链接：只收录稳定更新、内容原创、无恶意广告的站点。
+  页面会同时展示本站维护的友链，以及另一些站同同步过来的朋友们。
 new_tab: true
 layout: card
 max: 0
+search: true
 show_apply: true
 
 # ---------- 读者自助申请区 ----------
@@ -41,36 +45,40 @@ links:
   - name: 人民法院在线服务网
     url: "https://zxfw.court.gov.cn"
     description: 人民法院在线服务是最高人民法院推出的电子诉讼平台，集成调解、立案、阅卷、送达、保全、鉴定等全国通用诉讼服务功能。
-    logo: "https://www.google.com/s2/favicons?domain=gov.cn&sz=64"
     email: ""
     rss: ""
+    tags:
+      - 官方
     order: 1
     active: true
 
   - name: 中国裁判文书网
     url: "https://wenshu.court.gov.cn"
     description: 人民法院出版社主办，查询全国法院生效裁判文书的官方平台
-    logo: "https://www.google.com/s2/favicons?domain=court.gov.cn&sz=64"
     email: ""
     rss: ""
+    tags:
+      - 官方
     order: 2
     active: true
 
   - name: 国家法律法规数据库
     url: "https://flk.npc.gov.cn"
     description: 全国人大常务委员会办公厅主办，法律、行政法规、司法解释权威文本
-    logo: "https://www.google.com/s2/favicons?domain=npc.gov.cn&sz=64"
     email: ""
     rss: ""
+    tags:
+      - 官方
     order: 3
     active: true
 
   - name: GitHub
     url: "https://github.com"
     description: 全球最大的代码托管平台，也是本站源码的存放处
-    logo: "https://www.google.com/s2/favicons?domain=github.com&sz=64"
     email: ""
     rss: ""
+    tags:
+      - 源码
     order: 4
     active: true
 
@@ -80,15 +88,43 @@ links:
     logo: ""
     email: ""
     rss: ""
+    tags:
+      - 好朋友
     order: 60
     active: true
 
   # ---------- 「鲁鲁和非人类」----------
   - name: 鲁鲁和非人类
     url: "https://www.myhelen.cn/"
-    description: ""
+    description: 个人博客，小说、开荒、AI、人工智能、乱语、免费分享
     logo: ""
     email: ""
     rss: ""
+    tags:
+      - 好朋友
     order: 61
+    active: true
+
+  # ---------- 「蒙需」----------
+  - name: 蒙需
+    url: "https://jiangcl.com/"
+    description: 记录生活，晒娃做菜、午饭和远方
+    logo: ""
+    email: ""
+    rss: ""
+    tags:
+      - 好朋友
+    order: 62
+    active: true
+
+  # ---------- 「刑辩人在路上」----------
+  - name: 刑辩人在路上
+    url: "https://xingbianren.cn/"
+    description: 记录生活、居住美好，喜欢诗和远方
+    logo: ""
+    email: ""
+    rss: ""
+    tags:
+      - 好朋友
+    order: 63
     active: true

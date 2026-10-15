@@ -200,12 +200,14 @@ textarea{min-height:150px;font-family:Consolas,"Courier New",monospace;font-size
         <input type="text" id="g_url" placeholder="https://example.com"></label>
       <label class="field"><span>站点简介</span>
         <input type="text" id="g_desc" placeholder="一句话介绍你的站点"></label>
-      <label class="field"><span>头像地址（留空 = 自动首字图标）</span>
-        <input type="text" id="g_logo" placeholder="https://example.com/logo.png"></label>
+      <label class="field"><span>头像地址（留空 = 自动首字图标，推荐）</span>
+        <input type="text" id="g_logo" placeholder="留空即可；如填请用自己的图床，勿用 Google favicon"></label>
       <label class="field"><span>联系邮箱</span>
         <input type="email" id="g_email" placeholder="you@example.com"></label>
       <label class="field"><span>RSS 订阅地址</span>
         <input type="text" id="g_rss" placeholder="https://example.com/feed.xml"></label>
+      <label class="field"><span>标签（逗号分隔，显示在卡片底部）</span>
+        <input type="text" id="g_tags" placeholder="好朋友, 官方"></label>
       <label class="field"><span>排序权重（数字小的靠前）</span>
         <input type="number" id="g_order" min="0" step="1" value="100"></label>
     </div>
@@ -233,7 +235,7 @@ textarea{min-height:150px;font-family:Consolas,"Courier New",monospace;font-size
         <thead><tr>
           <th style="width:50px">Logo</th><th style="width:20%">站点名称 *</th>
           <th style="width:24%">站点描述</th><th style="width:18%">跳转 URL *</th>
-          <th style="width:11%">Email</th><th style="width:62px">排序</th>
+          <th style="width:11%">Email</th><th style="width:12%">标签（逗号分隔）</th><th style="width:62px">排序</th>
           <th style="width:60px">显示</th><th style="width:132px">操作</th>
         </tr></thead>
         <tbody id="tbody"></tbody>
@@ -278,11 +280,11 @@ var DEFAULT_STATE = {
     apply_anchor:'#artalk-comments'
   },
   links: [
-    { name:'中国政府网', url:'https://www.gov.cn', description:'中国政府网——国务院官方网站，权威政策发布与政务信息公开平台', logo:'https://www.google.com/s2/favicons?domain=gov.cn&sz=64', email:'', rss:'', order:1, active:true },
-    { name:'中国裁判文书网', url:'https://wenshu.court.gov.cn', description:'人民法院出版社主办，查询全国法院生效裁判文书的官方平台', logo:'https://www.google.com/s2/favicons?domain=court.gov.cn&sz=64', email:'', rss:'', order:2, active:true },
-    { name:'国家法律法规数据库', url:'https://flk.npc.gov.cn', description:'全国人大常务委员会办公厅主办，法律、行政法规、司法解释权威文本', logo:'https://www.google.com/s2/favicons?domain=npc.gov.cn&sz=64', email:'', rss:'', order:3, active:true },
-    { name:'中国法院网', url:'https://www.chinacourt.org', description:'最高人民法院主办，司法解释、法院公告与审判业务资讯', logo:'https://www.google.com/s2/favicons?domain=chinacourt.org&sz=64', email:'', rss:'', order:4, active:true },
-    { name:'GitHub', url:'https://github.com', description:'全球最大的代码托管平台，也是本站源码的存放处', logo:'https://www.google.com/s2/favicons?domain=github.com&sz=64', email:'', rss:'', order:5, active:true }
+    { name:'中国政府网', url:'https://www.gov.cn', description:'中国政府网——国务院官方网站，权威政策发布与政务信息公开平台', logo:'', email:'', rss:'', order:1, active:true },
+    { name:'中国裁判文书网', url:'https://wenshu.court.gov.cn', description:'人民法院出版社主办，查询全国法院生效裁判文书的官方平台', logo:'', email:'', rss:'', order:2, active:true },
+    { name:'国家法律法规数据库', url:'https://flk.npc.gov.cn', description:'全国人大常务委员会办公厅主办，法律、行政法规、司法解释权威文本', logo:'', email:'', rss:'', order:3, active:true },
+    { name:'中国法院网', url:'https://www.chinacourt.org', description:'最高人民法院主办，司法解释、法院公告与审判业务资讯', logo:'', email:'', rss:'', order:4, active:true },
+    { name:'GitHub', url:'https://github.com', description:'全球最大的代码托管平台，也是本站源码的存放处', logo:'', email:'', rss:'', order:5, active:true }
   ]
 };
 
@@ -451,7 +453,7 @@ function appAction(act,id){
       var maxOrder=state.links.reduce(function(m,l){ return Math.max(m, parseInt(l.order,10)||100); },0);
       state.links.push({
         name:a.name, url:a.url, description:a.description||'', logo:a.logo||'',
-        email:a.email||'', rss:a.rss||'', order:maxOrder+10, active:true
+        email:a.email||'', rss:a.rss||'', tags:['好朋友'], order:maxOrder+10, active:true
       });
     }
     a.status='approved';
@@ -661,12 +663,13 @@ function renderTable(){
     box.className='logo-box';
     box.style.background=fallbackColor(item.name);
     if(item.logo){
-      var img=document.createElement('img');
-      img.src=item.logo;
-      img.style.width='100%'; img.style.height='100%';
-      img.style.borderRadius='8px'; img.style.objectFit='contain';
-      img.onerror=function(){ box.textContent=initial(item.name); };
-      box.appendChild(img);
+      /* 用 CSS 背景图而不是 <img>，并且带 3 秒超时兜底：
+         坏链/被墙的图不会让单元格一直空着或一直转圈 */
+      box.style.backgroundImage='url("'+item.logo.replace(/"/g,'%22')+'")';
+      box.style.backgroundSize='contain';
+      box.style.backgroundPosition='center';
+      box.style.backgroundRepeat='no-repeat';
+      box.textContent=initial(item.name);
     } else {
       box.textContent=initial(item.name);
     }
@@ -741,6 +744,25 @@ function renderTable(){
     tr.appendChild(cell('description','选填'));
     tr.appendChild(cell('url','必填 https://…','url'));
     tr.appendChild(cell('email','选填','email'));
+
+    /* tags 单元格：用户输入「官方, 文档」这种逗号分隔形式，
+       存进 state 时统一成数组，导出 YAML 时才展开成多行 */
+    (function(){
+      var td=document.createElement('td');
+      var inp=document.createElement('input');
+      inp.type='text';
+      inp.value=(item.tags||[]).join(', ');
+      inp.placeholder='好朋友, 官方';
+      inp.style.padding='6px 8px'; inp.style.fontSize='13px';
+      inp.oninput=function(){
+        item.tags=inp.value.split(/[,，]/)
+          .map(function(x){return x.trim();})
+          .filter(function(x){return x!=='';});
+        refreshPreview();
+      };
+      td.appendChild(inp);
+      tr.appendChild(td);
+    })();
     tr.appendChild(tdO); tr.appendChild(tdA); tdX.appendChild(document.createElement('td'));
     tb.appendChild(tr);
   });
@@ -869,6 +891,12 @@ function genLinkYaml(it, withComment){
   L.push('    logo: '       + yq(o.logo || ''));
   L.push('    email: '      + yq(o.email || ''));
   L.push('    rss: '        + yq(o.rss || ''));
+  if(o.tags && o.tags.length){
+    L.push('    tags:');
+    for(var ti=0; ti<o.tags.length; ti++){
+      L.push('      - ' + yq(o.tags[ti]));
+    }
+  }
   L.push('    order: '      + (parseInt(o.order,10) || 100));
   L.push('    active: '     + (o.active === false ? 'false' : 'true'));
   return L.join('\n');
@@ -884,6 +912,7 @@ function readGenForm(){
     logo:        v('g_logo'),
     email:       v('g_email'),
     rss:         v('g_rss'),
+    tags:        v('g_tags').split(/[,，]/).map(function(x){return x.trim();}).filter(function(x){return x!=='';}),
     order:       parseInt(v('g_order'),10) || 100,
     active:      true
   };
@@ -893,7 +922,8 @@ function readGenForm(){
 function fillGenForm(o){
   var map={
     g_name:o.name, g_url:o.url, g_desc:o.description,
-    g_logo:o.logo, g_email:o.email, g_rss:o.rss
+    g_logo:o.logo, g_email:o.email, g_rss:o.rss,
+    g_tags:(o.tags||[]).join(', ')
   };
   Object.keys(map).forEach(function(id){
     var el=document.getElementById(id);
@@ -941,7 +971,7 @@ function renderGen(){
 }
 
 /* ---- 事件绑定 ---- */
-['g_name','g_url','g_desc','g_logo','g_email','g_rss','g_order'].forEach(function(id){
+['g_name','g_url','g_desc','g_logo','g_email','g_rss','g_tags','g_order'].forEach(function(id){
   var el=document.getElementById(id);
   if(el) el.addEventListener('input', renderGen);
 });
@@ -999,7 +1029,7 @@ document.getElementById('gAppend').onclick=function(){
 };
 
 document.getElementById('gClear').onclick=function(){
-  ['g_name','g_url','g_desc','g_logo','g_email','g_rss'].forEach(function(id){
+  ['g_name','g_url','g_desc','g_logo','g_email','g_rss','g_tags'].forEach(function(id){
     var e=document.getElementById(id); if(e) e.value='';
   });
   document.getElementById('g_order').value=100;
@@ -1058,6 +1088,12 @@ function toYaml(){
     L.push('    logo: '+yq(it.logo));
     L.push('    email: '+yq(it.email));
     L.push('    rss: '+yq(it.rss));
+  if(it.tags && it.tags.length){
+    L.push('    tags:');
+    for(var ti=0; ti<it.tags.length; ti++){
+      L.push('      - '+yq(it.tags[ti]));
+    }
+  }
     L.push('    order: '+(parseInt(it.order,10)||100));
     L.push('    active: '+(it.active===false?'false':'true'));
   });
@@ -1071,6 +1107,7 @@ function parseYaml(txt){
   var links=[];
   var cur=null;
   var inApply=false;          /* 正在读 apply 段 */
+  var inTags=false;            /* 正在读 tags 列表项 */
   var block=null, blockBuf=[]; /* 当前正在折叠的多行文本块 */
 
   /* 剥离行尾注释：本项目所有 YAML 都习惯在值后面写中文注释
@@ -1157,13 +1194,26 @@ function parseYaml(txt){
     if(mn){
       flushLink();
       inApply=false;
-      cur={name:'',url:'',description:'',logo:'',email:'',rss:'',order:100,active:true};
+      cur={name:'',url:'',description:'',logo:'',email:'',rss:'',tags:[],order:100,active:true};
       setF(cur,mn[1],stripComment(mn[2]));
       continue;
     }
+    /* tags 列表项：      - 好朋友（缩进 6 格的短横线，且当前正在读 tags） */
+    if(inTags && cur){
+      var mtg=line.match(/^\s{6}-\s*(.+)$/);
+      if(mtg){
+        cur.tags.push(unq(String(mtg[1]).trim()));
+        continue;
+      }
+      inTags=false;
+    }
+
     /* 友链条目的续字段：    email: xxx（缩进 4 格） */
     var m2=line.match(/^\s{4}([A-Za-z_][A-Za-z0-9_]*):\s*(.*)$/);
-    if(m2 && cur){ setF(cur,m2[1],stripComment(m2[2])); }
+    if(m2 && cur){
+      if(m2[1]==='tags' && !stripComment(m2[2])){ inTags=true; cur.tags=[]; }
+      else { inTags=false; setF(cur,m2[1],stripComment(m2[2])); }
+    }
   }
   flushLink();
   flushBlock();
