@@ -15,6 +15,34 @@
 enabled: true
 title: 友情链接
 subtitle: 与优秀的站点互相学习、彼此引流
+
+# ============================================================================
+# 【本站名片】—— 友链页「友链格式」卡片上显示的你自己站点信息
+# ----------------------------------------------------------------------------
+# 这是读者最容易误解的地方：这张卡片要展示的是**你自己的站**，
+# 而不是你的某个友链。读者对照它填自己的信息，所以内容务必填准。
+#
+#【怎么填】直接改下面五个字段的值即可，改完重新部署即生效。
+#   name        必填。站点名称，显示在卡片顶部（较大字号）
+#   url         必填。站点网址，会做成可点击链接
+#   description 选填。站点一句话简介，显示在名称下方（最多约 60 字为宜）
+#   logo        选填。站点头像的完整网址（https://...）
+#               ★ 强烈建议留空：留空时前台自动生成彩色首字图标，
+#                 不依赖任何外部图片，不会裂图、加载快。
+#                 若要用自己的图，须填公网可访问的完整地址（https://...），
+#                 且服务器已做备案与域名解析，否则访客看到的是裂图。
+#   color       选填。首字图标的背景色，写 6 位色号如 "#3b6ea5"。
+#               留空则由系统自动分配一个颜色。
+#
+# 【以后再改也来得及】这些值只影响展示，改错不会造成任何损失，
+# 随时回来改这个文件、重新部署即可。
+# ============================================================================
+self:
+  name: 王志满律师
+  url: "https://2019527.xyz"
+  description: 专注民商事纠纷与企业法律顾问，分享诉讼实务与裁判规则。
+  logo:
+  color: "#3b6ea5"
 desc: >-
   欢迎交换友情链接：只收录稳定更新、内容原创、无恶意广告的站点。
   页面会同时展示本站维护的友链，以及另一些站同同步过来的朋友们。
@@ -88,6 +116,7 @@ links:
   - name: GitHub
     url: "https://github.com"
     description: 全球最大的代码托管平台，也是本站源码的存放处
+    logo: ""
     email: ""
     rss: ""
     tags:
@@ -98,8 +127,8 @@ links:
   - name: 买四个萝卜
     url: "https://blog.msglbo.cn"
     description: 只有坏掉的东西才会停下来
-    logo: ""
-    email: ""
+    logo: "https://q1.qlogo.cn/g?b=qq&nk=24130801&s=100"
+    email: "24130801@qq.com"
     rss: ""
     tags:
       - 好朋友
@@ -122,9 +151,9 @@ links:
   - name: 蒙需
     url: "https://jiangcl.com/"
     description: 记录生活，晒娃做菜、午饭和远方
-    logo: ""
+    logo: "https://avatars.githubusercontent.com/u/204972114"
     email: ""
-    rss: ""
+    rss: "https://jiangcl.com/feed"
     tags:
       - 好朋友
     order: 62
@@ -134,9 +163,9 @@ links:
   - name: 刑辩人在路上
     url: "https://xingbianren.cn/"
     description: 记录生活、居住美好，喜欢诗和远方
-    logo: ""
-    email: ""
-    rss: ""
+    logo: "https://xingbianren.cn/zb_users/upload/2023/05/202305231684818664504571.png"
+    email: "liuchen8916@foxmail.com"
+    rss: "https://xingbianren.cn/feed.php"
     tags:
       - 好朋友
     order: 63

@@ -122,8 +122,35 @@
           ④ 一块「推荐格式示例」，读者一键复制后到评论区粘贴修改
       {%- endcomment -%}
 
-      {%- comment -%} 本站名片：取第一条友链做示范，读者照着填 {%- endcomment -%}
-      {%- assign _me = _cfg.links | first -%}
+      {%- comment -%}
+        本站名片：读 _data/links.yml 的 self 段（你自己的站点信息）。
+        ★ 为什么不用「第一条友链」当示范？
+          因为读者会误以为那是站长自己的站，从而填错信息。
+        ★ 三层兜底，任何一层缺失都不会渲染出残缺内容：
+          ① self 段已配→ 直接用
+          ② self 段为空 → 回退到 _config.yml 的站点标题/网址/简介
+          ③ 仍没有 → 干脆不渲染名片（只显示四宫格信息）
+      {%- endcomment -%}
+      {%- assign _sf = _cfg.self -%}
+      {%- if _sf.name and _sf.url -%}
+        {%- assign _me_name = _sf.name | strip -%}
+        {%- assign _me_url  = _sf.url | strip -%}
+        {%- assign _me_desc = _sf.description | default: '' | strip -%}
+        {%- assign _me_logo = _sf.logo | default: '' | strip -%}
+        {%- assign _me_color = _sf.color | default: '' | strip -%}
+      {%- else -%}
+        {%- comment -%} self 段没配：退回到 _config.yml 的站点信息 {%- endcomment -%}
+        {%- assign _me_name = site.title | default: '' | strip -%}
+        {%- assign _me_url  = site.url | default: '' | strip -%}
+        {%- assign _me_desc = site.description | default: '' | strip -%}
+        {%- assign _me_logo = '' -%}
+        {%- assign _me_color = '' -%}
+      {%- endif -%}
+      {%- if _me_name == '' -%}{%- assign _me_name = _me_url -%}{%- endif -%}
+      {%- comment -%} 头像背景色：优先用self.color，其次取首条友链图标色，最后用默认蓝 {%- endcomment -%}
+      {%- if _me_color == '' -%}
+        {%- assign _me_color = _cfg.links | first | default: empty | map: 'color' | first | default: '#3b6ea5' -%}
+      {%- endif -%}
 
       <div class="fl-guide">
         <div class="fl-guide-head">
@@ -131,12 +158,15 @@
           <a class="fl-guide-link" href="{{ _ap.anchor_url | default: '/links/' }}">Apply Guide</a>
         </div>
 
-        {%- if _me -%}
+        {%- comment -%} 本站名片（你自己的站点信息，读者照着填） {%- endcomment -%}
+        {%- if _me_name != '' -%}
         <div class="fl-card-sample">
-          <span class="fl-logo" style="background-color:#3b6ea5;{% if _me.logo and _me.logo != '' %}background-image:url('{{ _me.logo | escape }}');{% endif %}" aria-hidden="true">{{ _me.name | strip | slice: 0 | escape }}</span>
+          <span class="fl-logo" style="background-color:{{ _me_color | escape }};{% if _me_logo != '' %}background-image:url('{{ _me_logo | escape }}');{% endif %}" aria-hidden="true">{{ _me_name | slice: 0 | escape }}</span>
           <span class="fl-card-sample-body">
-            <span class="fl-card-sample-name">{{ _me.name | escape }}</span>
-            <span class="fl-card-sample-desc">{{ _me.description | default: '欢迎与本站交换友情链接' | escape }}</span>
+            <span class="fl-card-sample-name">{{ _me_name | escape }}</span>
+            {%- if _me_desc != '' -%}
+              <span class="fl-card-sample-desc">{{ _me_desc | escape }}</span>
+            {%- endif -%}
           </span>
         </div>
         {%- endif -%}
@@ -144,7 +174,7 @@
         <div class="fl-info-grid">
           <div class="fl-info-cell">
             <span class="fl-info-label">站点网址</span>
-            <a class="fl-info-value" href="{{ _me.url | escape }}" target="_blank" rel="noopener noreferrer nofollow">{{ _me.url | escape }}</a>
+            <a class="fl-info-value" href="{{ _me_url | escape }}" target="_blank" rel="noopener noreferrer nofollow">{{ _me_url | escape }}</a>
           </div>
           <div class="fl-info-cell">
             <span class="fl-info-label">站点邮箱</span>
@@ -152,7 +182,7 @@
           </div>
           <div class="fl-info-cell">
             <span class="fl-info-label">站点头像</span>
-            <span class="fl-info-value">{{ _me.logo | default: '（本站使用首字图标）' | escape }}</span>
+            <span class="fl-info-value">{{ _me_logo | default: '（本站使用首字图标）' | escape }}</span>
           </div>
           <div class="fl-info-cell">
             <span class="fl-info-label">友链页面</span>
