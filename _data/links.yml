@@ -189,4 +189,15 @@ links:
     order: 64
     active: true
 
+ - name: Somoe Home
+    url: "https://somoe.xyz"
+    description: 在文字的深海里，拾贝而行
+    logo: "https://somoe.xyz/qiumonster.webp"
+    email: ""
+    rss: ""
+    tags:
+      - 好朋友
+    order: 65
+    active: true
+
 
