@@ -200,4 +200,14 @@ links:
     order: 65
     active: true
 
+  - name: Exyone's Blog
+    url: "https://exyon.ee"
+    description: 霜风卷尽清秋，锁眉头；一纸相思难寄、恨悠悠
+    logo: "https://exyon.ee/assets/img/avatar-v1.png"
+    email: ""
+    rss: ""
+    tags:
+      - 好朋友
+    order: 66
+    active: true
 
