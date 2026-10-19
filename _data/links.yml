@@ -236,8 +236,7 @@ links:
   - name: 个人成长计划
     url: "https://blog.el9.cn/"
     description: 上药三品，神与气精。
-    logo: "https://img1.el9.cn/usr/uploads/2026/07/2998389502.png"
-    color: "#FFFFFF"
+    logo: ""
     email: ""
     rss: ""
     tags:
