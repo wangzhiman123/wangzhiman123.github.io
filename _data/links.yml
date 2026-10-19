@@ -152,7 +152,7 @@ links:
     tags:
       - 好朋友
     order: 61
-    active: false
+    active: true
 
   # ---------- 「蒙需」----------
   - name: 蒙需
