@@ -324,3 +324,13 @@ links:
     rss: ""
     order: 76
     active: true
+
+  # ---------- 「BlogsClub」----------
+  - name: BlogsClub
+    url: "https://www.blogsclub.org/"
+    description: 博客俱乐部
+    logo: "https://www.blogsclub.org/usr/themes/default/assets/images/blogsclub_web.svg"
+    email: ""
+    rss: ""
+    order: 77
+    active: true
