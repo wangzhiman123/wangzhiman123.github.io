@@ -211,3 +211,15 @@ links:
     order: 66
     active: true
 
+  - name: 喵喵小站・博客志
+    url: "https://www.mmbkz.cn/"
+    description: 记录喵喵美好生活
+    logo: "https://weavatar.com/avatar/90d65b07462dd2b0cb32ba3e3187759d?s=200&r=&d=404"
+    email: ""
+    rss: ""
+    tags:
+      - 好朋友
+    order: 67
+    active: true
+
+
