@@ -222,4 +222,13 @@ links:
     order: 67
     active: true
 
-
+  - name: SaraKale’s blog
+    url: "https://sarakale.top/blog"
+    description: 兴趣广泛，涉足于游戏/动漫/设计/音乐等，常在二次元流浪～
+    logo: "https://npm.elemecdn.com/sarakale-assets@v1/sarakale.jpg"
+    email: ""
+    rss: ""
+    tags:
+      - 好朋友
+    order: 68
+    active: true
