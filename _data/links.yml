@@ -354,3 +354,13 @@ links:
     rss: ""
     order: 79
     active: true
+
+  # ---------- 「博客集」----------
+  - name: 博客集
+    url: "https://bloginc.cn/"
+    description: 致力于收集优秀的中文独立博客
+    logo: ""
+    email: ""
+    rss: ""
+    order: 80
+    active: true
