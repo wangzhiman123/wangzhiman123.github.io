@@ -334,3 +334,13 @@ links:
     rss: ""
     order: 77
     active: true
+
+  # ---------- 「博客星球」----------
+  - name: 博客星球
+    url: "https://www.blogplanet.cn/"
+    description: 每一个博客都是一个独立星球！
+    logo: "https://www.blogplanet.cn/img/bkxq.png"
+    email: ""
+    rss: ""
+    order: 78
+    active: true
