@@ -364,3 +364,13 @@ links:
     rss: ""
     order: 80
     active: true
+
+  # ---------- 「好站网」----------
+  - name: 好站网
+    url: "https://haozhan.wang/"
+    description: 发现好站，展示好站。
+    logo: ""
+    email: ""
+    rss: ""
+    order: 81
+    active: true
