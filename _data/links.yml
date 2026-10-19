@@ -278,3 +278,15 @@ links:
       - 个人博客
     order: 71
     active: true    
+
+  # ---------- 「记录生活，精彩一刻」----------
+  - name: 记录生活，精彩一刻
+    url: "https://9sb.net"
+    description: 资源 共享 生活 学习
+    logo: "https://9sb.net/logo.svg"
+    email: ""
+    rss: "https://9sb.net/feed/"
+    tags:
+      - 好朋友
+    order: 71
+    active: true
