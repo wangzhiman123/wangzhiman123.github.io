@@ -290,3 +290,15 @@ links:
       - 好朋友
     order: 73
     active: true
+
+  # ---------- 「傥师妹TangShiMei的小空间」----------
+  - name: 傥师妹TangShiMei的小空间
+    url: "https://blog.224418.xyz/"
+    description: 想和你重新认识一次，从你叫什么开始
+    logo: "https://blog.224418.xyz/img/favicon/avatar.png"
+    email: ""
+    rss: "https://blog.224418.xyz/rss2.xml"
+    tags:
+      - 好朋友
+    order: 74
+    active: true
