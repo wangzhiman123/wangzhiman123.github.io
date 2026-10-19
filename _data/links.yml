@@ -374,3 +374,13 @@ links:
     rss: ""
     order: 81
     active: true
+
+  # ---------- 「博客说」----------
+  - name: 博客说
+    url: "https://blogtalk.org"
+    description: 中文独立博客收录与文章 RSS 聚合网站。
+    logo: ""
+    email: ""
+    rss: ""
+    order: 82
+    active: true
