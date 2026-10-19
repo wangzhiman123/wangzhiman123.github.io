@@ -255,3 +255,15 @@ links:
     order: 70
     active: true
  
+  - name: 萝莉工坊
+    url: "https://46666.cn/"
+    description: 萝莉梦幻工坊蜕变之旅
+    logo: "https://46666.cn/wp-content/uploads/2024/10/cropped-luoli2-192x192.png"
+    email: ""
+    rss: ""
+    tags:
+      - 好朋友
+    order: 71
+    active: true
+
+    
