@@ -344,3 +344,13 @@ links:
     rss: ""
     order: 78
     active: true
+
+  # ---------- 「博友圈」----------
+  - name: 博友圈
+    url: "https://www.boyouquan.com/"
+    description: 博客人的朋友圈
+    logo: "https://www.boyouquan.com/assets/images/sites/logo/logo-blue.svg"
+    email: ""
+    rss: ""
+    order: 79
+    active: true
