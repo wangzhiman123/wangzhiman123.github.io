@@ -232,3 +232,26 @@ links:
       - 好朋友
     order: 68
     active: true
+
+  - name: 个人成长计划
+    url: "https://blog.el9.cn/"
+    description: 上药三品，神与气精。
+    logo: "https://img1.el9.cn/usr/uploads/2026/07/2998389502.png"
+    email: ""
+    rss: ""
+    tags:
+      - 好朋友
+    order: 69
+    active: true
+
+  - name: 爱情在线
+    url: "https://aqzx.com"
+    description: 一个记录日常的数字回忆录 · 始于 2000
+    logo: "https://aqzx.com/img/index_bg.jpg"
+    email: ""
+    rss: ""
+    tags:
+      - 好朋友
+    order: 70
+    active: true
+ 
