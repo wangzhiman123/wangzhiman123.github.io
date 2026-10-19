@@ -314,3 +314,13 @@ links:
       - 好朋友
     order: 75
     active: true
+
+  # ---------- 「BlogFinder」----------
+  - name: BlogFinder
+    url: "https://bf.zzxworld.com"
+    description: 发现优秀的个人博客
+    logo: "https://bf.zzxworld.com/images/logo-v2.png"
+    email: ""
+    rss: ""
+    order: 76
+    active: true
