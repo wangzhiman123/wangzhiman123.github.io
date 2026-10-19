@@ -276,7 +276,7 @@ links:
     tags:
       - 好朋友
       - 个人博客
-    order: 71
+    order: 72
     active: true    
 
   # ---------- 「记录生活，精彩一刻」----------
@@ -288,5 +288,5 @@ links:
     rss: "https://9sb.net/feed/"
     tags:
       - 好朋友
-    order: 71
+    order: 73
     active: true
