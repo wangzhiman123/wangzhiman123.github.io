@@ -302,3 +302,15 @@ links:
       - 好朋友
     order: 74
     active: true
+
+  # ---------- 「若梦博客」----------
+  - name: 若梦博客
+    url: "https://www.rmbk.cc/"
+    description: 聚合优质博客
+    logo: "https://www.rmbk.cc/static/images/logo.png"
+    email: ""
+    rss: ""
+    tags:
+      - 好朋友
+    order: 75
+    active: true
