@@ -267,4 +267,15 @@ links:
     order: 71
     active: true
 
-    
+  # ---------- 「Puo’s 菜园子」----------
+  - name: Puo’s 菜园子
+    url: "http://puo.cn"
+    description: 个人学习的菜园子，wordpress，域名，建站，物流等笔记及生活感触
+    logo: "https://puo.puo.cn/img-cun/puo.cn-logo.png"
+    email: ""
+    rss: "http://puo.cn/?feed=rss2"
+    tags:
+      - 好朋友
+      - 个人博客
+    order: 71
+    active: true    
