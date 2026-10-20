@@ -139,7 +139,7 @@ analytics:
   # Cloudflare 网站统计的账号 id。
   # 【可DIY修改】如果您不用 Cloudflare，可以清空（写成 id: ）。
   cloudflare:
-    id: e08d28ff568f4c1fa22f7f56ed3df1e3
+    id: # e08d28ff568f4c1fa22f7f56ed3df1e3
 
   # 百度统计（Baidu Tongji）—— 站点流量分析，仅用于后台看报表，不参与页面上"浏览量数字"的显示。
   # id 非空时，Chirpy 会自动在 <head> 中加载 _includes/analytics/baidu.html。
@@ -278,7 +278,7 @@ comments:
 
   # utterances 评论（基于 GitHub Issues），不用就留空。
   utterances:
-    repo: wangzhiman123/wangzhiman123.github.io
+    repo: # wangzhiman123/wangzhiman123.github.io
     issue_term: # < url | pathname | title | ...>
   # 配置保留是为了随时可切回，代码组件 _includes/comments/giscus.html 也还在。
   giscus:
