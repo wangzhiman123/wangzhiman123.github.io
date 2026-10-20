@@ -66,8 +66,8 @@ github:
 
 # 您的 Twitter（推特）用户名。留空表示不使用。
 # 【可DIY修改】如果要填，只填用户名，不要加 @ 符号。
-twitter:
-  username:   # change to your Twitter username
+# twitter:
+#  username:   # change to your Twitter username
 
 # 作者（也就是您本人）的公开联系信息。
 # 这些信息会用在两处：文章默认作者名、网页最下方「版权归 XX 所有」。
@@ -205,7 +205,7 @@ avatar: /assets/avatar.jpg
 
 # 分享到社交平台时显示的预览大图（别人在微信/QQ 里发链接时，链接下面出现的缩略图）。
 # 留空表示不用；也可以在具体某篇文章的开头单独指定该文章自己的预览图。
-social_preview_image: # string, local or CORS resources
+social_preview_image: /assets/img/og/og-default.jpg # string, local or CORS resources
 
 # 文章目录（TOC，Table Of Contents）的总开关。
 # true = 文章页面右侧自动生成「本文目录」，点一下能跳到对应段落。
