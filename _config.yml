@@ -269,7 +269,7 @@ comments:
   #      （服务器上执行 deploy/05-install-artalk.sh 一键部署）
   #   ② 把 _data/links.yml 的 apply.comment_anchor 改成 "#artalk-comments"
   #   ③ 组件代码 _includes/comments/artalk.html 已经在仓库里，不用重新写
-  provider: giscus
+  provider: artalk # giscus
   # 以下各家评论服务，只有 provider 里指定的那一家会生效，其余留空即可。
 
   # Disqus 评论（国外服务，国内被墙），不用就留空。
@@ -335,7 +335,7 @@ comments:
     #    友链申请区会自动降级为「改为邮件提交」，不留点不动的死按钮。
     #    例：https://comment.2019527.xyz
     # 【可DIY修改】部署好之后，把服务地址填在这一行，评论功能即刻生效，无需改任何代码。
-    server:
+    server: https://artalk.2019527.xyz
     # 站点名称，用于 Artalk 多站点隔离（对应后台「站点管理」里的名称）。
     # 同一个 Artalk 服务端可以给多个网站用，靠这个名称区分数据，别填错。
     # ⚠️ 一旦有了评论数据，这个值就不能再改——改了等于换了一个新站点，历史评论会"消失"。
