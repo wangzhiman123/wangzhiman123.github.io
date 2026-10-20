@@ -18,6 +18,7 @@
 | `views-refresh.sh` | 服务器 | 抓浏览量 → 重建发布（替代 update-views.yml） |
 | `03-https.sh` | 服务器（root） | 申请 Let's Encrypt 证书 + 自动续期 |
 | `04-install-views-cron.sh` | 服务器（root） | 安装浏览量定时任务（可 `--remove` 卸载） |
+| `05-install-artalk.sh` | 服务器（root） | **装自托管评论 Artalk**：装 Docker、生成配置、起容器、配 Nginx 反代、申请子域名证书（可 `--check` 体检 / `--remove` 卸载） |
 | `doctor.sh` | 服务器 | **一键体检**：检查整站是否正常，给出修复建议 |
 | `deploy-aliyun.ps1` / `.bat` | 本机 | **双击一键**：打包源码上传 + 远程构建发布 |
 
@@ -35,6 +36,17 @@ bash 03-https.sh
 bash 04-install-views-cron.sh
 bash doctor.sh
 ```
+
+### 装评论区（Artalk，可选）
+```bash
+# 前置：先给 artalk.你的域名 加一条 A 记录指向服务器 IP
+cd /opt/site/src/deploy
+bash 05-install-artalk.sh              # 一键装完（Docker + Nginx 反代 + 证书）
+bash 05-install-artalk.sh --check      # 随时体检，只读不改
+bash 05-install-artalk.sh --remove     # 卸载（评论数据保留）
+```
+装完还要在网站项目 `_config.yml` 里把 `comments.provider` 改成 `artalk`，
+并填上 `comments.artalk.server: https://artalk.你的域名`，再重新发布。
 
 ### 日常更新（两种任选）
 - **本机双击** `deploy-aliyun.bat`（需先 `cp config.local.ps1.example config.local.ps1` 并填 IP）
