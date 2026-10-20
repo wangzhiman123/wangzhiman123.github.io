@@ -79,7 +79,7 @@ apply:
   #   Twikoo  → #twikoo-comments
   #   Waline   → #waline-comments
   # 不改的后果：按钮点了会跳到页面顶部（读者以为没反应）。
-  comment_anchor: "#giscus-comments"
+  comment_anchor: "#artalk-comments" # "#giscus-comments"
 
 # ---------- 友链清单（仅含已审核通过的链接）----------
 links:
