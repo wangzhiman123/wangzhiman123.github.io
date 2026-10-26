@@ -133,11 +133,20 @@
   <!-- ================= 第 ② 部分：建站技术说明 ================= -->
   <p>
     {%- capture _platform -%}
-      <a href="https://jekyllrb.com" target="_blank" rel="noopener">Jekyll</a>
+      <a href="https://jekyllrb.com" target="_blank" rel="noopener">Jekyll</a><span
+        class="footer-jekyll-version"
+        style="margin-left:0.2em;font-size:0.82em;opacity:0.62;white-space:nowrap;"
+      >{{ jekyll.version }}</span>
     {%- endcapture -%}
     {%- comment -%} 先拼出一段"Jekyll 官网链接"存起来备用。
        target="_blank" 表示在新标签页打开；
-       rel="noopener" 是一个安全设置，防止新开的页面反过来控制当前页面。 {%- endcomment -%}
+       rel="noopener" 是一个安全设置，防止新开的页面反过来控制当前页面。
+       【2026-10 改动】链接后面补了一个可见的 <span>，把 Jekyll 的版本号直接印出来，
+       和下面 Chirpy 的版本号写法保持一致。
+       版本号来自 Jekyll 自己提供的 {{ jekyll.version }} 变量（构建时自动填入），
+       不需要手动维护；Gemfile 里锁的 Jekyll 是几，这里就显示几。
+       想写成"v4.4.1"这种带 v 的样子，把这里改成 >v{{ jekyll.version }}< 即可。
+       【可DIY修改】margin-left / font-size / opacity 三个数值同上，改小改大都行，别删。 {%- endcomment -%}
 
     {%- capture _theme -%}
       <a
@@ -147,11 +156,22 @@
         href="https://github.com/cotes2020/jekyll-theme-chirpy"
         target="_blank"
         rel="noopener"
-      >Chirpy</a>
+      >Chirpy</a><span
+        class="footer-theme-version"
+        style="margin-left:0.2em;font-size:0.82em;opacity:0.62;white-space:nowrap;"
+      >v{{ theme.version }}</span>
     {%- endcapture -%}
     {%- comment -%} 再拼出一段"Chirpy 主题的链接"存起来。
-       title="v{{ theme.version }}" 表示鼠标悬停时会显示主题的版本号，
-       例如 v7.6.0，方便排查问题时确认版本。 {%- endcomment -%}
+       title="v{{ theme.version }}" 表示鼠标悬停时会显示主题的版本号，例如 v7.6.0。
+       【2026-10 改动】版本号原来只在悬停提示里，电脑上不悬停就看不见、手机上根本没法悬停，
+       所以又在链接后面补了一个可见的 <span>，把 v{{ theme.version }} 直接印在页脚上。
+       这样就变成"本站使用 Jekyll 主题 Chirpy v7.6.0"，一眼能看到版本，排查问题不用再靠猜。
+       【为什么要写 style 而不是加样式表？】页脚这块一直用内联样式（和下面备案那段一样），
+         好处是以后升级主题、换样式表都不会让它走形。
+        【可DIY修改】三个数值：margin-left 是左边距、font-size 是字号（0.82em ≈ 比正文小两成）、
+         opacity 是透明度（0.62 表示淡一点，不抢主文案的注意力）。改大改小都行，别删。
+       ⚠️ 版本号来自主题自己（theme.version），不需要你手动同步；
+          升级 Gemfile 里的主题版本后，这里会自动跟着变。 {%- endcomment -%}
 
     {{ site.data.locales[include.lang].meta | replace: ':PLATFORM', _platform | replace: ':THEME', _theme }}
     {%- comment -%} 取出一句预先写好的说明文字模板（大意是"由 :PLATFORM 强力驱动 | 主题 :THEME"），
