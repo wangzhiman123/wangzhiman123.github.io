@@ -28,19 +28,23 @@ panel_includes:
   ============================================================
   ⚠️ 本文件覆盖了 Chirpy 主题的 _layouts/home.html（基于 v7.6.0）
   ------------------------------------------------------------
-  与主题原版共 3 处差异，均已用 CUSTOM 标记包裹，方便升级时对照：
+  与主题原版共 5 处差异，均已用 CUSTOM 标记包裹，方便升级时对照：
     ① front matter 的 panel_includes: hot-posts
     ② CUSTOM-1：站点统计条（文章数/字数/配图/视频）
     ③ CUSTOM-2：文章卡片上的浏览量 .pv-card
+    ④ CUSTOM-4：文章卡片上的评论数 .cm-card（紧跟浏览量右边）
+    ⑤ CUSTOM-5：卡片评论数的「取数脚本」（整页只发一个请求）
   ------------------------------------------------------------
   【Chirpy 升级时怎么处理本文件】
     1. 打开 github.com/cotes2020/jekyll-theme-chirpy
        → 切换到新版本的 tag（如 v7.7.0）
        → 打开 _layouts/home.html，复制全文
     2. 用新版本全文整体替换本文件内容
-    3. 再把上面 ①②③ 三处自定义段落重新粘贴回去
+    3. 再把上面 ①②③④⑤ 五处自定义段落重新粘贴回去
+       （④ 贴在 post-meta 里浏览量的后面，⑤ 贴在 #post-list 容器结束之后）
     4. 若新版模板结构有变化（例如 post-meta 区块改名），
-       就把 CUSTOM-2 的 <div class="pv-card"> 插到新版对应的位置
+       就把 CUSTOM-2 的 <div class="pv-card"> 和 CUSTOM-4 的
+       <div class="cm-card"> 一起插到新版对应的位置（顺序：先浏览量、后评论数）
     5. 改完后按 UPGRADE.md 的「升级后自检清单」逐项确认
   ============================================================
 {%- endcomment -%}
@@ -360,6 +364,52 @@ panel_includes:
               </div>
               {%- endif -%}
               <!-- <<< CUSTOM-2 END -->
+
+              <!-- >>> CUSTOM-4 START 卡片评论数（Chirpy 升级时整段保留并重新粘贴） -->
+              {%- comment -%}
+                评论数：紧挨在浏览量右边，显示这篇文章有多少条评论。
+                数据来自评论系统（当前是 Twikoo），由本文件底部的 CUSTOM-5 脚本回填。
+
+                与浏览量的重要区别：
+                  浏览量 = 「构建时印死的快照」，页面一打开就在，不用等；
+                  评论数 = 「访客打开页面后现问一次后端」，数字会晚一点点出现。
+                  原因：评论随时在增加，构建时根本不知道最新数字，只能实时取。
+
+                总开关：_config.yml 里的 commentcount.provider
+                  · 没写这一段        → 按 twikoo 处理，正常显示
+                  · provider: twikoo  → 显示
+                  · 写成 provider:    → 卡片上不显示评论数（整块不输出）
+              {%- endcomment -%}
+              {%- comment -%} 读出总开关。写法与上面的「浏览量开关 viewcount」完全一致。 {%- endcomment -%}
+              {%- if site.commentcount -%}
+                {%- assign _cc_provider = site.commentcount.provider | default: '' | strip -%}
+              {%- else -%}
+                {%- assign _cc_provider = 'twikoo' -%}
+              {%- endif -%}
+
+              {%- comment -%} 顺带确认「评论系统本身确实配置好了」，三件事缺一不可：
+                   ① 卡片开关是 twikoo  ② 全站评论 provider 也是 twikoo
+                   ③ _config.yml 里填了 twikoo 的 env_id（服务地址）。
+                   少任何一个都不输出，避免页面上出现一个永远显示 0 的空壳。 {%- endcomment -%}
+              {%- assign _cc_env = site.comments.twikoo.env_id | default: '' | strip -%}
+              {%- if _cc_provider == 'twikoo' and site.comments.provider == 'twikoo' and _cc_env != '' -%}
+              <div class="cm-card ms-1" title="评论数" data-cm-url="{{ post.url }}" hidden>
+                {%- comment -%}
+                  data-cm-url 把「这篇文章的网址」写在元素上（不显示出来）。
+                  底部脚本会把本页所有卡片的网址一次性收集起来问后端，所以每张卡片
+                  只要带上自己的网址即可，不需要各自发请求。
+                  网址必须和文章详情页交给评论系统的 path 完全一致（都是 /posts/xxx/），
+                  否则后端认不出是同一篇文章，数字会永远是 0。
+
+                  hidden 表示「先藏起来」：数字还没取回来之前不占位、不显示，
+                  免得先亮一个假的 0，等真实数字到了再显示出来。
+                {%- endcomment -%}
+                <i class="far fa-comments fa-fw me-1"></i>   {%- comment -%} 对话气泡小图标（与浏览量的眼睛图标同一套线条风格） {%- endcomment -%}
+                <span class="cm-num">0</span>
+                {%- comment -%} 数字占位：默认 0，脚本取到真实数字后会把这里替换掉。 {%- endcomment -%}
+              </div>
+              {%- endif -%}
+              <!-- <<< CUSTOM-4 END -->
             </div>
             <!-- .post-meta -->
           </div>
@@ -370,6 +420,206 @@ panel_includes:
   {% endfor %}   {%- comment -%} 文章循环结束 {%- endcomment -%}
 </div>
 <!-- #post-list -->
+
+<!-- >>> CUSTOM-5 START 卡片评论数取数脚本（Chirpy 升级时整段保留并重新粘贴） -->
+{%- comment -%}
+  ============================================================================
+  这一块负责把「评论数」真正填到卡片的 CUSTOM-4 空壳里。
+  ----------------------------------------------------------------------------
+  为什么不能像浏览量那样构建时直接印死？
+    浏览量来自 _data/views.json（一个自己维护的数据文件），构建时就知道数字；
+    评论数存在评论服务（Twikoo）的数据库里，构建时网站根本连不上它，
+    所以只能等访客打开页面后，由浏览器去问一次。
+
+  【只发 1 个请求，不是每张卡片各发一个】
+    把本页 10 篇文章的网址打包成一份清单，一次性问后端：
+      「这 10 个网址各有多少条评论？」
+    后端一次返回 10 个数字，脚本再分别填回各张卡片。
+    —— 如果每张卡片各发一个请求，一页就是 10 次往返，
+       既慢又会白白消耗评论服务的调用额度。
+
+  【三种情况都不显示，绝不出现假数字】
+    ① 网络不通 / 请求超时（8 秒）
+    ② 后端返回的格式不对
+    ③ 后端这次没返回这篇文章的数字
+    以上任何一种，卡片上就保持「不显示评论数」，宁可少一个数字，也不显示错的。
+
+  【⚠️ 内联脚本禁用 `//` 行注释】
+    _config.yml 开着 compress_html，正式构建会把换行全部压掉，
+    用 `//` 写注释会把后面的代码一并注释掉，导致整页脚本报错。
+    本段一律使用 /* 星号斜杠 */，语句结尾都带分号。
+  ============================================================================
+{%- endcomment -%}
+
+{%- comment -%} 与 CUSTOM-4 是同一个总开关，这里再读一次：
+   不依赖上面那个 for 循环是否执行过（本页一篇文章都没有时循环不会跑）。 {%- endcomment -%}
+{%- if site.commentcount -%}
+  {%- assign _cc_provider = site.commentcount.provider | default: '' | strip -%}
+{%- else -%}
+  {%- assign _cc_provider = 'twikoo' -%}
+{%- endif -%}
+{%- assign _cc_env = site.comments.twikoo.env_id | default: '' | strip -%}
+
+{%- comment -%} 评论数是否包括「回复」：
+       false（默认）= 只数顶层留言，一张卡片显示「3」，读者理解为「3 个人留言」；
+       true         = 连回复一起数，数字会更大，好处是和文章底部评论区的
+                      「共 N 条」完全一致。
+       【可DIY修改】在 _config.yml 的 commentcount.include_reply 里改，不用动这里。 {%- endcomment -%}
+{%- assign _cc_reply = site.commentcount.include_reply -%}
+{%- if _cc_reply == true -%}
+  {%- assign _cc_reply = true -%}
+{%- else -%}
+  {%- assign _cc_reply = false -%}
+{%- endif -%}
+
+{%- if _cc_provider == 'twikoo' and site.comments.provider == 'twikoo' and _cc_env != '' -%}
+<script>
+  (function () {
+    /* 自执行函数：内部变量不会污染外部，也不和页面上别的脚本打架。 */
+
+    var SERVER = {{ _cc_env | jsonify }};
+    /* 评论服务地址（就是 _config.yml 里的 twikoo.env_id），由构建时填进来。 */
+
+    var INCLUDE_REPLY = {{ _cc_reply | jsonify }};
+    /* 是否连回复一起数，见上面 Liquid 部分的说明。 */
+
+    if (typeof fetch !== 'function') { return; }
+    /* 浏览器太老、不支持 fetch 的，直接什么都不做（卡片保持不显示）。 */
+
+    var cards = document.querySelectorAll('#post-list .cm-card[data-cm-url]');
+    if (!cards.length) { return; }
+    /* 本页没有任何评论数卡片（例如开关关掉了），就不用往下跑了。 */
+
+    /* ---------- 1. 收集本页文章网址 ----------
+       从每张卡片的 data-cm-url 属性里读；indexOf 判断用于去重，
+       同一篇文章万一在一页里出现两次，也只问一次。 */
+    var urls = [];
+    for (var i = 0; i < cards.length; i++) {
+      var u = cards[i].getAttribute('data-cm-url');
+      if (u && urls.indexOf(u) === -1) { urls.push(u); }
+    }
+    if (!urls.length) { return; }
+
+    /* ---------- 2. 取管理员令牌 ----------
+       带上它，后端会把「待审核」的评论也数进去，和博主自己看文章页时一致；
+       普通访客没有这个令牌，就只数已通过审核的。
+       浏览器禁用本地存储时会抛错，所以必须用 try 包住。 */
+    var token = null;
+    try { token = localStorage.getItem('twikoo-access-token'); } catch (err) { token = null; }
+
+    /* ---------- 3. 把数字填回卡片 ---------- */
+    function render(list) {
+      if (!Array.isArray(list)) { return; }
+      /* 防御性判断：万一传进来不是数组，直接退出，不要报错白屏。 */
+      var map = {};
+      for (var k = 0; k < list.length; k++) {
+        var item = list[k];
+        if (item && typeof item.url === 'string' && typeof item.count === 'number') {
+          map[item.url] = item.count;
+        }
+      }
+      for (var j = 0; j < cards.length; j++) {
+        var url = cards[j].getAttribute('data-cm-url');
+        if (!Object.prototype.hasOwnProperty.call(map, url)) { continue; }
+        /* 后端这次没给这篇文章的数字 → 跳过，保持不显示。 */
+        var num = cards[j].querySelector('.cm-num');
+        if (num) { num.textContent = String(map[url]); }
+        cards[j].removeAttribute('hidden');
+        /* 去掉 hidden，卡片上就多出一项「💬 3」。
+           注意 0 也是真实结果，照样显示（说明这篇文章还没人留言）。 */
+      }
+    }
+
+    /* ---------- 4. 发请求 ----------
+       Twikoo 的公开取数接口（不需要初始化评论框，也不需要加载它的前端脚本）：
+         向服务地址 POST 一段 JSON，
+         event 固定写 GET_COMMENTS_COUNT，
+         返回形如 { data: [ { url: '/posts/xxx/', count: 3 }, ... ] }。
+       好处：不用在首页加载 350KB 的 twikoo.min.js，只要几百字节的请求/响应。 */
+    function start() {
+      var opts = {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accessToken: token,
+          event: 'GET_COMMENTS_COUNT',
+          envId: SERVER,
+          urls: urls,
+          includeReply: INCLUDE_REPLY
+        })
+      };
+
+      /* 8 秒超时：网络卡住时不干等，直接放弃（卡片本来就藏着，不显示即可）。
+         个别老浏览器没有 AbortController，那就退化成「不设超时」。 */
+      var ctrl = null;
+      var timer = null;
+      if (typeof AbortController !== 'undefined') {
+        ctrl = new AbortController();
+        opts.signal = ctrl.signal;
+        timer = setTimeout(function () { ctrl.abort(); }, 8000);
+      }
+      function finish() {
+        if (timer) { clearTimeout(timer); timer = null; }
+      }
+
+      fetch(SERVER, opts)
+        .then(function (res) {
+          if (!res.ok) { throw new Error('HTTP ' + res.status); }
+          return res.json();
+        })
+        .then(function (json) {
+          finish();
+          /* 成功时后端返回 { data: [ {url, count}, ... ] }，里面**没有** code 字段；
+             失败时返回 { code: 非 0, message: '错误原因' }。
+             所以判断规则是「code 存在且不为 0 才算失败」——
+             这正是 Twikoo 官方前端的判断方式，别写成 code !== 0，
+             否则成功时也会被当成失败（成功时 code 是 undefined）。 */
+          if (!json || (typeof json.code !== 'undefined' && json.code !== 0) || !Array.isArray(json.data)) {
+            throw new Error('返回格式异常');
+          }
+          render(json.data);
+        })
+        .catch(function () {
+          finish();
+          /* 失败就保持「不显示」。少一个评论数字不影响阅读，
+             所以不弹任何错误提示打扰读者；要排查时看浏览器控制台。 */
+        });
+    }
+
+    /* ---------- 5. 什么时候发请求 ----------
+       等页面基本加载完再发，避免和文章封面图抢带宽。
+       document.readyState 已经是 complete 时（例如从别的页面返回）直接发。 */
+    if (document.readyState === 'complete') { start(); }
+    else { window.addEventListener('load', start); }
+  })();
+</script>
+
+<style>
+  /* 文章卡片上的评论数：视觉风格与同行的浏览量 .pv-card 完全一致 */
+  #post-list .cm-card {
+    white-space: nowrap;   /* 图标和数字不许换行，避免挤成两行 */
+    line-height: 1.5;      /* 行高，与旁边的日期、分类纵向对齐 */
+  }
+  #post-list .cm-card .fa-comments {
+    opacity: 0.7;          /* 图标稍微调淡，不抢正文的视觉焦点 */
+  }
+  /* hidden 属性自带「隐藏」语义，但为了不依赖任何 CSS 框架，这里再显式声明一次：
+     数字没取回来之前，这一格绝对不可见（也就不会先亮出一个假的 0）。 */
+  #post-list .cm-card[hidden] {
+    display: none !important;
+  }
+  /* 手机窄屏：卡片底部这一行本来就有日期、分类、置顶、浏览量，再加评论数可能放不下。
+     flex-wrap 只是「放不下时才换行」的保险，宽屏完全不受影响。 */
+  @media (max-width: 575.98px) {
+    #post-list .post-meta {
+      flex-wrap: wrap;
+      row-gap: 0.25rem;
+    }
+  }
+</style>
+{%- endif -%}
+<!-- <<< CUSTOM-5 END -->
+
 
 {%- comment -%} 如果总页数超过 1 页，就在底部显示翻页按钮（上一页 / 页码 / 下一页）。 {%- endcomment -%}
 {% if paginator.total_pages > 1 %}
