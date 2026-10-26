@@ -88,6 +88,9 @@
     {%- assign _cm_ok = true -%}
   {%- elsif _prov == 'artalk' and _art.server and _art.server != '' -%}
     {%- assign _cm_ok = true -%}
+  {%- elsif _prov == 'twikoo' and _cm.twikoo.env_id and _cm.twikoo.env_id != '' -%}
+    {%- comment -%} Twikoo：只要服务地址填了就算可用（与服务端组件的判断保持同一标准） {%- endcomment -%}
+    {%- assign _cm_ok = true -%}
   {%- elsif _prov == 'utterances' and _cm.utterances.repo -%}
     {%- assign _cm_ok = true -%}
   {%- elsif _prov == 'waline' and _cm.waline.server_url -%}

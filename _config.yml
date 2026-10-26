@@ -269,7 +269,13 @@ comments:
   #      （服务器上执行 deploy/05-install-artalk.sh 一键部署）
   #   ② 把 _data/links.yml 的 apply.comment_anchor 改成 "#artalk-comments"
   #   ③ 组件代码 _includes/comments/artalk.html 已经在仓库里，不用重新写
-  provider: artalk # giscus
+  #
+  # 【想换成 Twikoo 时怎么办】（当前用的就是它）
+  #   ① provider 保持 twikoo，把下面 twikoo.env_id 填成你的 Twikoo 服务地址
+  #      （Vercel 一键部署得到，见《Twikoo免费部署》手册）
+  #   ② 把 _data/links.yml 的 apply.comment_anchor 改成 "#twikoo-comments"
+  #   ③ 组件代码 _includes/comments/twikoo.html 已经在仓库里，不用重新写
+  provider: twikoo # 可选：twikoo / artalk / giscus / disqus / utterances
   # 以下各家评论服务，只有 provider 里指定的那一家会生效，其余留空即可。
 
   # Disqus 评论（国外服务，国内被墙），不用就留空。
@@ -365,6 +371,34 @@ comments:
     ua_badge: false
     # 是否开启图片上传。开启后读者可直接贴图（文件存 Artalk 服务器）。
     # 【可DIY修改】法律专业内容站，为免被贴广告图，建议保持 false。
+
+  # Twikoo 评论（当前启用）。部署方式：Vercel 云函数 + MongoDB Atlas 免费数据库。
+  # 为什么用这套：不用服务器、不用花钱、不怕机器到期；云函数平时不占资源，
+  #   有人留言时才跑一下（几毫秒），博客这种访问量几乎用不到免费额度。
+  # 部署步骤见《Twikoo免费部署（Vercel+MongoDB）-零基础手册.md》。
+  # 官方文档：https://twikoo.js.org/
+  twikoo:
+    # ⚠️ 必填：Vercel 给你的访问地址（https 开头、结尾不带"/"）。
+    #   在 Vercel 项目 → Settings → Domains 里能看到。
+    #   【强烈建议用自定义域名】默认的 xxx.vercel.app 在国内经常打不开，
+    #   绑上 twikoo.2019527.xyz 之后速度和稳定性都明显更好。
+    #   留空 = 评论功能整体关闭：不渲染评论容器、不报错，友链申请区自动退回邮件方式。
+    env_id: https://twikoo.2019527.xyz
+    # 前端脚本目录（Vercel 不托管静态文件，所以从公共 CDN 取）。
+    #   这里用的是「淘宝 npmmirror 源」，国内速度好、不会被墙；
+    #   组件内部还会自动降级到 jsDelivr，任一可用即可。
+    #   ⚠️ 目录里的版本号要和下面 version 一致。
+    assets_url: https://registry.npmmirror.com/twikoo/2.0.17/files/dist
+    # 前端脚本版本号。Vercel 上跑的后端会随仓库自动更新，
+    #   一般不用动；若发现样式或功能异常，再来这里对齐版本。
+    version: 2.0.17
+    # 界面语言：zh-CN / en
+    lang: zh-CN
+    # 加载超时（毫秒）：到点仍未就绪就显示友好提示 + 邮件入口，绝不留空白。
+    #   走 Vercel 时国内首次访问偶尔会慢，觉得卡片久等就调大到 20000。
+    timeout: 20000
+    # 加载失败时降级提示里显示的联系邮箱。留空则自动取 site.social.email。
+    contact_email:
 
 # --------------------- 七、静态资源自托管（进阶，可选） ---------------------
 # 主题默认从公共 CDN（比如 jsdelivr）下载字体、图标等资源。

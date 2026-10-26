@@ -1,0 +1,333 @@
+{%- comment -%}
+  ============================================================================
+  【本文件是什么？】
+  Twikoo 评论组件（Vercel 云函数 + MongoDB Atlas 免费方案）
+
+  它由主题的 _includes/comment.html 自动调用（下面这行去掉花括号写，避免出现在注释块里）：
+    include comment.html  →  按 _config.yml 的 comments.provider 去找
+    _includes/comments/（provider 名字）.html
+
+  所以只要：
+    ① _config.yml 里 comments.provider 写成 twikoo
+    ② comments.twikoo.env_id 填上你的 Vercel 地址
+    ③ 本文件存在
+  评论区就会显示，不需要改主题任何一行代码。
+
+  ============================================================================
+  这一版和"自托管版"的区别（重要）
+  ============================================================================
+    自托管时，前端 twikoo.min.js 可以和评论服务放在同一台服务器上（/dist 目录）。
+    改用 Vercel 后，Vercel 只跑无状态的云函数，不提供静态文件托管，
+    所以前端脚本必须从公共 CDN 加载 —— 这里默认用「淘宝 npmmirror 源」，
+    国内速度好、不会被墙；主源失败自动换 jsDelivr。
+    对应 _config.yml 里要填：
+      assets_url: https://registry.npmmirror.com/twikoo/2.0.17/files/dist
+
+  ============================================================================
+  设计约定（与 artalk.html / giscus.html 保持同一套思路）
+  ============================================================================
+    · 未启用不渲染：仅当 comments.twikoo.env_id 有值时才输出任何内容。
+    · 资源动态注入：JS 用 JS 动态写入，而不是静态 <script src>。
+      原因：构建期 html-proofer 会校验静态资源地址，服务端还没部署时
+      会被误判为死链，导致整个构建失败。
+    · 多源兜底：按 assets_url → npmmirror → jsDelivr 的顺序依次尝试，
+      去重后逐个降级，任何一个能加载就正常显示，全挂了才给友好提示。
+    · 跟随主题明暗：读取 Theme.isDark，并监听 Theme.eventId 的切换消息，
+      把结果写到容器的 data-cmt-theme 属性上，样式用属性选择器跟着变。
+    · 懒加载：IntersectionObserver 滚动到附近才请求资源。
+      —— 这对 Vercel 方案尤其重要：不滚到评论区就不会发任何请求，
+         绝不会拖慢文章首屏，也不会白白消耗云函数额度。
+    · 超时兜底：到 timeout 毫秒仍未挂载 → 显示友好提示 + 邮件入口，绝不留空白。
+
+  ============================================================================
+  ⚠️ 内联脚本禁用 `//` 行注释
+  ----------------------------------------------------------------------------
+  _config.yml 开启了 compress_html，正式构建会压掉全部换行，
+  `//` 会把后续代码一并注释掉导致整页 JS 报错。
+  一律使用 /* 星号斜杠 */，语句以 `;` 结尾，分支加花括号。
+  ============================================================================
+{%- endcomment -%}
+
+
+{%- assign _tk_env = site.comments.twikoo.env_id | default: '' | strip -%}
+
+{%- if _tk_env != '' -%}
+
+  {%- assign _tk_assets = site.comments.twikoo.assets_url | default: '' | strip -%}
+  {%- if _tk_assets == '' -%}
+    {%- assign _tk_assets = _tk_env | append: '/dist' -%}
+  {%- endif -%}
+  {%- comment -%}
+    assets_url 留空时退化成「服务地址 + /dist」。
+    Vercel 方案请务必显式填 CDN 目录，否则会去请求一个不存在的路径，
+    白白多一次 404（虽然会自动降级，但首屏会慢半拍）。
+  {%- endcomment -%}
+
+  {%- assign _tk_version = site.comments.twikoo.version | default: '2.0.17' | strip -%}
+  {%- assign _tk_timeout = site.comments.twikoo.timeout | default: 15000 -%}
+  {%- assign _tk_lang    = site.comments.twikoo.lang | default: 'zh-CN' -%}
+  {%- assign _tk_key     = page.url | default: '/' -%}
+  {%- assign _tk_title   = page.title | default: site.title -%}
+  {%- assign _tk_absurl  = page.url | replace: 'index.html', '' | absolute_url -%}
+  {%- assign _tk_mail    = site.comments.twikoo.contact_email | default: site.social.email | default: site.email | default: '' | strip -%}
+
+<!-- https://twikoo.js.org/ -->
+<script>
+  (function () {
+    /* 自执行函数：内部变量不会污染外部，避免和其他脚本打架。 */
+
+    const SERVER = {{ _tk_env | jsonify }};
+    const ASSETS = {{ _tk_assets | jsonify }};
+    const VERSION = {{ _tk_version | jsonify }};
+    const TIMEOUT = {{ _tk_timeout }};
+
+    /* ---------- 评论区容器 ----------
+       先输出静态占位块再由 JS 接管，好处有两个：
+         ① <noscript> 里的文字能被搜索引擎抓取；
+         ② 读者即使禁用 JS 也能看到明确说明，而不是一片空白。 */
+    const HTML = [
+      '<section class="tk-seo-block">',
+      '<h2 class="tk-seo-title">评论</h2>',
+      '<noscript>',
+      '<p>本页评论区需要浏览器启用 JavaScript 才能显示。</p>',
+      '</noscript>',
+      '<div id="twikoo-comments"></div>',
+      '</section>'
+    ].join('');
+
+    const $tpl = document.createElement('div');
+    $tpl.innerHTML = HTML;
+    const $section = $tpl.firstElementChild;
+    $section.id = 'twikoo-comments-section';
+
+    const $footer = document.querySelector('footer');
+    if ($footer) {
+      $footer.parentNode.insertBefore($section, $footer);
+    } else {
+      document.body.appendChild($section);
+    }
+
+    const $container = document.getElementById('twikoo-comments');
+    const STATE = { mounted: false, closed: false };
+
+    /* ---------- 明暗主题：把主题状态写到容器属性上，CSS 用属性选择器响应 ---------- */
+    function applyTheme() {
+      const dark = (typeof Theme !== 'undefined' && Theme.isDark) ? true : false;
+      $container.setAttribute('data-cmt-theme', dark ? 'dark' : 'light');
+    }
+    applyTheme();
+
+    /* ---------- SEO 结构化数据 ---------- */
+    const $ld = document.createElement('script');
+    $ld.type = 'application/ld+json';
+    $ld.textContent = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'DiscussionForumPosting',
+      headline: {{ _tk_title | jsonify }},
+      url: {{ _tk_absurl | jsonify }}
+    });
+    document.head.appendChild($ld);
+
+    function dropSeoBlock() {
+      const $blk = $section.querySelector('.tk-seo-block');
+      if ($blk) { $blk.parentNode.removeChild($blk); }
+    }
+
+    /* ---------- 友好降级：任何失败路径都要给出可操作的下一步 ---------- */
+    function showFallback(msg) {
+      if (STATE.closed) { return; }
+      STATE.closed = true;
+      const $box = document.createElement('div');
+      $box.className = 'tk-fallback';
+      const $icon = document.createElement('i');
+      $icon.className = 'fas fa-comment-dots';
+      $icon.setAttribute('aria-hidden', 'true');
+      const $text = document.createElement('p');
+      $text.textContent = msg + '，可能是网络波动或评论服务暂时不可用。您可以刷新页面试试，或直接邮件联系我。';
+      const mail = {{ _tk_mail | jsonify }};
+      if (mail) {
+        $text.appendChild(document.createTextNode('（'));
+        const $a = document.createElement('a');
+        $a.href = 'mailto:' + mail;
+        $a.textContent = '邮件联系';
+        $text.appendChild($a);
+        $text.appendChild(document.createTextNode('）'));
+      }
+      $box.appendChild($icon);
+      $box.appendChild($text);
+      $container.appendChild($box);
+    }
+
+    let $timer = null;
+    function armTimeout() {
+      $timer = setTimeout(function () {
+        if (!STATE.mounted) { showFallback('评论暂时没能加载出来'); }
+      }, TIMEOUT);
+    }
+
+    /* ---------- 真正把评论区建起来 ---------- */
+    function initTwikoo() {
+      try {
+        window.twikoo.init({
+          envId: SERVER,
+          el: '#twikoo-comments',
+          path: {{ _tk_key | jsonify }},
+          lang: {{ _tk_lang | jsonify }}
+        });
+      } catch (err) {
+        showFallback('评论暂时没能加载出来');
+        return;
+      }
+
+      /* Twikoo 是异步渲染的（要先问一次云函数），给它 1.5 秒把人家的骨架搭出来，
+         再判断是不是真的挂载成功。 */
+      setTimeout(function () {
+        const $box = $container.querySelector('.tk-comments, .tk-comments-container, .tk-submit, .el-textarea');
+        if ($box || $container.childElementCount > 0) {
+          STATE.mounted = true;
+          if ($timer) { clearTimeout($timer); $timer = null; }
+          dropSeoBlock();
+        } else {
+          showFallback('评论暂时没能加载出来');
+        }
+      }, 1500);
+    }
+
+    /* ---------- 下载评论前端资源（多源依次降级） ----------
+       顺序：assets_url 指定的目录 → 淘宝 npmmirror → jsDelivr。
+       同一个地址只试一次（去重），避免重复请求。 */
+    const SOURCES = [];
+    function addSource(url) {
+      if (url && SOURCES.indexOf(url) === -1) { SOURCES.push(url); }
+    }
+    addSource(ASSETS + '/twikoo.min.js');
+    addSource('https://registry.npmmirror.com/twikoo/' + VERSION + '/files/dist/twikoo.min.js');
+    addSource('https://cdn.jsdelivr.net/npm/twikoo@' + VERSION + '/dist/twikoo.min.js');
+
+    function loadScript(src, onload, onerror) {
+      const $script = document.createElement('script');
+      $script.src = src;
+      $script.async = true;
+      $script.onload = onload;
+      $script.onerror = onerror;
+      document.head.appendChild($script);
+    }
+
+    function loadNext(i) {
+      if (i >= SOURCES.length) {
+        showFallback('评论暂时没能加载出来');
+        return;
+      }
+      loadScript(
+        SOURCES[i],
+        function () {
+          if (window.twikoo) { initTwikoo(); } else { loadNext(i + 1); }
+        },
+        function () { loadNext(i + 1); }
+      );
+    }
+
+    /* ---------- 跟随主题明暗切换 ---------- */
+    addEventListener('message', function (event) {
+      if (event.source !== window || !event.data ||
+          typeof Theme === 'undefined' || event.data.id !== Theme.eventId) {
+        return;
+      }
+      applyTheme();
+    });
+
+    /* ---------- 懒加载 ---------- */
+    const observer = new IntersectionObserver(
+      function (entries) {
+        if (!entries[0].isIntersecting) { return; }
+        observer.disconnect();
+        armTimeout();
+        loadNext(0);
+      },
+      { threshold: [0] }
+    );
+    observer.observe($section);
+  })();
+</script>
+
+  <style>
+    #twikoo-comments-section {
+      margin-top: 2.5rem;
+      padding: 0 0.25rem;
+      padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+    .tk-seo-block { margin-bottom: 1rem; }
+    .tk-seo-title { font-size: 1.15rem; font-weight: 600; margin-bottom: 0.5rem; }
+    .tk-fallback {
+      padding: 1.6rem 1rem;
+      text-align: center;
+      font-size: 0.88rem;
+      line-height: 1.8;
+      color: var(--fg-color);
+      opacity: 0.65;
+      border: 1px dashed var(--border-color, rgba(128, 128, 128, 0.35));
+      border-radius: 0.6rem;
+    }
+    .tk-fallback i { font-size: 1.5rem; opacity: 0.5; margin-bottom: 0.5rem; display: block; }
+    .tk-fallback p { margin: 0; }
+    .tk-fallback a { color: var(--link-color, currentColor); text-decoration: underline; }
+
+    /* ---------- 移动端适配 ----------
+       Twikoo 内部用的是 Element Plus 组件，窄屏上点击区域偏小，
+       这里把几个关键控件放大到 32px，避免手机上一个操作点不准。 */
+    @media screen and (max-width: 600px) {
+      #twikoo-comments-section { margin-top: 1.75rem; }
+      #twikoo-comments .el-button { min-height: 32px; }
+      /* 输入框字号必须 ≥16px，否则 iOS Safari 聚焦时页面会被强制放大 */
+      #twikoo-comments .el-textarea__inner,
+      #twikoo-comments .el-input__inner { font-size: 16px; }
+      /* 昵称过长时截断，不换行把布局撑破 */
+      #twikoo-comments .tk-nick-link {
+        max-width: 42vw;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        display: inline-block;
+        vertical-align: bottom;
+      }
+    }
+
+    /* ---------- 无障碍：键盘聚焦要有清晰轮廓（不要 outline: none）---------- */
+    #twikoo-comments button:focus-visible,
+    #twikoo-comments a:focus-visible,
+    #twikoo-comments textarea:focus-visible,
+    #twikoo-comments input:focus-visible {
+      outline: 2px solid var(--link-color, #4a90d9);
+      outline-offset: 2px;
+      border-radius: 3px;
+    }
+
+    /* ---------- 深色模式基础适配 ----------
+       Twikoo 自带样式是按浅色背景设计的，本站有深色模式，
+       这里把最容易"刺眼"的几块（输入框、按钮、正文、时间）调成深色。
+       只做最小改动，不重排它的布局，避免升级后样式错位。 */
+    #twikoo-comments[data-cmt-theme='dark'] { color-scheme: dark; }
+    #twikoo-comments[data-cmt-theme='dark'] .el-textarea__inner,
+    #twikoo-comments[data-cmt-theme='dark'] .el-input__inner {
+      background-color: #2b2b2e;
+      color: #d6d6d9;
+      border-color: #43434a;
+    }
+    #twikoo-comments[data-cmt-theme='dark'] .tk-content,
+    #twikoo-comments[data-cmt-theme='dark'] .tk-comments-count,
+    #twikoo-comments[data-cmt-theme='dark'] .tk-nick-link { color: #d6d6d9; }
+    #twikoo-comments[data-cmt-theme='dark'] .tk-time,
+    #twikoo-comments[data-cmt-theme='dark'] .tk-action-link { color: #9aa0a6; }
+    #twikoo-comments[data-cmt-theme='dark'] .el-button {
+      background-color: #3a3a40;
+      border-color: #4a4a52;
+      color: #e6e6e9;
+    }
+    #twikoo-comments[data-cmt-theme='dark'] .tk-admin,
+    #twikoo-comments[data-cmt-theme='dark'] .tk-expand {
+      background-color: #2b2b2e;
+      border-color: #43434a;
+      color: #d6d6d9;
+    }
+  </style>
+{%- endif -%}
