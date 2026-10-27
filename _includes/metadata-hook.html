@@ -86,3 +86,27 @@
 
 <!-- 评论区（Twikoo）是交互功能，点开就要用，值得稳定预连接 -->
 <link rel="preconnect" href="https://twikoo.2019527.xyz" crossorigin>
+
+<!--
+  ============================================================================
+  预加载（preload）字体图标：让浏览器「提前开抢」，和样式表同时下载
+  ----------------------------------------------------------------------------
+  【问题】图标字体是在 CSS 里声明的，浏览器必须先「下载完 CSS、再解析 CSS」，
+          才知道"哦，还有个图标字体要下"——等于排队排在 CSS 后面。
+  【解决】这里用 preload 提前告诉浏览器"这个文件马上就要用"，它就会和 CSS
+          并行下载，而不是等 CSS 解析完。图标因此能早出现约一个来回（几十到
+          一两百毫秒，网络越慢差别越明显）。
+
+  【⚠️ 注意两个细节，改的时候别丢】
+    ① 必须带 crossorigin —— 字体属于跨域资源，不加这个属性浏览器会认为
+       "这不是同一个东西"，等于白预加载一次（还会在控制台报警告）。
+    ② 只预加载"首屏真的会用到"的那两个（实心 + 品牌图标）。
+       常规体型（regular）图标只在少数地方用，让它按需加载即可，
+       预加载太多反而会跟正文图片抢带宽。
+
+  【这两个文件的体积】实心 4.2 KB、品牌 3.1 KB（原版分别是 117 KB 和 113 KB），
+  已经无可压缩余地，预加载的代价几乎为零。
+  ============================================================================
+-->
+<link rel="preload" href="{{ '/assets/self-host/fontawesome-free/webfonts/fa-solid-900-subset.woff2' | relative_url }}" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="{{ '/assets/self-host/fontawesome-free/webfonts/fa-brands-400-subset.woff2' | relative_url }}" as="font" type="font/woff2" crossorigin>
