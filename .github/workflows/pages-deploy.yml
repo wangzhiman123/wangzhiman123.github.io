@@ -12,10 +12,13 @@
 #   您在本地改完文章、推送到 GitHub → 等两三分钟 → 网站就自动更新好了，
 #   全程不需要您做任何手工操作。
 #
-# 本文件分三段（下面 jobs 里的三个名字）：
-#   build         —— 编译网站并打包，是整个流程的基础
-#   deploy        —— 把编译结果发布到 GitHub Pages（默认托管）
-#   deploy-server —— 把编译结果同步到您自己的火山引擎服务器（可选，默认关闭）
+# 本文件分两段（下面 jobs 里的两个名字）：
+#   build   —— 编译网站并打包，是整个流程的基础
+#   deploy  —— 把编译结果发布到 GitHub Pages
+#
+# 【2026-10-27 精简】原来还有第三个任务 deploy-server（用 rsync 把网页同步到
+# 自己的国内云服务器）。该功能已整体移除，连同打包上传、SSH 密钥、
+# DEPLOY_TO_SERVER 开关一起删掉了。现在只发布到 GitHub Pages 一个地方。
 #
 # 阅读提示：YAML 格式靠缩进表示层级，缩进对不齐会直接报错。
 # ============================================================================
@@ -37,28 +40,7 @@ on:
       # 【小优化】如果这次改动只涉及这三个文件，就不用重新构建网站了——
       # 因为它们的内容跟网页显示毫无关系，白跑一次浪费时间。
 
-  # 触发条件 2：定时自动运行
-  # 每 6 小时重建一次：让「Update Post Views」写入的 _data/views.json 能落到线上。
-  # 该工作流在 UTC 01:00 / 07:00 / 13:00 / 19:00 运行，这里延后 30 分钟重建（cron 用 UTC）。
-  # cron改回代码：'30 1,7,13,19 * * *'，该代码的自动运行频率为 4 次/天
-  schedule:
-    - cron: '30 19 * * *'  # ← 由 4 次/天 改为 1 次/天（北京时间 03:00）
-    # 【这段话很重要，请仔细看】为什么网站需要"定时重建"？
-    #   浏览量数字是"编译时印进网页"的。也就是说，即使数据文件更新了，
-    #   不重新编译一次，线上网页里的数字就还是旧的。
-    #   所以这里安排定时任务：每天固定时间自动重建一次，把最新数字刷上去。
-    #
-    # 【时间怎么换算？】GitHub 服务器用 UTC 时间（世界标准时间），
-    #   北京时间 = UTC + 8 小时。
-    #   所以 '30 19 * * *' 表示 UTC 19:30，换算成北京时间就是次日 03:30。
-    #   cron 这五个位置的含义依次是：分 时 日 月 星期。
-    #
-    # 【可DIY修改】想让浏览量更新更勤快，把上面这行换成注释里提到的
-    #   '30 1,7,13,19 * * *' 即可（每天 4 次）。
-    #   ⚠️ 但必须和 .github/workflows/update-views.yml 里的抓取时间配合调整，
-    #   建议在抓取任务之后半小时左右重建，否则可能白重建一次。
-
-  # 触发条件 3：允许您手动点击运行
+  # 触发条件 2：手动点击运行
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
     # 加上这一段后，GitHub 的 Actions 页面会出现「Run workflow」按钮，
@@ -95,9 +77,8 @@ permissions:
   # 允许发布网页到 GitHub Pages（必须给，否则发不出去）。
   id-token: write
   # 允许获取一个临时凭证，供 GitHub Pages 验证身份用（新版官方要求）。
-  # upload-artifact（自有服务器产物）需要写权限，缺失会导致 403 并使 build job 失败
-  actions: write
-  # 允许上传构建产物。如果漏掉这一条，build 阶段会直接报 403 错误失败。
+  # 【2026-10-27】原来这里还有 actions: write，是为「给自有服务器打包上传」用的；
+  # 那个任务已删除，这行权限也就不再需要，去掉可以让脚本的权限更小更安全。
 
 # Allow one concurrent deployment
 # 不取消进行中的运行，保证最后一次提交一定被部署上线
@@ -186,24 +167,6 @@ jobs:
           path: "_site${{ steps.pages.outputs.base_path }}"
           # 要打包上传的文件夹。
 
-      # 供自有服务器部署使用的普通 artifact
-      # 开关：仓库 Settings → Secrets and variables → Actions → Variables → DEPLOY_TO_SERVER
-      - name: Upload site for self-hosted server
-        # 第 7 步：额外再打包一份，专门给您自己的服务器用。
-        if: ${{ vars.DEPLOY_TO_SERVER == 'true' }}
-        # 【开关的作用】只有当仓库设置里的 DEPLOY_TO_SERVER 变量等于 true 时，
-        # 这一步才会执行。默认不设置就是不跑，也就不占资源。
-        # 怎么设置：GitHub 仓库页面 → Settings（设置）→ Secrets and variables（机密与变量）
-        #          → Actions → Variables（变量）标签 → 新建一个名为 DEPLOY_TO_SERVER、
-        #          值为 true 的变量即可。
-        uses: actions/upload-artifact@v4
-        with:
-          name: site
-          path: "_site${{ steps.pages.outputs.base_path }}"
-          retention-days: 1
-          # 【可DIY修改】打包文件保留天数，这里设为 1 天。
-          # 设置得短一点，可以避免 GitHub 存储空间被大量历史产物占满。
-
   # ==================== 任务二：发布到 GitHub Pages ====================
   deploy:
     # 这个任务负责把网站发布到 GitHub 免费提供的托管服务上。
@@ -222,89 +185,8 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v5
 
-  # ==================== 任务三：同步到自己的服务器（可选） ====================
-  # rsync 推送到火山引擎服务器
-  # 开关：仓库 Settings → Secrets and variables → Actions → Variables
-  #       把 DEPLOY_TO_SERVER 设为 false 即可停止推送（服务器到期后用它）
-  deploy-server:
-    needs: build
-    runs-on: ubuntu-latest
-    if: ${{ vars.DEPLOY_TO_SERVER == 'true' }}
-    # 同样受 DEPLOY_TO_SERVER 开关控制。
-    # 【实用场景】如果不打算再续费火山引擎服务器，只要把这个变量改成 false，
-    # 推送就会自动停止，不用回来删代码——这样以后想恢复也只需改回 true。
-    steps:
-      - name: Download site artifact
-        # 第 1 步：把 build 任务打包好的网站下载到本任务里。
-        uses: actions/download-artifact@v4
-        with:
-          name: site
-          path: _site
-
-      - name: Setup SSH key
-        # 第 2 步：准备远程登录服务器用的"钥匙"。
-        run: |
-          mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H 115.190.250.120 >> ~/.ssh/known_hosts
-          # 逐行解释：
-          #   mkdir -p ~/.ssh               创建存放钥匙的文件夹（已存在也不报错）。
-          #   printf ... > deploy_key       把仓库里保存的私钥写成一个文件。
-          #       私钥是什么？可以理解成"一把只有您才有的网络钥匙"，
-          #       服务器认出这把钥匙，才会允许上传文件。
-          #       secrets.SSH_PRIVATE_KEY 是您在仓库设置里预先存好的机密内容，
-          #       代码里看不到它的真实值，很安全。
-          #   chmod 600                     把文件权限设成"只有本人能读"，
-          #       这是钥匙文件的硬性要求，权限太宽松会被拒绝使用。
-          #   ssh-keyscan ...               预先记录服务器的"身份指纹"。
-          #       作用：第一次连接时自动确认"对面确实是我的服务器"，
-          #       避免脚本因为等待人工确认"是否信任该主机"而卡住。
-
-      - name: Rsync to server
-        # 第 3 步：把网站文件同步到服务器上。
-        run: |
-          rsync -rltz --delete \
-            --no-owner --no-group --no-perms \
-            --exclude='.user.ini' \
-            --exclude='.htaccess' \
-            --exclude='.well-known/' \
-            --exclude='proxy_cache_dir/' \
-            --chmod=D775,F664 \
-            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes" \
-            _site/ deploy@115.190.250.120:/www/wwwroot/2019527.xyz/ \
-            || { code=$?; if [ "$code" -eq 23 ]; then echo "rsync 退出码 23：部分属性未能设置（宝塔保护 .user.ini 等文件所致），文件内容已传输完成，视为成功"; else exit $code; fi; }
-          # rsync 是一个"只同步有变化的文件"的工具，比整个重传快得多。
-          # 各参数的含义：
-          #   -rltz            保留目录结构、时间戳、软链接，并压缩传输（省流量、更快）；
-          #   --delete         把服务器上"本地已经没有的旧文件"删掉，
-          #                    保证服务器内容和网站保持一致，不会残留老页面；
-          #   --no-owner --no-group --no-perms
-          #                    不修改服务器上文件的"归属和权限设置"。
-          #                    原因：GitHub 机器上的账号跟服务器上的不是同一套，
-          #                    强行修改反而会出错。
-          #   --exclude=...    这几项排除不同步，原因是它们属于服务器自己特有的配置：
-          #                       .user.ini         服务器特有的防护设置文件
-          #                       .htaccess         服务器特有的访问规则文件
-          #                       .well-known/      HTTPS 证书验证目录，覆盖了会出问题
-          #                       proxy_cache_dir/  服务器自己的缓存目录
-          #   --chmod=D775,F664  规定同步过去的文件和文件夹权限（文件夹 775、文件 664），
-          #                      保证网页服务器有权限读取。
-          #   -e "ssh -i ..."  指定用刚才那把钥匙登录，并要求严格校验主机身份、
-          #                      不允许弹出任何交互提问（因为自动化环境没人能回答）。
-          #   _site/  deploy@115.190.250.120:/www/wwwroot/2019527.xyz/
-          #                    左边是本地文件夹，右边是"登录名@服务器地址:目标文件夹"。
-          #                    deploy 是服务器上专门用于部署的账号，权限受限制更安全。
-          # 最后那一段 || { ... } 是"失败兜底处理"：
-          #   如果 rsync 报错退出，就检查错误码是不是 23。
-          #   为什么单独放行 23？因为宝塔面板（服务器管理软件）会锁定 .user.ini
-          #   这类文件不让改属性，导致 rsync 报 23——但此时文件内容其实已经传完了，
-          #   属于"假故障"。所以这种情形打印一句说明、当作成功处理，避免虚惊一场。
-
-      - name: Cleanup
-        # 第 4 步：收尾清理。
-        if: always()
-        # always() 表示"不管前面成功还是失败都要执行这一步"。
-        # 【为什么要清理？】把刚才写在云主机上的那把钥匙删掉。
-        # 云主机用过即销毁，但养成随手清理钥匙的习惯更稳妥。
-        run: rm -f ~/.ssh/deploy_key
+  # 【2026-10-27 精简】原来这里还有「任务三：同步到自己的服务器」：
+  #   用 rsync + SSH 私钥把编译结果推到 115.190.250.120 那台云服务器上的
+  #   /www/wwwroot/2019527.xyz/，由 DEPLOY_TO_SERVER 变量控制开关。
+  # 该功能已整体移除（deploy/ 目录也一并删除），现在只发布到 GitHub Pages。
+  # ⚠️ 若以后还要用国内服务器托管，需要把这一段连同 deploy/ 工具一起恢复。

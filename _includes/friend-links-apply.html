@@ -31,7 +31,7 @@
       email: a@b.com         # 收件邮箱（表单模式点提交时用这个）
       intro: 一段引导文字      # 显示在区块顶部
       note: 一段审核须知       # 显示在表单下方，小字灰色
-      comment_anchor: #giscus-comments  # 评论模式的"去评论区"按钮跳转锚点
+      comment_anchor: "#twikoo-comments"  # 评论模式的"去评论区"按钮跳转锚点
 
   ============================================================================
   【表单字段与校验规则】（前端 JS 校验，见文件末尾脚本）
@@ -62,12 +62,12 @@
   {%- comment -%}
     ============ 评论区是否真的可用？============
     配了评论系统 ≠ 评论区真的会显示。必须同时满足两个条件：
-      ① 必要配置填了（giscus 需 repo/repo_id/category_id；
-         artalk 需 server；giscus 之外的看对应服务的必填项）
+      ① 必要配置填了（twikoo 需 env_id；artalk 需 server；
+         giscus 需 repo/repo_id/category_id；各家看对应服务的必填项）
       ② 当前页面开了评论（page.comments）
     任何一条不满足，主题都不会渲染评论区，读者点「前往评论区」就会扑空。
     所以先探测，可用才给「前往评论区」按钮；不可用则自动退回邮箱方式，
-    不留死按钮。（本项目全站 provider: giscus，与文章页完全一致。
+    不留死按钮。（本项目全站 provider: twikoo，与文章页完全一致。
       配置齐全，所以页面上显示的是「前往评论区留言」。）
 
     ⚠️ 换评论系统时记得同步三处：
@@ -150,9 +150,23 @@
         {%- assign _me_color = '' -%}
       {%- endif -%}
       {%- if _me_name == '' -%}{%- assign _me_name = _me_url -%}{%- endif -%}
-      {%- comment -%} 头像背景色：优先用self.color，其次取首条友链图标色，最后用默认蓝 {%- endcomment -%}
+      {%- comment -%} 头像背景色：优先用 self.color，其次取「第一条真正配了颜色的友链」的色号，最后用默认蓝 {%- endcomment -%}
       {%- if _me_color == '' -%}
-        {%- assign _me_color = _cfg.links | first | default: empty | map: 'color' | first | default: '#3b6ea5' -%}
+        {%- comment -%}
+          ⚠️ 2026-10-27 修：原来写的是
+             _cfg.links | first | default: empty | map: 'color' | first
+          这是对「单个哈希」用 map，Liquid 的 map 只会遍历数组，
+          对象上取不到值 → 永远得到 nil → 永远落到默认色，
+          等于「自动取第一条友链颜色」这段逻辑从来没生效过。
+          改成遍历友链列表、取第一个合法的 #RRGGBB（与列表卡片同一套校验规则）。
+        {%- endcomment -%}
+        {%- for _lk in _cfg.links -%}
+          {%- assign _lk_color = _lk.color | default: '' | strip -%}
+          {%- if _me_color == '' and _lk_color.size == 7 and _lk_color contains '#' -%}
+            {%- assign _me_color = _lk_color -%}
+          {%- endif -%}
+        {%- endfor -%}
+        {%- if _me_color == '' -%}{%- assign _me_color = '#3b6ea5' -%}{%- endif -%}
       {%- endif -%}
 
       <div class="fl-guide">
@@ -246,7 +260,9 @@
             <i class="fas fa-circle-info me-1" aria-hidden="true"></i>{{ _note }}
           </p>
           {%- if _show_cmt -%}
-            <a class="fl-btn fl-btn-primary" href="{{ _ap.comment_anchor | default: '#giscus-comments' }}">
+            <a class="fl-btn fl-btn-primary" href="{{ _ap.comment_anchor | default: '#twikoo-comments' }}">
+              {%- comment -%} 锚点默认值随当前评论系统走（本项目用 Twikoo）。
+                   links.yml 里配置了 apply.comment_anchor 时以它为准。 {%- endcomment -%}
               <i class="fas fa-arrow-down me-1" aria-hidden="true"></i>前往评论区留言
             </a>
           {%- else -%}
@@ -506,9 +522,16 @@
       var firstBad = null;
       ids.forEach(function (id) { if (!check(id) && !firstBad) { firstBad = id; } });
       if (firstBad) {
-        say('还有 ' + ids.length - ids.filter(function (id) {
+        /* ⚠️ 2026-10-27 修：原来写成
+             '还有 ' + ids.length - ids.filter(...).length + ' 项…'
+           JavaScript 的 + 和 - 优先级相同、从左到右算，
+           所以先算 '还有 ' + ids.length 得到字符串 "还有 6"，
+           再用字符串减数字 → NaN，页面上会显示「还有 NaN 项需要修正」。
+           修法：先把数字算出来放进变量，再用括号参与字符串拼接。 */
+        var badCount = ids.filter(function (id) {
           return !document.getElementById(id).classList.contains('is-invalid');
-        }).length + ' 项需要修正，请检查标红的输入框。', 'is-warn');
+        }).length;
+        say('还有 ' + (ids.length - badCount) + ' 项需要修正，请检查标红的输入框。', 'is-warn');
         var bad = document.getElementById(firstBad);
         bad.focus();
         return;

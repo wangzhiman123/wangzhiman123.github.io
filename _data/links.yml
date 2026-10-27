@@ -72,7 +72,7 @@ apply:
   # 本站的友链申请页地址（读者填写"能看到申请的地址"时用）
   anchor_url: "https://2019527.xyz/links/"
   # 「前往评论区」按钮的跳转锚点。
-  # 必须与评论区容器的 id 一致 —— 本项目 Giscus 组件用的是 #giscus-comments。
+  # 必须与评论区容器的 id 一致 —— 本项目用的是 Twikoo，容器 id 是 #twikoo-comments。
   # 【⚠️ 换评论系统时必须同步改这里】对应关系：
   #   Artalk  → #artalk-comments
   #   giscus  → #giscus-comments

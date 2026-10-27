@@ -40,7 +40,7 @@
 
 ---
 
-## 三、文件清单（共 41 个）
+## 三、文件清单（共 40 个）
 
 ### 网站本体（构建网站必需）
 
@@ -48,15 +48,11 @@
 |---|---|
 | `_config.yml` | **网站总配置**（最重要的文件）：标题、域名、语言、统计、评论、外观等 |
 | `index.html` | 首页入口，只有 4 行 |
-| `_layouts/home.html` | 首页版式：文章卡片列表、置顶逻辑、站点统计条、浏览量显示 |
+| `_layouts/home.html` | 首页版式：文章卡片列表、置顶逻辑、站点统计条 |
 | `_layouts/post.html` | 文章详情页版式：标题、封面图、目录、正文、版权、分享 |
-| `_includes/hot-posts.html` | 右侧"热门文章"面板 |
 | `_includes/footer.html` | 页脚：版权（含网站运行天数）、建站技术说明、ICP 备案、公安备案 |
-| `_includes/metadata-hook.html` | **自定义注入点**（主题官方预留）：用来给页面补充自定义 CSS/meta，不改主题源码 |
-| `assets/css/custom-footer.css` | 自定义补充样式：主要修手机端页脚"内容顶到横线"的问题 |
-| `_includes/pageviews/goatcounter.html` | 浏览量填充脚本（本站的浏览量核心） |
+| `_includes/metadata-hook.html` | **自定义注入点**（主题官方预留）：内含页脚修正样式的内联 `<style>`，以及按当前文章首图自动生成的 `preconnect` 预连接。不改主题源码 |
 | `_includes/analytics/baidu.html` | 百度统计代码 |
-| `_includes/analytics/goatcounter.html` | **故意留空**的文件（用来屏蔽主题自带的 GoatCounter，详见文件内注释） |
 | `_includes/comments/artalk.html` | Artalk 评论系统 |
 | `Gemfile` | 网站依赖的"零件采购清单" |
 | `_posts/` | 文章存放处（本次未加注释，内容即文章正文） |
@@ -69,8 +65,6 @@
 | `_data/contact.yml` | 侧边栏联系方式图标栏 |
 | `_data/share.yml` | 文章底部分享按钮 |
 | `_data/origin/basic.yml` | 自托管资源路径表（让网站不用国外 CDN） |
-| `_data/views.json` | 各文章**真实浏览量**的账本（由脚本自动维护，不要手改） |
-| `_data/pv_state.json` | 各文章**查询次数**的账本（用于纠正不蒜子的误差，不要手改） |
 
 ### 页面导航
 
@@ -86,9 +80,7 @@
 | 文件 | 作用 |
 |---|---|
 | `.github/workflows/pages-deploy.yml` | GitHub 自动构建并发布的流水线 |
-| `.github/workflows/update-views.yml` | 定时抓取浏览量并回写的流水线 |
 | `_plugins/posts-lastmod-hook.rb` | 自动读取每篇文章的 git 修改次数，显示"更新于" |
-| `scripts/update_views.py` | 抓取浏览量、计算真实值的 Python 脚本 |
 
 ### 一键部署（Windows 本机使用）
 
@@ -98,21 +90,14 @@
 | `sync.bat` | **双击这个就能一键同步**（线上 → 本地，把网站最新代码取回电脑） |
 | `deploy.ps1` | 一键部署 / 拉取的完整脚本（注释最详尽，`deploy.bat` 与 `sync.bat` 都调用它） |
 
-### 服务器部署（迁移到自己的云服务器时使用）
+### 服务器部署 —— 已删除
 
-| 文件 | 作用 |
-|---|---|
-| `deploy/01-server-init.sh` | 服务器初始化（装 Nginx、配网站目录、开防火墙） |
-| `deploy/02-first-deploy.sh` | 首次部署（把代码拉下来、生成网站） |
-| `deploy/publish.sh` | **核心发布脚本**：原子切换 + 秒级回滚 |
-| `deploy/03-https.sh` | 申请并自动续期 HTTPS 证书 |
-| `deploy/04-install-views-cron.sh` | 安装"定时刷新浏览量"任务 |
-| `deploy/views-refresh.sh` | 定时刷新浏览量（被上面的任务调用） |
-| `deploy/update-from-git.sh` | 从 git 拉取最新代码（短别名脚本） |
-| `deploy/deploy-aliyun.ps1` | 在本机把代码打包上传到服务器 |
-| `deploy/deploy-aliyun.bat` | 上面脚本的批处理入口 |
-| `deploy/config.env.example` | 服务器部署配置模板（复制成 `config.env` 再改） |
-| `deploy/config.local.ps1.example` | 本机上传配置模板（复制成 `config.local.ps1` 再改） |
+> **【2026-10-27 精简】** 原来这里有一套「把静态网页同步到国内云服务器」的工具
+> （`deploy/` 目录下的 12 个脚本：服务器初始化、构建发布、HTTPS 证书、
+> 浏览量定时刷新、本机打包上传等），已随功能一起整体删除。
+> 网站现在只发布到 GitHub Pages，工作流里也只剩 `build` 与 `deploy` 两个任务。
+> 若以后要恢复自建服务器托管，需要连同 `.github/workflows/pages-deploy.yml`
+> 里的 `deploy-server` 任务一起恢复。
 
 ### 本地开发工具
 
@@ -123,33 +108,20 @@
 
 ---
 
-## 四、关于两个 JSON 文件
+## 四、关于「浏览量」的说明 —— 该功能已整体删除
 
-`_data/views.json` 与 `_data/pv_state.json` 是 **JSON 格式，本身不支持写注释**
-（写注释会导致程序无法读取）。这里用文字说明代替：
-
-- **`views.json`** —— 记录**每篇文章的真实浏览量**，格式是 `"文章网址": 数字`。
-  例如 `"/posts/post-001/": 25` 表示第一篇文章有 25 次浏览。
-  **这个数字是脚本自动算出来写进去的，请不要手工修改。**
-
-- **`pv_state.json`** —— 记录**累计查询次数**，作用是用来"修正误差"。
-  因为免费统计服务（不蒜子）给出的数字包含脚本自己的查询，
-  真实浏览量的计算公式是：**接口返回的数字 − 累计查询次数**。
-  **同样请不要手工修改。**
-
-这两个文件会被 GitHub Actions 或服务器上的定时任务自动更新，每次自动提交一次。
-
-### 补充：如何让本地部署"跳过"这两个文件
-
-默认情况下，本地部署（`deploy.bat`）也会刷新并上传这两个文件（与线上定时任务分工协作）。
-如果你希望**让线上定时任务独占维护它们、本地部署完全不插手**，用 `-SkipData` 参数：
-
-```powershell
-deploy.bat -SkipData              # 本次部署：这两个文件不上传、不覆盖线上
-deploy.bat -SkipViews -SkipData   # 更进一步：连"刷新"也不做，全程不碰这两个文件
-```
-
-两个开关的分工见《一键部署使用说明.md》第三节。**默认不带参数时行为不变**，属于按需开启。
+> **【2026-10-27 精简】** 原来这里有一节讲 `_data/views.json` 与 `_data/pv_state.json`
+> 这两个 JSON 文件怎么工作、怎么用 `-SkipData` 跳过它们。现在这些都删掉了：
+>
+> - **页面不再显示任何浏览量**：首页卡片、文章页「N 次浏览」、首页顶部总访问量、
+>   侧边栏「热门文章」全部移除；
+> - **不再抓取任何数据**：`scripts/update_views.py`、`update-views.yml`、
+>   `_data/views.json`、`_data/pv_state.json` 均已删除；
+> - **部署参数简化**：`-SkipViews` / `-SkipData` 两个开关也随之取消，
+>   `deploy.bat` 恢复成"双击就部署"。
+>
+> 顺带说明：首页卡片上的「💬 评论数」也一并移除（对应 `commentcount` 配置段已删）。
+> 文章页底部的评论区不受影响，仍由 `_config.yml` 的 `comments` 段控制。
 
 ---
 
@@ -159,8 +131,7 @@ deploy.bat -SkipViews -SkipData   # 更进一步：连"刷新"也不做，全程
 
 | 校验项 | 结果 |
 |---|---|
-| 9 个 shell 脚本语法（`bash -n`） | 全部通过 |
-| `scripts/update_views.py` 编译 + 去注释后语法树比对 | 完全一致 |
+| shell 脚本语法（`bash -n`） | 原 `deploy/` 下的脚本已删除，现无 shell 脚本 |
 | `_plugins/posts-lastmod-hook.rb` 去注释后比对 | 核心代码完全一致 |
 | `_config.yml` 解析结果比对（31 个配置项） | 完全一致 |
 | 4 个 `_data/*.yml` 解析结果比对 | 完全一致 |

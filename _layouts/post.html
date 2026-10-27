@@ -6,7 +6,7 @@
 #
 # 它规定了文章页从上到下各块的排列顺序：
 #   ① 文章大标题、简介
-#   ② 发布信息一栏：发布时间、更新时间（仅当内容改过）、封面图、作者、浏览量、预计阅读时长
+#   ② 发布信息一栏：发布时间、更新时间（仅当内容改过）、封面图、作者、预计阅读时长
 #   ③ 目录（TOC = 本文小标题导航，点一下能跳到对应段落）
 #   ④ 文章正文
 #   ⑤ 文章底部：所属分类、标签、版权声明、分享按钮
@@ -18,11 +18,9 @@ layout: default
 
 panel_includes:
 # panel_includes 是「侧边栏面板」清单。短横线代表往清单里加一项，顺序就是显示顺序。
-  - hot-posts   # 热门文章面板（显示浏览量最高的几篇文章）
   - toc         # 本文目录面板
-  # ⚠️ 上面这一项是本项目对主题的自定义改动。
-  # 主题原版这里是 [toc]，本项目额外加上了 hot-posts，
-  # 也就是在侧边栏里先显示「热门文章」，再显示「本文目录」。
+  # 【2026-10-27 精简】原来的 hot-posts（热门文章面板）已移除，
+  # 侧边栏只保留「本文目录」。模板因此与主题原版一致，升级时无需再单独处理。
 
 tail_includes:
 # tail_includes 是「文章正文后面要接的内容」。
@@ -31,21 +29,20 @@ tail_includes:
 
 script_includes:
 # script_includes 是「本页面需要额外加载的脚本」。
-  - comment         # 评论功能脚本（对应 Artalk 评论组件）
+  - comment         # 评论功能脚本（对应 Twikoo 评论组件）
 ---
 
 {%- comment -%}
   文章详情页布局（本文件覆盖主题 jekyll-theme-chirpy v7.6.0 的 _layouts/post.html）
 
-  与主题原版【唯一】的差异：
-    panel_includes 由 [toc] 改为 [hot-posts, toc]
-    —— 即在「最近更新」「热门标签」之后、目录（toc）之前，渲染「热门文章」板块
-       （复用 _includes/hot-posts.html，与首页同一组件、同一份数据）。
+  【2026-10-27 精简】已与主题原版对齐：
+    · panel_includes 由 [hot-posts, toc] 改回 [toc] —— 热门文章面板已整体移除
+    · 发布信息里的「浏览量」（#pageviews）整段移除 —— 浏览量功能已整体停用
+  也就是说，现在本文件除中文注释外与主题原版一致，
+  主题升级时直接用新版全文替换即可，不需要再额外补回任何自定义段落。
 
-  其余内容与主题原版逐字一致（layout: default / tail_includes / script_includes 均保持不变，
-  以确保 default.html 中 `layout.layout == 'default'` 判断成立、正文的 refactor-content 处理不受影响）。
-
-  主题升级后，请对照新版 _layouts/post.html 重新同步本文件（仅需保留上面 panel_includes 的差异）。
+  注意：layout: default / tail_includes / script_includes 必须保持原样，
+  以确保 default.html 中 `layout.layout == 'default'` 判断成立、正文的 refactor-content 处理不受影响。
 {%- endcomment -%}
 {%- comment -%} 上面这段是给以后升级主题的您自己看的备忘，程序会完全忽略，不会显示在网页上。 {%- endcomment -%}
 
@@ -70,7 +67,7 @@ script_includes:
     {% endif %}
 
     <div class="post-meta text-muted">
-      {%- comment -%} post-meta 是标题下面那行灰色小字，装着时间、作者、浏览量等信息。 {%- endcomment -%}
+      {%- comment -%} post-meta 是标题下面那行灰色小字，装着时间、作者等信息。 {%- endcomment -%}
       <!-- published date -->
       <span>
         {{ site.data.locales[lang].post.posted }}
@@ -120,7 +117,7 @@ script_includes:
       {% endif %}
 
       <div class="d-flex justify-content-between">
-        {%- comment -%} 这一行左边放作者、右边放浏览量和阅读时长，用 justify-content-between 把两者顶到两边。 {%- endcomment -%}
+        {%- comment -%} 这一行左边放作者、右边放预计阅读时长，用 justify-content-between 把两者顶到两边。 {%- endcomment -%}
         <!-- author(s) -->
         <span>
           {% if page.author %}
@@ -157,40 +154,11 @@ script_includes:
         </span>
 
         <div>
-          <!-- pageviews -->
-          {%- if site.viewcount -%}
-            {%- assign _vc = site.viewcount.provider | default: '' | strip -%}
-          {%- else -%}
-            {%- assign _vc = 'static' -%}
-          {%- endif -%}
-          {%- comment -%} 读取 _config.yml 里的「浏览量显示方案」总开关：
-               未配置 viewcount 段 → 按 static 处理（向后兼容）
-               static    = 沿用现有方案（读取 _data/views.json，构建时静态渲染）
-               busuanzi  = 不蒜子官方前端实时方案
-               明确留空    = 全站停用浏览量显示（写成 provider: ）
-               详见《浏览量方案切换与回滚说明.md》。 {%- endcomment -%}
-          {% if _vc != '' and site.pageviews.provider and site.analytics[site.pageviews.provider].id %}
-            {%- comment -%} 双重检查：总开关没被清空，且浏览量服务商 id 不为空，才显示。
-               本项目中这两项都已配置好，所以文章页会显示浏览量。 {%- endcomment -%}
-            <span>
-              <em id="pageviews">
-                {%- if _vc == 'busuanzi' -%}
-                  {%- comment -%} 【方案 B】不蒜子前端实时方案：
-                       先放一个省略号占位，由 _includes/pageviews/busuanzi.html
-                       加载官方 mini.js 后反射填入真实数字。 {%- endcomment -%}
-                  &hellip;
-                {%- else -%}
-                  <i class="fas fa-spinner fa-spin small"></i>
-                  {%- comment -%} 【方案 A，默认】静态渲染方案：
-                       先显示一个"转圈圈"的加载图标占位。
-                       页面加载完成后，由 _includes/pageviews/goatcounter.html 里的脚本
-                       把 _data/views.json 里算好的数字填进这个位置（填好后转圈图标被替换掉）。 {%- endcomment -%}
-                {%- endif -%}
-              </em>
-              {{ site.data.locales[lang].post.pageview_measure }}
-              {%- comment -%} 显示"次浏览"之类的单位文字。 {%- endcomment -%}
-            </span>
-          {% endif %}
+          {%- comment -%} 【2026-10-27 精简】这里原来还有一块「浏览量」（#pageviews）：
+               读 _data/views.json，配合 _includes/pageviews/ 下的脚本显示「N 次浏览」。
+               浏览量功能已整体停用，该块连同数据文件、抓取脚本一并删除。
+               以后要恢复，需同时恢复：_data/views.json、抓取脚本、定时任务、
+               以及这里的模板块与 pageviews 组件。 {%- endcomment -%}
 
           <!-- read time -->
           {% include read-time.html content=content prompt=true lang=lang %}

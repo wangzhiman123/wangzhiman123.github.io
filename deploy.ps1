@@ -7,7 +7,7 @@
 
 一句话概括：
   这是整个项目里功能最全的"一键发布"工具。
-  您双击一个 .bat 文件，它就会自动帮您完成：更新浏览量数据 → 算出要改哪些文件
+  您双击一个 .bat 文件，它就会自动帮您完成：算出要改哪些文件
   → 把这些改动提交到 GitHub → 等网站构建完成 → 告诉您线上地址可以看了。
   全程不需要您在本机安装 Git，也不需要敲任何命令。
 
@@ -27,29 +27,23 @@
          也可以在本目录按住 Shift 右键 →「在此处打开 PowerShell 窗口」，然后运行：
              .\deploy.ps1
 
-它做了什么（五个步骤）：
-   1. 刷新每篇文章的浏览量（写入 _data/views.json、_data/pv_state.json）
-   2. 把本地文件和线上仓库逐一比对，算出「新增 / 修改 / 删除」
-   3. 通过 GitHub 官方接口，把改动组装成一次提交并推送到仓库
+它做了什么（四个步骤）：
+   1. 把本地文件和线上仓库逐一比对，算出「新增 / 修改 / 删除」
+   2. 通过 GitHub 官方接口，把改动组装成一次提交并推送到仓库
       （效果等同于 git add + commit + push，但本机不用装 Git）
-   4. 自动等待 GitHub 构建，构建完成后告诉你结果和线上地址
+   3. 自动等待 GitHub 构建，构建完成后告诉你结果和线上地址
 
-推送成功后，GitHub Actions 会自动构建并发布到：
-   · 2019527.xyz          （火山引擎服务器）
-   · GitHub Pages         （备用地址）
+推送成功后，GitHub Actions 会自动构建并发布到 GitHub Pages。
 
-【⚠️ 注意：本脚本发布的是 GitHub 仓库，不是直接传服务器】
+【⚠️ 注意：本脚本发布的是 GitHub 仓库】
   它做的是"把代码送到 GitHub"，然后由 GitHub 上的自动化流程去构建并发布。
-  如果您想"直接从电脑传文件到服务器、不走 GitHub"，
-  那要用的是另一个脚本：deploy/deploy-aliyun.bat。
+  【2026-10-27 精简】原来还有一套"把网页直接同步到国内云服务器"的工具
+  （deploy/ 目录下的脚本 + 工作流里的 deploy-server 任务），已整体删除。
+  现在网站只发布到 GitHub Pages 一个地方。
 
 可用参数（在命令行里加，例如 .\deploy.ps1 -DryRun）：
    -DryRun         只预览会改动哪些文件，不真的上传（不需要令牌）
    -Message "..."  自定义提交说明
-   -SkipViews      跳过"刷新浏览量"这一步（不查询统计接口、不在本地生成数据文件）
-   -SkipData       跳过"浏览量数据文件"的同步：_data/views.json 与 _data/pv_state.json
-                   这两个文件即使变了也不上传、不覆盖线上，交给 GitHub 定时任务维护
-                   （可与 -SkipViews 一起用：连刷新也不做，全程不碰这两个文件）
    -SkipWatch      推送后不等待构建结果
    -Status         只看最近几次部署的状态，不做任何改动
    -SetToken       重新设置 / 更换 GitHub 令牌
@@ -88,20 +82,6 @@ param(
     # 自定义这次提交的说明文字。不加就会自动用「更新站点内容 - 日期时间」。
     [switch] $DryRun,
     # 试运行：只计算并显示会改哪些文件，绝不真的上传。改东西前先看看很有用。
-    [switch] $SkipViews,
-    # 跳过"刷新浏览量"这一步（不查询统计接口、不写本地数据文件），
-    # 适合赶时间、或者不想产生额外查询记录时用。
-    [switch] $SkipData,
-    # 跳过"浏览量数据文件"的同步（_data/views.json、_data/pv_state.json）。
-    # 【和上面 -SkipViews 的区别，请务必分清】
-    #   -SkipViews：跳过"抓取"这一步 —— 不去查询统计接口，本地不生成这两个文件。
-    #   -SkipData ：跳过"上传"这一步 —— 这两个文件即使变了也不上传、不覆盖线上。
-    # 两个开关可以单独用，也可以一起用（一起用 = 这两个文件从抓取到上传全程不碰）。
-    # -SkipData 适合与线下的其它工具/wangzhiman 的定时任务分工的场景：
-    # 让线上（GitHub 定时任务）独占维护这两个文件，本地部署完全不插手。
-    # 【为什么单独做成开关而不是永久排除？】因为本地的浏览量刷新、以及线上定时任务的
-    # 数据纠错，都依赖这两个文件能正常提交；永久排除会切断这条链路。
-    # 所以这里保留成"按需开启"，默认行为不变。
     [switch] $SkipWatch,
     # 提交完成后不等 GitHub 构建、不检查网站，直接结束（不想干等就用它）。
     [switch] $Pull,
@@ -213,21 +193,9 @@ $ExcludePathPrefixes = @('assets/lib', '_sass/vendors', 'assets/js/dist')
 # 要排除的"路径前缀"清单。这三处都是主题自带的第三方代码，
 # 属于"官方文件、我们不会改"，所以不参与同步。
 # 好处：万一这些文件在两边有细微差异，也不会干扰"哪些文件被改了"的判断。
-
-$DataFileRelPaths = @('_data/views.json', '_data/pv_state.json')
-# 两个"浏览量数据文件"的相对路径清单（这是本项目的专用清单，不是通用排除项）。
-# 【它们是干什么的？】
-#   _data/views.json   网页真正要读的数据（每篇文章显示多少次浏览）。
-#   _data/pv_state.json 内部账本（记录每篇文章查询了几次，供下次纠错用）。
-# 【为什么要单独列出来？】因为这两个文件由"本地部署"和"线上的 GitHub 定时任务"
-# 两条链路各自维护。某些场景下（例如 -SkipData）需要让它们不参与本地同步，
-# 但又不能影响其它文件，所以单独做成一张清单，方便精确控制。
-# 【注意】本清单只在带 -SkipData 参数时才生效，默认不排除。
-
-$SkipDataSelected = @{}
-# 准备一张"实际要跳过的数据文件"表（空表表示一个都不跳过）。
-# 【为什么用 $() 里赋值？】这张表在下面会根据 -SkipData 是否开启被填入内容，
-# 然后交给 Test-ExcludedPath 使用；先在这里定义好，避免后面读不到它。
+# 【2026-10-27 精简】原来这里还单独维护过「浏览量数据文件」清单
+# （_data/views.json、_data/pv_state.json）和对应的 -SkipData 开关。
+# 浏览量功能已整体移除，这两个文件不再存在，相关清单与开关也一并删掉。
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 # 强制使用 TLS 1.2 这种加密协议去访问网络。
@@ -589,13 +557,6 @@ function Get-Token {
 function Test-ExcludedPath([string] $rel) {
     # 这个函数的作用：判断某个文件/文件夹是否属于"不该同步"的范围。
     # 参数 $rel 是"相对于项目根目录的路径"，例如 assets/lib/xxx.js。
-    if ($SkipDataSelected.Count -gt 0 -and $SkipDataSelected.ContainsKey($rel)) {
-        return $true
-        # 【本次新增】如果本次开启了 -SkipData，且这个文件正是两个浏览量数据文件之一，
-        # 就判定为"该排除"。这样它们既不会被上传，也不会被当作"要删除的文件"。
-        # 【为什么要放在最前面判断？】因为这是本次任务的重点，优先处理最直观；
-        # 而且它的判断最快（直接查表），放在前面也顺带省一点时间。
-    }
     foreach ($p in $ExcludePathPrefixes) {
         if ($rel -eq $p -or $rel.StartsWith($p + '/')) { return $true }
         # 两种都算命中：刚好等于这个前缀，或者以"前缀/"开头。
@@ -685,331 +646,15 @@ function Get-GitBlobSha {
     # 这样拼出来的 40 位字符串，就是 Git 里常见的那个文件编号。
 }
 
-# ------------------------------ JSON 读写 ------------------------------------
-# 刻意与 scripts/update_views.py 的输出格式保持逐字节一致：
-#   2 空格缩进、键名升序、文件末尾一个换行、无 BOM
-# 这样本地脚本和 GitHub 定时任务互相不会产生无意义的差异。
-# 【为什么要在意"逐字节一致"？】因为两边都会修改这两个文件。
-# 只要格式有一点点不同（比如缩进用了 4 个空格），
-# Git 就会认为"文件被改过了"，每次部署都显示有修改，很干扰判断。
-# 统一格式之后，真正没变的时候就不算改动，情况一目了然。
+# ======================= 关于「浏览量」的一段说明 =============================
+# 【2026-10-27 精简】这里原来有三大块代码，现已全部删除：
+#   ① JSON 读写（Read-JsonMap / Write-JsonMap）—— 只用于浏览量数据文件
+#   ② 文章路径推导（Get-PostSlug / Get-PostUrlPath）—— 只给浏览量数据当键用
+#   ③ 刷新浏览量（Update-Views）—— 抓取并写入 _data/views.json
+# 删除原因：网站已不再显示任何浏览量，数据文件和抓取脚本也一并移除，
+# 这三块代码失去了全部调用者，留着只会让人误以为还有这个功能。
+# ============================================================================
 
-function Read-JsonMap([string] $path) {
-    # 这个函数的作用：把一个 JSON 文件读成"一张对照表"（键值对）。
-    $map = @{}
-    # 先准备一张空表。@{} 是 PowerShell 里表示"对照表"的写法。
-    if (-not (Test-Path -LiteralPath $path)) { return $map }
-    # 文件不存在就直接返回空表（第一次运行时就是这种情况，不该报错）。
-    try {
-        $raw = [IO.File]::ReadAllText($path, [Text.Encoding]::UTF8)
-        # 按 UTF-8 编码把整个文件读成文本。
-        $raw = $raw.TrimStart([char]0xFEFF).Trim()
-        # 去掉开头的"BOM"标记（一个看不见的特殊字符，
-        # 某些编辑器保存时会偷偷加上，很多程序会因此解析失败），
-        # 再去掉首尾空白。这一步能避免一类很难查的诡异问题。
-        if (-not $raw) { return $map }
-        # 内容为空也返回空表。
-        $obj = $raw | ConvertFrom-Json
-        # 把 JSON 文本解析成对象。
-        foreach ($prop in $obj.PSObject.Properties) {
-            $map[$prop.Name] = [int]$prop.Value
-            # 逐项搬进对照表。
-            # [int] 是把它强制转成整数（浏览量必须是数字，
-            # 不转的话后面做加法可能变成"文字拼接"，出现 12 变成 123 这种怪事）。
-        }
-    } catch { }
-    # 万一文件内容损坏，也不报错，就当空表处理（后续流程会自然覆盖它）。
-    return $map
-}
-
-function Write-JsonMap([string] $path, $map) {
-    # 这个函数的作用：把一张对照表按指定格式写回 JSON 文件。
-    # 【为什么要手工拼字符串，而不用现成的转换命令？】
-    # 因为现成命令的格式不受我们控制（缩进、排序、结尾换行都不一定符合预期），
-    # 而这里需要和 Python 脚本保持逐字节一致，所以自己精确控制每一处细节。
-    $dir = Split-Path -Parent $path
-    if ($dir -and -not (Test-Path -LiteralPath $dir)) {
-        $null = New-Item -ItemType Directory -Path $dir -Force
-    }
-    # 确保要写入的文件夹存在，不存在就创建。
-    $keys = @($map.Keys | Sort-Object)
-    # 把所有键拿出来排序。
-    # 【为什么排序？】这样每次生成的文件顺序都一致，
-    # 内容没变时文件也完全一样，不会产生"虚假的改动"。
-    $sb = New-Object Text.StringBuilder
-    # 准备一个"文字拼接器"。用它来拼长文本比用 + 号快得多（性能考虑）。
-    [void]$sb.Append("{`n")
-    # 先写下开头的大括号和一个换行符。
-    # `n 是 PowerShell 里表示换行的写法。
-    # 前面的 [void] 是"别把结果输出到屏幕上"（否则拼接过程会不断刷屏）。
-    for ($i = 0; $i -lt $keys.Count; $i++) {
-        $k = $keys[$i]
-        $comma = if ($i -lt $keys.Count - 1) { ',' } else { '' }
-        # 决定这一行末尾要不要加逗号：
-        # 只要不是最后一项就加（因为最后一项后面不能有逗号，否则 JSON 格式不合法）。
-        [void]$sb.Append(('  "{0}": {1}{2}' -f $k, [int]$map[$k], $comma))
-        # 拼出一行，形如：  "/posts/post-001/": 3,
-        # 开头两个空格是缩进（与 Python 那边保持一致）。
-        [void]$sb.Append("`n")
-        # 加上换行。
-    }
-    [void]$sb.Append("}`n")
-    # 写上结尾的大括号和一个换行符。
-    # 【为什么结尾要有换行？】很多文本工具会因为"文件最后少一个换行"而报整份文件都变了，
-    # 补上它就避免了这种麻烦。
-    [IO.File]::WriteAllText($path, $sb.ToString(), (New-Object Text.UTF8Encoding $false))
-    # 把内容写成文件。
-    # 【关键细节】UTF8Encoding 后面的 $false 表示"不要加 BOM"。
-    # 这就是前面读文件时为什么要处理 BOM 的原因——两边配合，保证格式干净一致。
-}
-
-# --------------------------- 文章路径推导 ------------------------------------
-function Get-PostSlug([string] $fileName) {
-    # 这个函数的作用：从文章文件名里提取"文章代号"。
-    # 例如 2026-10-03-post-046.md → post-046
-    # 【为什么需要它？】浏览量数据是按网址存放的，
-    # 而网址规则是 /posts/ + 代号 + /，所以必须先算出这个代号。
-    $base = $fileName
-    # 从文件名开始处理。
-    foreach ($ext in @('.md', '.markdown')) {
-        if ($base.EndsWith($ext, [StringComparison]::OrdinalIgnoreCase)) {
-            # 检查文件名是不是以这个后缀结尾。
-            # OrdinalIgnoreCase 表示"忽略大小写"，这样 .MD 或 .Md 也能正确识别。
-            $base = $base.Substring(0, $base.Length - $ext.Length)
-            # 把后缀切掉，只保留主干。
-            break
-            # 切掉一个就够了，跳出循环。
-        }
-    }
-    if ($base -match '^\d{4}-\d{1,2}-\d{1,2}-(.*)$') { return $Matches[1] }
-    # 用规律匹配"4位数字-数字-数字-剩下的内容"，
-    # 也就是识别并去掉开头的日期部分，返回日期后面那段。
-    # $Matches[1] 是匹配结果里第一个括号内的内容（也就是我们想要的部分）。
-    return $base
-    # 文件名格式不标准（没写日期），就原样返回，保证不出错。
-}
-
-function Get-PostUrlPath {
-    # 这个函数的作用：算出某篇文章在网站上的访问路径。
-    # 例如 /posts/post-046/ 或文章自己指定的 /my-page/
-    # 【为什么必须准确？】因为这个路径同时是浏览量数据的"编号"，
-    # 一旦算错，就取不到、也写不对浏览量数字。
-    param([string] $File, [string] $Slug)
-
-    $head = ''
-    try {
-        $all = [IO.File]::ReadAllText($File, [Text.Encoding]::UTF8)
-        $head = if ($all.Length -gt 4096) { $all.Substring(0, 4096) } else { $all }
-        # 只读取文件开头的一小段（最多 4096 个字符）。
-        # 【为什么要限制？】文章正文可能很长，
-        # 而我们只需要开头的说明部分，少读一点能让几十篇文章的处理明显更快。
-    } catch { }
-    # 读取失败就保持为空，下面会走默认规则。
-
-    if ($head.StartsWith('---')) {
-        # 确认开头是说明区（front matter）的起始标记。
-        $end = $head.IndexOf('---', 3)
-        # 从第 4 个字符开始找第二个 ---，它标记着说明区的结束。
-        if ($end -gt 0) {
-            $fm = $head.Substring(3, $end - 3)
-            # 把两个 --- 之间的内容取出来，这就是文章的元信息。
-            foreach ($line in ($fm -split "`r?`n")) {
-                # 按行拆开逐行查看。
-                # `r?`n 这个写法能同时兼容 Windows 的换行（回车+换行）
-                # 和 Linux/Mac 的换行（只有换行），处理更稳妥。
-                if ($line -match '^\s*permalink\s*:\s*(.+?)\s*$') {
-                    # 找出形如 permalink: 值 的那一行。
-                    # permalink 的意思是"文章自己指定的固定网址"。
-                    $perm = $Matches[1].Trim().Trim('"').Trim("'")
-                    # 取出值，并去掉两边可能的空格和引号。
-                    if ($perm) { return '/' + $perm.Trim('/') + '/' }
-                    # 【优先使用它】如果文章自己指定了网址，就按它来，
-                    # 前后补上斜杠使其规范化（例如 my-page 变成 /my-page/）。
-                    break
-                }
-            }
-        }
-    }
-    return "/posts/$Slug/"
-    # 文章没自己指定，就用统一规则：/posts/ + 代号 + /
-    # 【重要】这个格式必须和 _config.yml 里的 permalink 设置保持一致，
-    # 否则算出来的路径和网页实际地址对不上，数据就对不上了。
-}
-
-# ============================ 刷新浏览量 =====================================
-# 【说明】这一整段函数的功能，和 scripts/update_views.py 基本一致，
-# 只是用 PowerShell 重写了一遍。为什么要重写？
-# 因为本脚本（deploy.ps1）的设计目标就是"本机不装任何额外环境"——
-# 如果调用 Python 脚本，就要求您电脑上先装好 Python，那就不算"一键"了。
-# 所以作者把抓取浏览量的逻辑也用 PowerShell 实现了一份。
-# 两者的纠错原理完全相同，详细原理说明请见 scripts/update_views.py 里的注释。
-function Update-Views {
-    Head '刷新文章浏览量'
-
-    $postsDir  = Join-Path $Root '_posts'
-    $viewsFile = Join-Path $Root '_data\views.json'
-    $stateFile = Join-Path $Root '_data\pv_state.json'
-    # 三个关键路径：文章文件夹、最终数据文件、内部账本文件。
-    $api = 'https://busuanzi.ibruce.info/busuanzi?jsonpCallback=BusuanziCb'
-    # 要查询的统计接口地址。
-    $ua  = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
-           '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    # 伪装成常见的 Chrome 浏览器。
-    # 【为什么要伪装？】有些统计服务对"看起来不像浏览器的请求"会比较警惕，
-    # 可能会拒绝。装作普通浏览器访问，成功率更高。
-
-    if (-not (Test-Path -LiteralPath $postsDir)) { Warn '_posts 目录不存在，跳过这一步。'; return }
-    # 没有文章文件夹就跳过（而不是报错），保证流程还能继续。
-
-    $posts = @(Get-ChildItem -LiteralPath $postsDir -File |
-        Where-Object { $_.Name -match '\.(md|markdown)$' } | Sort-Object Name)
-    # 取出文章文件夹里所有的 .md / .markdown 文件，并按文件名排序。
-    # 排序是为了输出稳定、便于核对。
-    if ($posts.Count -eq 0) { Warn '没有找到文章，跳过这一步。'; return }
-    # 一篇文章都没有也跳过，避免把数据文件清空。
-
-    # 基准数据优先取自线上仓库（GitHub 的定时任务也在维护这两个文件），
-    # 避免本地和线上各记一套、互相覆盖。
-    # 【这一段设计得很讲究，值得理解】
-    # 因为 GitHub 上的定时任务也在跑同样的抓取工作、也在更新这两个文件。
-    # 如果本地用一个"自己之前的旧账本"去算，
-    # 算出来的数字就会和线上那套对不上，两边来回覆盖，浏览量会乱跳。
-    # 所以这里先尝试读取线上版本作为基准，保证两边"账本是同一本"。
-    $fetchMap = {
-        # 定义一个"从 GitHub 上读取某个数据文件"的小工具（可以理解成一段可重复调用的代码块）。
-        # {$ ... } 是 PowerShell 里"代码块"的写法，用 & 来调用它。
-        param([string] $name)
-        $res = Invoke-GitHub -Method GET -Path "/repos/$Repo/contents/_data/$name?ref=$Branch"
-        # 通过接口读取指定文件的内容。
-        # ?ref=$Branch 表示"要 main 分支上那个版本"。
-        $txt = [Text.Encoding]::UTF8.GetString(
-            [Convert]::FromBase64String(($res.content -replace '\s', '')))
-        # 【为什么要转来转去？】因为 GitHub 接口返回文件内容时用的是"Base64 编码"
-        # （一种把二进制数据表示成文本的方式），所以要先解码再转成文字。
-        # -replace '\s', '' 是先把内容里所有空白字符去掉（Base64 不允许有空格换行）。
-        $obj = $txt | ConvertFrom-Json
-        # 解析成对象。
-        $map = @{}
-        foreach ($prop in $obj.PSObject.Properties) { $map[$prop.Name] = [int]$prop.Value }
-        # 逐项搬进对照表（和前面 Read-JsonMap 一样的做法）。
-        return $map
-    }
-
-    $state = $null
-    try { $state = & $fetchMap 'pv_state.json'; Say '  已读取线上账本作为基准。' } catch { }
-    # 试着从线上读"内部账本"。
-    # & 就是执行前面定义的那个代码块；success 时顺便打印一句说明。
-    if ($null -eq $state) {
-        $state = Read-JsonMap $stateFile
-        Say '  线上暂无账本，改用本地账本。'
-        # 线上读不到（比如第一次用、或者网络问题），就退回用本机的那份。
-    }
-
-    $prevViews = $null
-    try { $prevViews = & $fetchMap 'views.json' } catch { }
-    if ($null -eq $prevViews) { $prevViews = Read-JsonMap $viewsFile }
-    # 同样地，把"上一次的浏览量数据"也准备好。
-    # 它的用途：万一某篇文章这次查询失败，就用这里的旧值顶上，
-    # 避免页面上突然变成 0 次浏览。
-
-    Say "  共 $($posts.Count) 篇文章，逐篇查询（约需 1～2 分钟，请勿关闭窗口）…"
-    # 提前告知需要等待，避免您以为程序卡死了把窗口关掉。
-
-    $views = @{}
-    # 准备新的"最终浏览量"对照表。
-    $okCount = 0; $failCount = 0; $idx = 0
-    # 三个计数器：成功篇数、失败篇数、当前处理到第几篇。
-
-    foreach ($p in $posts) {
-        # 逐篇处理。
-        $idx++
-        # 当前篇号 +1。
-        $slug    = Get-PostSlug $p.Name
-        # 算出文章代号。
-        $urlPath = Get-PostUrlPath -File $p.FullName -Slug $slug
-        # 算出文章网址路径（这是数据的编号）。
-        $pageUrl = $SiteUrl + $urlPath
-        # 拼出完整网址，用作请求时的 Referer 说明。
-
-        $raw = $null
-        for ($try = 0; $try -le 2; $try++) {
-            # 最多尝试三次（第一次 + 两次重试）。
-            # 【为什么要重试？】网络偶尔抖动很常见，重试通常就成功了，
-            # 比直接失败、显示旧数字要好。
-            try {
-                $r = Invoke-WebRequest -Uri $api -Headers @{ 'Referer' = $pageUrl; 'User-Agent' = $ua } `
-                    -UseBasicParsing -TimeoutSec 25
-                # 发出查询请求。两个关键说明：
-                #   Referer —— 【最关键的一项】声明"这次访问来自哪个页面"。
-                #              统计服务正是靠它区分不同文章的，
-                #              所以必须设成这篇文章自己的地址，不能错。
-                #   User-Agent —— 伪装浏览器（见上文说明）。
-                # 25 秒超时，避免网络卡住时一直干等。
-                $content = [string]$r.Content
-                # 把返回的内容转成文本。
-                if ($content -match '"page_pv"\s*:\s*(\d+)') { $raw = [int]$Matches[1]; break }
-                # 用规律从返回内容里把浏览量数字抠出来。
-                # 匹配的是形如 "page_pv":123 这样的片段。
-                # 找到就存下来并立刻结束重试循环（break）。
-            } catch { }
-            # 出错就忽略，交给下面的重试逻辑处理。
-            if ($try -lt 2) { Start-Sleep -Milliseconds 1200 }
-            # 还有重试机会就等 1.2 秒。
-            # 【为什么要等？】连着猛敲同一个接口容易被当成恶意请求而被限制，
-            # 稍微缓一下更礼貌、成功率也更高。
-        }
-
-        if ($null -eq $raw) {
-            # 查询失败：沿用上一次的数值，账本不动（页面上不会突然变成 0）
-            # 【为什么这么做？】网络偶尔出问题很正常。
-            # 如果失败就写 0，页面上会突然显示"0 次浏览"，看着像网站坏了；
-            # 沿用旧值最多是数字暂时没涨，体验好得多。
-            $failCount++
-            if ($prevViews.ContainsKey($urlPath)) { $views[$urlPath] = $prevViews[$urlPath] }
-            # 把旧值原样搬过来。
-            Write-Host ("    [{0,2}/{1}] {2,-14} 查询失败，沿用上次数值" -f $idx, $posts.Count, $slug)
-            # 打印一行说明。{0,2} 表示"占 2 个字符宽度"，
-            # {2,-14} 表示"占 14 个字符宽、左对齐"，都是为了让各列对齐好看。
-        } else {
-            $polls  = [int]$state[$urlPath] + 1
-            # polls = "累计被本脚本查询过的次数"。
-            # 取账本里的记录（没有就当作 0），+1 表示"这次又查了一遍"。
-            $truePv = $raw - $polls
-            # 【纠错公式，核心就这一行】
-            # 真实浏览量 = 接口现在给的数字 − 累计查询次数。
-            # 原理：因为"看一次账本就多记一笔"，所以要把自己看的那几眼减掉，
-            # 剩下的才是访客真实访问的次数。
-            # 举例：接口显示 7，前后查过 3 次 → 真实浏览量 7 − 3 = 4。
-            if ($truePv -lt 0) { $truePv = 0 }
-            # 兜底：万一算成负数（比如账本记录不准、或接口数据被重置），
-            # 就让最小值是 0，页面上不会出现"-1 次浏览"这种荒唐数字。
-            $views[$urlPath] = $truePv
-            # 存进最终数据表。
-            $state[$urlPath] = $polls
-            # 把更新后的查询次数写回账本，供下次使用。
-            $okCount++
-            Write-Host ("    [{0,2}/{1}] {2,-14} 接口={3}  已查询{4}次  ->  真实={5}" -f `
-                $idx, $posts.Count, $slug, $raw, $polls, $truePv)
-            # 打印详细记录：第几篇、哪篇文章、接口原始值、累计查询次数、算出的真实值。
-            # 把中间过程都显示出来，以后数字看着不对时一眼就能定位是哪一步的问题。
-        }
-        Start-Sleep -Milliseconds 400
-        # 每处理完一篇就歇 0.4 秒。
-        # 同样是"礼貌访问"的考虑，避免被服务方限制。
-        # 【可DIY修改】想跑快些可改成 200；若发现被限制了，就调到 800 更稳。
-    }
-
-    Write-JsonMap $viewsFile $views
-    # 把整理好的浏览量数据写入 _data/views.json —— 这是网页真正要读的文件。
-    Write-JsonMap $stateFile $state
-    # 把内部账本写入 _data/pv_state.json —— 供下次运行纠错使用。
-
-    $total = 0
-    foreach ($v in $views.Values) { $total += [int]$v }
-    # 把所有文章的浏览量加起来，算出全站总浏览量。
-    Ok "成功 $okCount 篇，失败 $failCount 篇，全站合计 $total 次浏览"
-    # 打印总结。
-}
 
 # ============================== 部署主流程 ===================================
 function Get-RemoteSnapshot {
@@ -1268,7 +913,7 @@ function Wait-Deploy {
         # 失败了就直接给日志链接——这是排查问题必须看的地方。
     }
 
-    # 逐个任务报告，特别是「推送到火山引擎服务器」那一步有没有跑
+    # 逐个任务报告：一次构建包含好几个环节，得看清是哪个环节出了问题
     try {
         $jobs = Invoke-GitHub -Method GET -Path "/repos/$Repo/actions/runs/$($run.id)/jobs"
         # 读取这次构建里各个"小任务"的执行情况。
@@ -1288,15 +933,6 @@ function Wait-Deploy {
             # 其他（失败等）黄色需注意。
             Write-Host ("    - {0,-40} {1}" -f $j.name, $res) -ForegroundColor $color
             # 打印"环节名称 + 结果"。
-        }
-        $serverJob = @($jobs.jobs | Where-Object { $_.name -like '*server*' })
-        # 找出名字里含 server 的那个环节（也就是"推送到自己的服务器"这一步）。
-        if ($serverJob -and $serverJob[0].conclusion -eq 'skipped') {
-            Warn '推送到服务器那一步被跳过了 —— 说明仓库里 DEPLOY_TO_SERVER 变量不是 true，'
-            Warn '2019527.xyz 上的内容不会更新（只有 GitHub Pages 会更新）。'
-            # 【很贴心的一段提示】这是很容易困惑的情况：
-            # "明明部署成功了，为什么我的服务器上内容没变？"
-            # 原因就是这个开关没开。这里主动替您点出来。
         }
     } catch { }
     # 整段都套在 try 里忽略错误：查看明细只是"锦上添花"，
@@ -1774,8 +1410,6 @@ if ($Pull) {
     if ($NoBackup)    { Warn '已启用 -NoBackup：本次不备份被覆盖的文件。' }
     if ($Force)       { Warn '已启用 -Force：冲突文件将直接采用线上版本。' }
     if ($SkipWatch)   { Say  '（-SkipWatch 在拉取模式下无作用，可忽略）' }
-    if ($SkipViews)   { Say  '（-SkipViews 在拉取模式下无作用，可忽略）' }
-    if ($SkipData)    { Say  '（-SkipData 在拉取模式下无作用，可忽略）' }
     Write-Host ''
     try {
         Invoke-Pull
@@ -1789,53 +1423,13 @@ if ($Pull) {
     # 会白白产生一条内容相同的提交记录。
 }
 
-# ---------- 1. 刷新浏览量 ----------
-if ($SkipViews) {
-    Head '刷新文章浏览量'
-    Warn '按你的要求跳过（-SkipViews）'
-} elseif ($DryRun) {
-    Head '刷新文章浏览量'
-    Warn '预览模式下跳过，避免产生额外的查询记录'
-    # 【设计得很细致的一点】预览模式下自动跳过浏览量刷新。
-    # 【为什么？】因为每次查询都会让统计那个数字 +1，
-    # 如果预览也去查一遍，就白白污染了数据。
-    # 作者考虑到了这个细节，避免"只是想看看会改什么"却把浏览量弄虚了。
-} else {
-    try {
-        Update-Views
-    } catch {
-        Warn "刷新浏览量时出错，已跳过：$_"
-        # 【注意这里的宽容设计】刷新浏览量失败只警告、不中断。
-        # 【为什么可以容忍？】因为这一步只是"锦上添花"，
-        # 浏览量数据就算没更新成功，也不该阻止您发文章。
-        # 分清"必须成功"和"尽力而为"，是写自动化脚本的重要思路。
-    }
-}
+# ---------- 1. （原「刷新浏览量」已移除） ----------
+# 【2026-10-27 精简】这里原来是两步：
+#   1.   刷新浏览量       —— 调用 Update-Views 去统计服务抓数字
+#   1.5 跳过浏览量数据文件 —— -SkipData 开关，控制那两个数据文件要不要同步
+# 浏览量功能整体移除后，这两步都没有存在意义，故整段删除。
+# 现在部署流程直接从「对比线上仓库」开始（见下一步）。
 
-# ---------- 1.5 处理「跳过浏览量数据文件」开关 ----------
-# 【这一步做了什么？】如果本次带了 -SkipData，就把那两个数据文件登记进"排除表"，
-# 让下面的文件比对彻底无视它们（不对比、不上传、也不算删除）。
-# 【注意执行顺序】必须放在"扫描本地文件"之前，否则排除规则来不及生效。
-if ($SkipData) {
-    foreach ($p in $DataFileRelPaths) {
-        $SkipDataSelected[$p] = $true
-        # 逐个登记进排除表。键是"相对路径"，值随便给个 $true 表示"要跳过"。
-    }
-    Head '跳过浏览量数据文件'
-    Warn '按你的要求，本次不刷新、也不上传这两个文件（-SkipData）：'
-    Say  '  · _data/views.json    （网页读取的浏览量数据）'
-    Say  '  · _data/pv_state.json （内部纠错账本）'
-    Say  '  它们将由 GitHub 上的定时任务继续维护，本地部署不插手。'
-    # 【为什么要明确列出文件名？】因为"跳过数据同步"是个有副作用的操作，
-    # 打印清楚到底跳过了什么，事后排查"为什么浏览量没更新"时一眼就能看到原因。
-    # 【提醒】如果同时用了 -SkipViews，那连"刷新"也跳过了，
-    # 这两个文件本次从头到尾都不会被碰（本地既不生成、也不上传）。
-} else {
-    $SkipDataSelected.Clear()
-    # 没带 -SkipData 就保证排除表是空的（默认行为不变：这两个文件照常同步）。
-    # 【为什么还要 Clear 一下？】因为 $SkipDataSelected 是脚本级变量，
-    # 显式清空可以杜绝"万一被别处写入过"导致默认行为被意外改变。
-}
 
 # ---------- 2. 对比远程仓库 ----------
 Head '对比线上仓库'
@@ -1903,13 +1497,11 @@ foreach ($rel in @($remote.Blobs.Keys | Sort-Object)) {
 }
 
 # ---------- 2.5 线上 SHA 乐观锁：本地副本落后就中止 ----------
-# 这两个文件由定时任务自动生成，本地每次部署也会重新生成，
-# 所以「线上比本地新」不算落后，不触发中止。
-$AutoGenFiles = @('_data/views.json', '_data/pv_state.json')
-# 【这两条"豁免通行证"的作用】这两个文件是自动生成的数据文件，
-# 线上定时任务会更新它们、本地部署时也会重新生成它们。
-# 所以"线上版本比本地新"对这两个文件来说是正常现象，
-# 不该被当成"我的副本落后了"而中止部署。
+# 【2026-10-27 精简】这里原来还有一个 $AutoGenFiles 清单
+# （_data/views.json、_data/pv_state.json），作用是给这两个
+# 「定时任务自动生成的数据文件」发"豁免通行证"，让它们不会触发乐观锁。
+# 浏览量功能移除后这两个文件已不存在，清单也一并删除，
+# 下面所有文件一律按正常规则参与冲突判断。
 
 $baseline    = Read-Baseline
 $lockBlocked = $false
@@ -1968,14 +1560,13 @@ if ($null -eq $baseline) {
         # 【为什么要做成表？】因为后面要对每个文件反复检查"在不在里面"，
         # 用表来查比每次遍历一遍清单快得多。
         $lockDel = @($deleted | Where-Object {
-            $divSet.ContainsKey($_) -and ($AutoGenFiles -notcontains $_)
+            $divSet.ContainsKey($_)
         })
         # 【核心判断一】找出"这次要删的" ∩ "线上新改过的"。
         # 意思就是：某个文件线上刚被改过，而您本地没有它、准备把它删掉。
         # 这正是最危险的情况——您可能正在删除别人刚加的内容！
-        # 同时排除掉那两个自动生成的数据文件（它们不算真正的冲突）。
         $lockChg = @($changed | Where-Object {
-            $divSet.ContainsKey($_.Path) -and ($AutoGenFiles -notcontains $_.Path)
+            $divSet.ContainsKey($_.Path)
         })
         # 【核心判断二】找出"这次要改的" ∩ "线上新改过的"。
         # 意思就是：某个文件线上刚被改过，而您本地也有一份准备覆盖上去。
@@ -1984,15 +1575,14 @@ if ($null -eq $baseline) {
             $lockBlocked = $true
             # 发现任何冲突，就亮红灯、准备中止。
         } else {
-            Say "  线上有 $($div.Commits) 个新提交，但都只涉及自动生成的浏览量数据，基准已自动跟进。"
+            Say "  线上有 $($div.Commits) 个新提交，但与本次要改的文件不冲突，基准已自动跟进。"
             Write-Baseline $remote.CommitSha
             # 【这是一个很顺畅的日常场景】线上确实有新提交，
-            # 但那些提交只是定时任务更新的浏览量数据，和您的内容无关。
+            # 但那些提交动的是别的文件，跟您这次要改的没有重叠。
             # 这种情况完全不需要打扰您，直接把基准更新跟进即可。
-            # 【为什么这个判断很重要？】因为定时任务一天要跑好几次，
-            # 如果每次都被当成冲突、天天弹警告，那这个安全闸就太吵了，
-            # 反而会让人养成"看到警告直接跳过"的坏习惯，那就失去意义了。
-            # 作者把它区分出来，做到了"该严的地方严，该放的地方放"。
+            # 【为什么这个判断很重要？】如果每次都被当成冲突、天天弹警告，
+            # 那这个安全闸就太吵了，反而会让人养成"看到警告直接跳过"的坏习惯，
+            # 那就失去意义了。所以做到了"该严的地方严，该放的地方放"。
         }
     }
 } else {
@@ -2189,7 +1779,7 @@ $attempts = 0
 # 已尝试次数。
 while ($attempts -lt 3 -and -not $newCommitSha) {
     # 最多尝试 3 次，成功（拿到新提交编号）就结束。
-    # 【为什么要重试？】因为线上可能同时有定时任务在提交浏览量数据，
+    # 【为什么要重试？】因为线上可能同时有别的提交（例如您在 GitHub 网页上改了文件），
     # 导致我们的提交被拒绝（提示"仓库已被更新"）。
     # 这种情况重试一次，用最新的状态重新提交就能成功。
     $attempts++
@@ -2274,19 +1864,19 @@ while ($attempts -lt 3 -and -not $newCommitSha) {
     } catch {
         $msg = "$_"
         if ($attempts -lt 3 -and ($msg -match 'HTTP 422' -or $msg -match 'HTTP 409' -or $msg -match 'fast forward')) {
-            Warn '仓库刚才被更新过（可能是定时的浏览量任务），正在自动重试…'
+            Warn '仓库刚才被更新过（线上又有新提交），正在自动重试…'
             Start-Sleep -Seconds 3
             $remote = Get-RemoteSnapshot
             continue
             # 【这段是"乐观锁"的自动补救】
             # 出现这几种错误说明：我们的提交被拒绝了，
-            # 因为在这几秒内线上又有了新提交（典型场景就是定时任务刚好在提交浏览量数据）。
+            # 因为在这几秒内线上又有了新提交（例如您同时在 GitHub 网页上改过文件）。
             # 处理办法很聪明：重新读取线上的最新状态（$remote = ...），
             # 等 3 秒后再试一遍——这次就是用最新的状态来提交，
             # 冲突自然就解决了。
             # 【为什么要重新读？】因为我们这次提交要基于"线上当前是什么样"来做，
             # 状态变了就必须重新获取，否则还会失败。
-            # 【这段的意义】它让"定时任务抢占"这种日常小冲突能被自动消化掉，
+            # 【这段的意义】它让"线上刚好有新提交"这种日常小冲突能被自动消化掉，
             # 不需要打扰您。只有真正严重的冲突才会停下来问。
         }
         Write-Host ''

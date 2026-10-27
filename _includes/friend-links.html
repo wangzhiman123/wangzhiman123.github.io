@@ -79,7 +79,14 @@
 
 {%- assign _cfg = site.data.links -%}
 
-{%- if _cfg.enabled != false -%}
+{%- if _cfg.enabled != false or site.friend_links.enabled -%}
+  {%- comment -%}
+    显示条件（2026-10-27 补全）：
+      · 默认以 _data/links.yml 的 enabled 为唯一数据源；
+      · _config.yml 里 friend_links.enabled: true 可作为「强制显示」开关。
+        说明：这个配置项以前没有任何模板读取，属于「文档写了、代码没实现」的
+        死配置；现在补上后，_config.yml 里的注释就是真话了。
+  {%- endcomment -%}
 
   {%- assign FL_LAYOUT = include.layout | default: _cfg.layout | default: 'card' -%}
   {%- assign FL_NEWTAB = include.new_tab -%}
@@ -113,6 +120,19 @@
       {%- assign FL_VALID = FL_VALID | push: L -%}
     {%- endif -%}
   {%- endfor -%}
+
+  {%- comment -%}
+    ===== 按 links.yml 的 order 字段排序（2026-10-27 补上） =====
+    文档里一直写着「order 为排序权重（数字小的靠前）」，但本文件此前
+    只做了过滤和截断、**没有任何排序**，实际是按文件书写顺序输出；
+    现在 order 恰好是递增的所以看不出来，一旦后台插入一条 order: 1 的友链，
+    它会排到最后。这里补上排序，让注释和实际行为一致。
+      · sort 的第二个参数 'last'：没写 order 的条目排到最后，且不会报错。
+        （Jekyll 4 的 sort 支持这个参数，默认值是 'first' —— 也就是省略时
+         那些没填 order 的老条目会被顶到最前面，反而更怪。）
+      · 先排序再 slice：保证 max=4 时截出的是 order 最小的 4 条，而不是文件里最前面的 4 条。
+  {%- endcomment -%}
+  {%- assign FL_VALID = FL_VALID | sort: 'order', 'last' -%}
 
   {%- if FL_MAX > 0 -%}
     {%- assign FL_VALID = FL_VALID | slice: 0, FL_MAX -%}
@@ -334,13 +354,21 @@
   {%- endcomment -%}
   <script>
   (function(){
-    if(window.__flSearch) return;
-    window.__flSearch = true;
-
+    /* ⚠️ 2026-10-27 修：这个「只跑一次」的标记必须放在
+       「页面上真的有搜索框」的判断**之后**。
+       原来的顺序是先置标记再检查搜索框，于是：
+         · 侧边栏那个实例（search=false，页面上没有搜索框）先渲染 → 置了标记 → return；
+         · 后面完整的友链页实例再渲染 → 一看标记已置 → 直接 return；
+         → 搜索框永远没人给它绑事件，打字毫无反应。
+       现在改成：确认真的有搜索框和网格，才占住这个标记。 */
     var box = document.getElementById('fl-search-input');
     var grid = document.getElementById('fl-grid');
     var empty = document.getElementById('fl-empty');
     if(!box || !grid) return;
+
+    if(window.__flSearch) return;
+    window.__flSearch = true;
+
     var cards = grid.querySelectorAll('.fl-card');
 
     function norm(s){ return (s||'').toLowerCase(); }

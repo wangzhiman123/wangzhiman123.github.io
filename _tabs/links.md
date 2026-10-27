@@ -35,7 +35,7 @@ order: 5
 # comments: true = 本页底部显示评论区。
 # 友链申请已改为「评论区留言」模式（见 _data/links.yml 的 apply.mode: comment），
 # 所以这一页必须开着评论区，否则读者点了「前往评论区」没地方留言。
-# 评论系统是全站统一的（_config.yml 的 comments.provider: giscus），
+# 评论系统是全站统一的（_config.yml 的 comments.provider: twikoo），
 # 所以本页的评论区和文章页长得一模一样，不用单独配置。
 #
 # ⚠️ 一个容易踩的坑：光在这里写 comments: true 是不够的。
