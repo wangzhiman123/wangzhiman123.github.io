@@ -3,6 +3,14 @@
 """
 batch_retag_posts.py —— 51 篇文章「分类 + 标签」批量整理工具
 
+⚠️ 已被表格流程取代，日常不要再用这个脚本
+----------------------------------------
+现在改分类标签请走「表格」这条线：
+    ① python scripts/export_tags_table.py   导出 tools/文章分类标签表.csv
+    ② 在 Excel 里改表
+    ③ python scripts/import_tags_table.py   按表回写文章
+本脚本保留下来，只是作为「当初这 51 篇是怎么归类的」这份映射的存档记录。
+
 作用
 ----
 把 _posts 目录下每篇文章开头（front matter）里的 categories / tags 两行，

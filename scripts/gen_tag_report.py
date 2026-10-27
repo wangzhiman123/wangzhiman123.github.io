@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-gen_tag_report.py —— 依据 batch_retag_posts.py 的对照表，生成两份核对材料
+r"""
+gen_tag_report.py —— 根据「分类标签表格」生成一份可读的整理报告
 
-输出（都放在 tools/ 目录，该目录已在 _config.yml 的 exclude 里，不会被发布上线）
-----
-    tools/文章分类标签对照表.csv   ← Excel 可直接打开（UTF-8 带 BOM，不乱码）
-    tools/文章分类标签整理报告.md  ← 分类清单 + 统计 + 待办提醒
+数据来源只有一处：tools\文章分类标签表.csv（也就是你用 Excel 改的那份表）。
+所以正确顺序是：改表 → 跑 import_tags_table.py 回写文章 → 再跑本脚本出报告，
+三者永远一致。本脚本只读表格，不会改动任何文章。
+
+输出：tools\文章分类标签整理报告.md
+（该目录在 _config.yml 的 exclude 里，不会被发布到网站）
 
 用法：python scripts/gen_tag_report.py
 """
@@ -15,70 +17,64 @@ import re
 from collections import Counter
 from pathlib import Path
 
-from batch_retag_posts import MAP, POSTS_DIR
+from import_tags_table import DEFAULT_TABLE, POSTS_DIR, load_rows, parse_tags
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT_DIR = ROOT / "tools"
+OUT_MD = OUT_DIR / "文章分类标签整理报告.md"
 
 RE_TITLE = re.compile(r"^title\s*:\s*(.+?)\s*$", re.M)
-RE_DATE = re.compile(r"^date\s*:\s*(.+?)\s*$", re.M)
 
 
-def read_meta(path: Path):
-    """从 front matter 里读标题和日期（去引号、去行尾多余空格）。"""
-    raw = path.read_text(encoding="utf-8")
-    head = raw[:3000]
-    title = RE_TITLE.search(head)
-    date = RE_DATE.search(head)
-    t = title.group(1).strip().strip('"').strip("'") if title else path.stem
-    d = date.group(1).strip() if date else ""
-    return t, d
+def real_title(filename: str, fallback: str) -> str:
+    """以文章里的 title 为准，表格里的只作后备。"""
+    p = POSTS_DIR / filename
+    if not p.exists():
+        return fallback
+    m = RE_TITLE.search(p.read_text(encoding="utf-8", errors="replace")[:3000])
+    return m.group(1).strip().strip('"').strip("'") if m else fallback
 
 
 def main():
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    if not DEFAULT_TABLE.exists():
+        raise SystemExit("找不到表格，请先运行：python scripts/export_tags_table.py")
 
-    rows = []
-    for name in sorted(MAP, key=lambda n: (MAP[n][0][0], MAP[n][0][1], n)):
-        cats, tags = MAP[name]
-        title, date = read_meta(POSTS_DIR / name)
-        rows.append({
-            "文件": name,
-            "标题": title,
-            "一级分类": cats[0],
-            "二级分类": cats[1],
-            "标签": "、".join(tags),
-            "发布日期": date,
+    rows = load_rows(DEFAULT_TABLE)
+    items = []
+    for r in rows:
+        fname = r.get("文件名", "")
+        if not fname:
+            continue
+        items.append({
+            "文件": fname,
+            "标题": real_title(fname, r.get("文章标题", fname)),
+            "一级": r.get("一级分类", "") or "(空)",
+            "二级": r.get("二级分类", "") or "(空)",
+            "标签": parse_tags(r.get("标签", "")),
+            "日期": r.get("发布日期", ""),
         })
 
-    # ---------------- CSV ----------------
-    csv_path = OUT_DIR / "文章分类标签对照表.csv"
-    header = ["序号", "一级分类", "二级分类", "标题", "标签", "发布日期", "文件名"]
-    lines = [",".join(header)]
-    for i, r in enumerate(rows, 1):
-        cells = [str(i), r["一级分类"], r["二级分类"], r["标题"],
-                 r["标签"], r["发布日期"], r["文件"]]
-        safe = ['"' + c.replace('"', '""') + '"' for c in cells]
-        lines.append(",".join(safe))
-    csv_path.write_text("\ufeff" + "\r\n".join(lines) + "\r\n", encoding="utf-8")
+    lv1 = Counter(i["一级"] for i in items)
+    lv2 = Counter((i["一级"], i["二级"]) for i in items)
+    tagc = Counter(t for i in items for t in i["标签"])
+    order = ["工作", "生活", "学习"]
 
-    # ---------------- 统计 ----------------
-    lv1 = Counter(r["一级分类"] for r in rows)
-    lv2 = Counter((r["一级分类"], r["二级分类"]) for r in rows)
-    tagc = Counter(t for r in rows for t in r["标签"].split("、"))
-
-    # ---------------- Markdown 报告 ----------------
     md = []
     md.append("# 文章分类与标签整理报告\n")
-    md.append("> 生成时间：自动生成 ｜ 覆盖文章：{} 篇 ｜ 分类体系：3 个一级、{} 个二级\n"
-              .format(len(rows), len(lv2)))
+    md.append("> 覆盖文章：{} 篇 ｜ 一级分类 {} 个 ｜ 二级分类 {} 个 ｜ 标签 {} 个\n".format(
+        len(items), len(lv1), len(lv2), len(tagc)))
+    md.append("> 本报告由 `tools/文章分类标签表.csv` 生成。要改分类标签，请改那份表，"
+              "再运行 `python scripts/import_tags_table.py`。\n")
+
     md.append("## 一、分类总览\n")
     md.append("| 一级分类 | 篇数 | 二级分类（篇数） |")
     md.append("| --- | --- | --- |")
-    for c1 in ["工作", "生活", "学习"]:
-        subs = ["{}（{}）".format(c2, n) for (a, c2), n in lv2.items() if a == c1]
-        subs.sort(key=lambda s: -int(s.split("（")[1].rstrip("）")))
-        md.append("| **{}** | {} | {} |".format(c1, lv1.get(c1, 0), "、".join(subs)))
+    for c1 in order + [k for k in lv1 if k not in order]:
+        if c1 not in lv1:
+            continue
+        subs = ["{}（{}）".format(c2, n) for (a, c2), n in
+                sorted(lv2.items(), key=lambda kv: (-kv[1], kv[0])) if a == c1]
+        md.append("| **{}** | {} | {} |".format(c1, lv1[c1], "、".join(subs)))
     md.append("")
 
     md.append("## 二、标签使用频次\n")
@@ -89,39 +85,49 @@ def main():
     md.append("")
 
     md.append("## 三、逐篇明细\n")
-    for c1 in ["工作", "生活", "学习"]:
-        md.append("### {}（{} 篇）\n".format(c1, lv1.get(c1, 0)))
-        for (a, c2), _ in sorted([kv for kv in lv2.items() if kv[0][0] == c1],
-                                 key=lambda kv: -kv[1]):
+    for c1 in order + [k for k in lv1 if k not in order]:
+        if c1 not in lv1:
+            continue
+        md.append("### {}（{} 篇）\n".format(c1, lv1[c1]))
+        subs = [kv for kv in lv2.items() if kv[0][0] == c1]
+        for (a, c2), _ in sorted(subs, key=lambda kv: (-kv[1], kv[0])):
             md.append("**{}**（{} 篇）\n".format(c2, lv2[(a, c2)]))
             md.append("| 标题 | 标签 | 文件 |")
             md.append("| --- | --- | --- |")
-            for r in rows:
-                if r["一级分类"] == c1 and r["二级分类"] == c2:
-                    md.append("| {} | {} | {} |".format(r["标题"], r["标签"], r["文件"]))
+            for i in items:
+                if i["一级"] == c1 and i["二级"] == c2:
+                    md.append("| {} | {} | {} |".format(i["标题"], "、".join(i["标签"]), i["文件"]))
             md.append("")
 
-    md.append("## 四、整理中发现的问题（建议处理）\n")
-    md.append("以下是批量整理时顺带查出来的，**不属于分类标签的范畴**，但会影响网站效果，列出来供你决定：\n")
+    lonely = sorted([t for t, n in tagc.items() if n == 1])
+
+    md.append("## 四、整理中发现的问题\n")
     md.append("| # | 问题 | 影响 | 状态 / 建议 |")
     md.append("| --- | --- | --- | --- |")
-    md.append("| 1 | 全部 51 篇的 front matter 分隔符原为 `\\---`（多一个反斜杠）| Jekyll 认不出 front matter，"
-              "推送后这 51 篇文章页会 404、分类标签页也抓不到 | ✅ 已修复（`scripts/fix_front_matter_delimiter.py`） |")
-    md.append("| 2 | `post-007` 与 `post-035` 标题完全相同、正文相似度 97.6% | 同一篇文章被重复收录，"
-              "列表里出现两次、浏览量被摊薄 | ⚠️ 待你决定：建议保留日期较新的 `post-035`，删除 `post-007` |")
-    md.append("| 3 | 5 篇的 `date` 早于文件名日期（022→2025-08-06、023→2025-04-01、025→2022-03-21、"
-              "028→2022-04-09、029→2022-04-14）| 首页按 date 排序，这几篇会沉到列表后面 | "
-              "⚠️ 待你决定：想排在前面就把 `date` 改成与文件名一致；想保留真实写作时间则不用动 |")
-    md.append("")
+    md.append("| 1 | 全部文章的 front matter 分隔符原为 `\\---`（多一个反斜杠）| Jekyll 认不出 front matter，"
+              "文章页会 404、分类页也抓不到 | ✅ 已修复（`scripts/fix_front_matter_delimiter.py`） |")
+    md.append("| 2 | `post-007` 与 `post-035` 标题完全相同、正文相似度 97.6% | 同一篇文章重复收录 | "
+              "⚠️ 待决定：建议保留日期较新的 `post-035` |")
+    md.append("| 3 | 5 篇的 `date` 早于文件名日期（022/023/025/028/029）| 首页按 date 排序，这几篇会沉到后面 | "
+              "⚠️ 待决定：想排前面就把 date 改成与文件名一致 |")
     md.append("")
 
-    md_path = OUT_DIR / "文章分类标签整理报告.md"
-    md_path.write_text("\n".join(md), encoding="utf-8")
+    md.append("## 五、只有 1 篇文章使用的标签\n")
+    if lonely:
+        md.append("共 {} 个。这类标签在标签页里各占一个页面、内容很少；"
+                  "若想让标签页更清爽，可以把它们合并到更常用的标签上。\n".format(len(lonely)))
+        md.append("、".join(lonely))
+    else:
+        md.append("（没有）")
+    md.append("")
 
-    print("已生成：")
-    print("  " + str(csv_path))
-    print("  " + str(md_path))
-    print("\n一级分类分布：" + "，".join("{}{}篇".format(k, v) for k, v in lv1.most_common()))
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    OUT_MD.write_text("\n".join(md), encoding="utf-8")
+
+    print("已生成报告：{}".format(OUT_MD))
+    print("一级分类：" + "，".join("{} {} 篇".format(k, v) for k, v in lv1.most_common()))
+    print("二级分类 {} 个，标签 {} 个（其中仅用 1 次的 {} 个）".format(
+        len(lv2), len(tagc), len(lonely)))
 
 
 if __name__ == "__main__":
