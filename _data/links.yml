@@ -142,42 +142,6 @@ links:
     order: 60
     active: true
 
-  # ---------- 「鲁鲁和非人类」----------
-  - name: 鲁鲁和非人类
-    url: "https://www.myhelen.cn/"
-    description: 个人博客，小说、开荒、AI、人工智能、乱语、免费分享
-    logo: ""
-    email: ""
-    rss: ""
-    tags:
-      - 好朋友
-    order: 61
-    active: true
-
-  # ---------- 「蒙需」----------
-  - name: 蒙需
-    url: "https://jiangcl.com/"
-    description: 记录生活，晒娃做菜、午饭和远方
-    logo: "https://avatars.githubusercontent.com/u/204972114"
-    email: ""
-    rss: ""
-    tags:
-      - 好朋友
-    order: 62
-    active: true
-
-  # ---------- 「刑辩人在路上」----------
-  - name: 刑辩人在路上
-    url: "https://xingbianren.cn/"
-    description: 记录生活、居住美好，喜欢诗和远方
-    logo: "https://xingbianren.cn/zb_users/upload/2023/05/202305231684818664504571.png"
-    email: ""
-    rss: ""
-    tags:
-      - 好朋友
-    order: 63
-    active: true
-
   - name: 敲代码的卡卡罗特
     url: "https://blog.share888.top"
     description: 灵魂和身体都要在路上
@@ -203,23 +167,12 @@ links:
   - name: Exyone's Blog
     url: "https://exyon.ee"
     description: 莫道蓬门小，清幽胜琼楼。一隅藏天地，流水遇知音。
-    logo: "https://exyon.ee/assets/img/avatar-v1.png"
+    logo: ""
     email: ""
     rss: ""
     tags:
       - 好朋友
     order: 66
-    active: true
-
-  - name: 喵喵小站・博客志
-    url: "https://www.mmbkz.cn/"
-    description: 记录喵喵美好生活
-    logo: "https://weavatar.com/avatar/90d65b07462dd2b0cb32ba3e3187759d?s=200&r=&d=404"
-    email: ""
-    rss: ""
-    tags:
-      - 好朋友
-    order: 67
     active: true
 
   - name: SaraKale’s blog
@@ -229,7 +182,7 @@ links:
     email: ""
     rss: ""
     tags:
-      - 好朋友
+      - 
     order: 68
     active: true
 
@@ -253,31 +206,7 @@ links:
     tags:
       - 好朋友
     order: 70
-    active: true
- 
-  - name: 萝莉工坊
-    url: "https://46666.cn/"
-    description: 萝莉梦幻工坊蜕变之旅
-    logo: "https://46666.cn/wp-content/uploads/2024/10/cropped-luoli2-192x192.png"
-    email: ""
-    rss: ""
-    tags:
-      - 好朋友
-    order: 71
-    active: true
-
-  # ---------- 「Puo’s 菜园子」----------
-  - name: Puo’s 菜园子
-    url: "http://puo.cn"
-    description: 个人学习的菜园子，wordpress，域名，建站，物流等笔记及生活感触
-    logo: "https://puo.puo.cn/img-cun/puo.cn-logo.png"
-    email: ""
-    rss: "http://puo.cn/?feed=rss2"
-    tags:
-      - 好朋友
-      - 个人博客
-    order: 72
-    active: true    
+    active: true 
 
   # ---------- 「记录生活，精彩一刻」----------
   - name: 记录生活，精彩一刻
@@ -332,6 +261,8 @@ links:
     logo: "https://www.blogsclub.org/usr/themes/default/assets/images/blogsclub_web.svg"
     email: ""
     rss: ""
+    tags:
+      - 好朋友
     order: 77
     active: true
 
@@ -342,6 +273,8 @@ links:
     logo: "https://www.blogplanet.cn/img/bkxq.png"
     email: ""
     rss: ""
+    tags:
+      - 好朋友
     order: 78
     active: true
 
@@ -352,6 +285,8 @@ links:
     logo: "https://www.boyouquan.com/assets/images/sites/logo/logo-blue.svg"
     email: ""
     rss: ""
+    tags:
+      - 好朋友
     order: 79
     active: true
 
@@ -362,27 +297,9 @@ links:
     logo: ""
     email: ""
     rss: ""
+    tags:
+      - 好朋友
     order: 80
-    active: true
-
-  # ---------- 「好站网」----------
-  - name: 好站网
-    url: "https://haozhan.wang/"
-    description: 发现好站，展示好站。
-    logo: ""
-    email: ""
-    rss: ""
-    order: 81
-    active: true
-
-  # ---------- 「博客说」----------
-  - name: 博客说
-    url: "https://blogtalk.org"
-    description: 中文独立博客收录与文章 RSS 聚合网站。
-    logo: ""
-    email: ""
-    rss: ""
-    order: 82
     active: true
 
   # ---------- 「开往 | 友链接力」----------
@@ -393,6 +310,6 @@ links:
     email: ""
     rss: ""
     tags:
-      - 好朋友
+      - 
     order: 83
     active: true
