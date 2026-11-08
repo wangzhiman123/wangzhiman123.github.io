@@ -55,9 +55,16 @@ description: >- # used by seo meta and the atom feed
   王志满律师个人网站，专注合同纠纷与公司法实务，分享法律专业文章
 
 # 网站的正式网址（必须带 https://，结尾不要加斜杠 /）。
-# 【重要】这个值必须和您真实的域名一致，否则网站里的图片、样式表可能加载不出来。
-# 【可DIY修改】换域名时，这一行一定要同步改。
-url: "https://2019527.xyz"
+# 【重要】这个值必须和您真实的域名一致，否则网站里的图片、样式表可能加载不出来，
+#   搜索引擎收录的网址（canonical / sitemap）也会跟着写错。
+#   当前本站域名：444527.xyz —— 这是 GitHub Pages 设置里实际绑定的域名（2026-11-08 核对）。
+#   注意：2019527.xyz 是另一个站（wangzhiman123/blog）在用的域名，不要填在这里。
+# 【可DIY修改】换域名时，这一行一定要同步改；下面这些文件里也写死了域名，要一起改：
+#   _data/authors.yml（作者主页链接）、_data/links.yml（self.url 与 apply.anchor_url）、
+#   _tabs/about.md、_tabs/disclaimer.md、_tabs/privacy.md（三个声明页正文）、
+#   _includes/friend-links-apply.html（邮件签名）、_layouts/home.html（注释）、
+#   deploy.ps1（$SiteUrl，部署完成后的访问自检）。
+url: "https://444527.xyz"
 
 # 您的 GitHub 用户名。
 # 作用：文章页上会自动生成「在 GitHub 上查看/编辑」之类的链接。
@@ -85,7 +92,7 @@ social:
   # 【特殊规则】列表里的「第一个」链接，会成为版权人名字点击后跳转的地址。
   links:
     # 第一条：点作者名「王志满」后跳转的页面
-    - https://2019527.xyz/about/ # 作者名"王志满"点击后跳转的地址
+    - https://444527.xyz/about/ # 作者名"王志满"点击后跳转的地址
     # 第二条：GitHub 主页
     - https://github.com/wangzhiman123 # change to your GitHub homepage
     # 【可DIY修改】想加更多链接，把下面几行前面的 # 删掉，换成自己的地址即可（格式保持一致）
@@ -425,7 +432,7 @@ pwa:
 # 【可DIY修改】数字改大，一页显示的文章更多、页面更长；改小，翻页更频繁。
 paginate: 10
 
-# 网站的子路径。留空表示网站就放在域名根目录（https://2019527.xyz/）。
+# 网站的子路径。留空表示网站就放在域名根目录（https://444527.xyz/）。
 # 【重要】除非您的网站要放在类似 /blog/ 这样的子目录下，否则不要改。
 baseurl: ""
 

@@ -128,7 +128,7 @@ $Repo      = "$RepoOwner/$RepoName"
 # 拼成"用户名/仓库名"的标准写法，GitHub 的接口都用这种格式来定位仓库。
 $Branch    = 'main'
 # 要提交到哪个分支。main 是当前主流的默认分支名（老项目可能叫 master）。
-$SiteUrl   = 'https://2019527.xyz'
+$SiteUrl   = 'https://444527.xyz'
 # 网站正式地址。部署完成后脚本会去访问它、验证是否正常。
 $ActionsUrl = "https://github.com/$Repo/actions"
 # 自动构建任务的页面地址。出问题时去这里看详细日志。
