@@ -202,11 +202,27 @@ actions:
 
 # ----------------------------- 六、评论系统 -----------------------------
 # 这一段决定「读者能不能在文章下面留言、用哪家评论服务」。
+#
+# 【2026-11-08 全站评论功能已关闭】
+#   现在的设置：provider: false（总开关关闭）+ 文章的 comments: false。
+#   因此所有文章页、友链页都不会再出现评论区，页面也不再向 Twikoo
+#   服务器发出任何请求；友链申请已同步改为「邮件表单」模式（见 _data/links.yml）。
+#
+#   下面各家服务的参数（twikoo / giscus / artalk / ...）全部保留，
+#   只是为了让将来想恢复时不必重新填，当前一律不生效。
+#
+# 【将来想重新开放评论，改回这 4 处即可】
+#   ① 本文件 provider: false → twikoo
+#   ② 本文件 defaults → posts → comments: false → true
+#   ③ _tabs/links.md 的 comments: false → true（友链页评论区）
+#   ④ _data/links.yml 的 apply.mode: form → comment（友链申请改回评论区留言）
+#   另：_includes/metadata-hook.html 里移除的 Twikoo 预连接可按需加回
+#      （不加也能正常使用，只是首次加载略微慢一点）。
 comments:
   # ==========================================================================
   # 【全站评论系统总开关】这一行决定用哪家评论服务，改这一个值即可全站切换。
   #
-  #   当前启用：twikoo（评论数据存在你自己的 MongoDB，见下方 twikoo 段）
+  #   当前状态：false = 全站关闭评论（2026-11-08 起）
   #   ※ 注意：下面这段「为什么选 giscus」是当初的选型笔记，现在 giscus 只是
   #      备用方案（配置仍然保留、组件代码也还在，随时可以切回去），
   #      真正生效的只有最下面 provider 那一行指定的服务。
@@ -254,7 +270,7 @@ comments:
   #      （Vercel 一键部署得到，见《Twikoo免费部署》手册）
   #   ② 把 _data/links.yml 的 apply.comment_anchor 改成 "#twikoo-comments"
   #   ③ 组件代码 _includes/comments/twikoo.html 已经在仓库里，不用重新写
-  provider: twikoo # 可选：twikoo / artalk / giscus / disqus / utterances
+  provider: false # 【当前关闭】可选：false（关闭）/ twikoo / artalk / giscus / disqus / utterances
   # 以下各家评论服务，只有 provider 里指定的那一家会生效，其余留空即可。
 
   # Disqus 评论（国外服务，国内被墙），不用就留空。
@@ -457,8 +473,10 @@ defaults:
     values:
       # 默认套用 post 这个页面模板（也就是 _layouts/post.html）。
       layout: post
-      # 默认开启评论。
-      comments: true # Enable comments in posts.
+      # 全站已关闭评论（2026-11-08）。
+      # 真正的总开关是上面的 comments.provider；这里再关一层，
+      # 保证即便以后误把 provider 改回 twikoo，文章页也不会突然冒出评论区。
+      comments: false
       # 默认显示目录。
       toc: true # Display TOC column in posts.
       # DO NOT modify the following parameter unless you are confident enough

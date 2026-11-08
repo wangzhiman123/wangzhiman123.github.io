@@ -32,17 +32,15 @@ icon: fas fa-link
 # 【可DIY修改】可调整数字，注意与其他页面错开。
 order: 5
 
-# comments: true = 本页底部显示评论区。
-# 友链申请已改为「评论区留言」模式（见 _data/links.yml 的 apply.mode: comment），
-# 所以这一页必须开着评论区，否则读者点了「前往评论区」没地方留言。
-# 评论系统是全站统一的（_config.yml 的 comments.provider: twikoo），
-# 所以本页的评论区和文章页长得一模一样，不用单独配置。
+# comments: false = 本页底部不显示评论区。
+# 【2026-11-08】全站评论功能已关闭（_config.yml 的 provider: false）。
+# 友链申请也同步改为「邮件表单」模式（见 _data/links.yml 的 apply.mode: form），
+# 所以本页不再需要评论区，也不会出现「前往评论区留言」的死按钮。
 #
-# ⚠️ 一个容易踩的坑：光在这里写 comments: true 是不够的。
-#   主题自带的 _layouts/page.html 里没有 script_includes: [comment]，
-#   评论组件根本不会被加载。本项目已在 _layouts/page.html 中补上该项，
-#   所以本页才能正常显示评论区。升级主题时请记得重新同步那个文件。
-comments: true
+# 备注：本项目 _layouts/page.html 里补过 script_includes: [comment]，
+#   它现在仍然存在但不会渲染任何内容；将来若重新开放评论，
+#   把本行改回 true，并同步按 _config.yml 顶部「如何恢复」的 4 步操作即可。
+comments: false
 ---
 
 {% include friend-links.html %}
